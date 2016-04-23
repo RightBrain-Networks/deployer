@@ -1,0 +1,61 @@
+# Deployment wide parameters
+global:
+  region: us-west-2
+  parameters:
+    MacroEnvironment: Dev
+    Project: DereksLab
+    PrivateDomain: derekslab.internal
+    BootstrapBucket: derekslab-us-west-2/development/bootstrap
+    CloudFormationBucket: derekslab-us-west-2/development/cloudformation
+    SSLCertId: ""
+    ConfigBucket: derekslab-us-west-2/development/chef
+    CommonBootstrapFile: common.sh
+    PublicDomain: 'codingforthecloud.com'
+    CloudToolsBucket: derekslab-us-west-2
+    InternalHostedZone: Z3MVMWORI6ZAGW
+
+
+Network:
+  release: development
+  stack_name: Dev-Network
+  template: cloudformation/Network/Top.json 
+  parameters:
+    VirtualPrivateGateway: ''
+    VPNCIDR: "10.0.0.0/8"
+    #BastionSSHFrom: "98.209.19.241/32" 
+    #BastionSSHFrom: "50.241.213.107/32" 
+    BastionSSHFrom: "0.0.0.0/0" 
+
+
+VPN:
+  release: development
+  stack_name: VPN
+  template: cloudformation/VPN/Environment.json
+  parameters:
+    PublicHostedZone: Z3CDVQNRBTTSPP
+    CommonAMI: ami-9fec1bff
+    CommonInstanceType: m3.medium
+    PrivateIp: 10.1.196.230
+  lookup_parameters:
+    VPC: { Stack: Network, OutputKey: VPC }
+    VPCCIDR: { Stack: Network, OutputKey: VPCCIDR }
+    PublicSubnets: { Stack: Network, OutputKey: PublicSubnets }
+    PrivateSubnets: { Stack: Network, OutputKey: PrivateSubnets }
+    RDSSubnetGroup: { Stack: Network, OutputKey: RDSSubnetGroup }
+    ElastiCacheSubnetGroup: { Stack: Network, OutputKey: ElastiCacheSubnetGroup }
+VPN1:
+  release: development
+  stack_name: VPN1
+  template: cloudformation/VPN/Environment.json
+  parameters:
+    PublicHostedZone: Z3CDVQNRBTTSPP
+    CommonAMI: ami-bd2e658d
+    CommonInstanceType: m3.medium
+    PrivateIp: 10.1.196.237
+  lookup_parameters:
+    VPC: { Stack: Network, OutputKey: VPC }
+    VPCCIDR: { Stack: Network, OutputKey: VPCCIDR }
+    PublicSubnets: { Stack: Network, OutputKey: PublicSubnets }
+    PrivateSubnets: { Stack: Network, OutputKey: PrivateSubnets }
+    RDSSubnetGroup: { Stack: Network, OutputKey: RDSSubnetGroup }
+    ElastiCacheSubnetGroup: { Stack: Network, OutputKey: ElastiCacheSubnetGroup }
