@@ -18,6 +18,7 @@ global:
 Network:
   release: development
   stack_name: Dev-Network
+  template_bucket: derekslab-us-east-1
   template: cloudformation/Network/Top.json 
   parameters:
     VirtualPrivateGateway: ''
@@ -27,8 +28,14 @@ Network:
     BastionSSHFrom: "0.0.0.0/0" 
 
 VPN:
-  release: development
   stack_name: VPN
+  region: us-east-1
+  # New feature full template url if path doesnt fit the below
+  full_template_url: https://s3.amazonaws.com/derekslab-us-east-1/development/cloudformation/VPN/Environment.json
+  # Template url is constructed automatically based on region and 
+  # the following template_bucket/release/template ( full_template_url overrides )
+  template_bucket: derekslab-us-east-1
+  release: development
   template: cloudformation/VPN/Environment.json
   parameters:
     PublicHostedZone: Z3CDVQNRBTTSPP
@@ -46,6 +53,7 @@ VPN:
 MyVPN:
   release: development
   stack_name: VPN3
+  template_bucket: derekslab-us-east-1
   template: cloudformation/VPN/Environment.json
   parameters:
     PublicHostedZone: Z3CDVQNRBTTSPP
