@@ -16,8 +16,14 @@ global:
 
 
 Network:
-  release: development
+  release: developmenttss
   stack_name: Dev-Network
+  sync_base: ../derekslab/
+  sync_dirs: [
+    'cloudformation',
+    'bootstrap'
+  ]
+  dest_bucket: derekslab-us-east-1
   template_bucket: derekslab-us-east-1
   template: cloudformation/Network/Top.json 
   parameters:

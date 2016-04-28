@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 from cloudformation import EnvironmentStack
-from lib import *
+from s3_sync import s3_sync
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 
@@ -17,7 +17,7 @@ def main():
     parser.add_option("-p","--profile", help="Profile.")
     parser.add_option("-t","--change-set-name", help="Change Set Name.")
     parser.add_option("-d","--change-set-description", help="Change Set Description.")
-
+    parser.add_option("-s","--sync",help="sync directory structure", action="store_true", dest="sync", default=False)
     parser.add_option("-A","--all", help="Create or Update all environments in a config", action="store_true", dest="all", default=False)
 
     (opts, args) = parser.parse_args()
@@ -38,6 +38,9 @@ def main():
         parser.print_help()
         exit(1)
 
+    if opts.sync:
+        syncer = s3_sync(opts.profile, opts.config, opts.environment)
+        exit()
 
     if opts.all:
         # Read Environment Config
