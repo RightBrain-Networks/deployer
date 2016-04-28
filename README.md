@@ -10,7 +10,7 @@ Deployer is used to create | update | delete CloudFormation Stacks
 
 
 ##### Example
-`./deployer.py -c config.yml -e Environment -x create -p profileName`
+`./deployer.py -c config.yml -e Environment -x create -p profileName -s`
 
 `./deployer.py -c config.yml -e DevDerek -x create -p profileName`
 
@@ -23,6 +23,12 @@ The config is a large dictionary. First keys within the dictionary are Environme
 * All environments need a environment name like a logical name in CFN, it's the top level key in the dictionary.
 * All environments need a stack_name 
 * All environments need to construct the stacks template, you can either specify full_template_url or template_bucket, release, and template combined.
+
+## Sync
+Command line takes a optional -s for sync to s3. Walks {sync_base} for {sync_dirs} recursively for files to upload. S3 path of object based on concatenation of Environment Keys: {sync_dest_bucet}/{release}/{sync_dir}/{recursive_file_path}
+* sync_base: base of repository to sync to s3
+* sync_dirs: directories from sync_base to sync to s3
+* sync_dest_bucket: bucket to sync to 
 
 ##### Parameters
 These parameters correspond to parameters that need to be passed to the Top.json template.

@@ -40,7 +40,6 @@ def main():
 
     if opts.sync:
         syncer = s3_sync(opts.profile, opts.config, opts.environment)
-        exit()
 
     if opts.all:
         # Read Environment Config
