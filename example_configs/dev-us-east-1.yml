@@ -23,7 +23,7 @@ Network:
     'cloudformation',
     'bootstrap'
   ]
-  dest_bucket: derekslab-us-east-1
+  sync_dest_bucket: derekslab-us-east-1
   template_bucket: derekslab-us-east-1
   template: cloudformation/Network/Top.json 
   parameters:
