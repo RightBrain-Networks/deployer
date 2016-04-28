@@ -1,5 +1,9 @@
 # Deployer
 
+## Import
+Import into your project repository with the following command in the base of the repository.
+`git submodule add ssh://git-codecommit.us-east-1.amazonaws.com/v1/repos/deployer`
+
 Deployer is used to create | update | delete CloudFormation Stacks
 
 ##### Flags
