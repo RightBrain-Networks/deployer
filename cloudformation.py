@@ -50,29 +50,26 @@ class AbstractCloudFormation(object):
         return self.change_set_status
 
     def get_config(self): 
-        with open(self.config) as f:
+        with open(self.config_file) as f:
             data = yaml.load(f)
         return data
 
-    def get_region(self):
-        config = self.get_config()
+    def get_config_att(self, key):
         region = None
-        key = 'region'
-        if key in config['global']:
-            region = config['global'][key]
-        if key in config[self.environment]:
-            region = config[self.environment][key]
-        return region
+        if key in self.config['global']:
+            base = self.config['global'][key]
+        if key in self.config[self.environment]:
+            base = self.config[self.environment][key]
+        return base
 
     def construct_template_url(self):
         alt = 'full_template_url'
-        config = self.get_config()
-        if alt in config[self.environment]:
-            self.template_url = config[self.environment][alt]
+        if alt in self.config[self.environment]:
+            self.template_url = self.config[self.environment][alt]
         else:
             url_string = "https://{}.amazonaws.com/{}/{}/{}"
-            self.template_bucket = config[self.environment]['template_bucket']
-            self.template = config[self.environment]['template']
+            self.template_bucket = self.get_config_att('template_bucket')
+            self.template = self.get_config_att('template')
             if self.region == 'us-east-1':
                 s3_endpoint = 's3'
             else:
@@ -96,14 +93,14 @@ class AbstractCloudFormation(object):
             ] 
         )
         print "Creation Started"
-        print "Waiting for Create Complete"
         self.reload_stack_status()
+        sleep(5)
         while self.stack_status != 'CREATE_COMPLETE':
-            sleep(30)
             status = self.reload_stack_status()
             print status
             if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED' ]:
                 raise RuntimeError("Create stack Failed")
+            sleep(30)
            
     
     def update_stack(self):
@@ -118,14 +115,14 @@ class AbstractCloudFormation(object):
                 ] 
             )
             print "Update Started"
-            sleep(10)
+            sleep(5)
             self.reload_stack_status()
             while self.stack_status != 'UPDATE_COMPLETE':
-                sleep(30)
                 status = self.reload_stack_status()
                 print status
                 if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
                     raise RuntimeError("Update stack Failed")
+                sleep(30)
         else:
             raise RuntimeError("Stack does not exist")
 
@@ -179,15 +176,14 @@ class AbstractCloudFormation(object):
             
 
 class EnvironmentStack(AbstractCloudFormation):
-    def __init__(self, profile, config, environment):
+    def __init__(self, profile, config_file, environment):
         self.profile = profile
         self.environment = environment
-        self.config = config
-        data = self.get_config()
-        self.region = self.get_region()
-        self.stack_name = data[self.environment]['stack_name']
-        self.release = str(data[self.environment]['release']).replace('/','.')
-        self.template = data[self.environment]['template']
+        self.config_file = config_file
+        self.config = self.get_config()
+        self.region = self.get_config_att('region')
+        self.stack_name = self.get_config_att('stack_name')
+        self.release = self.get_config_att('release')
         self.template_url = self.construct_template_url()
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
@@ -196,13 +192,12 @@ class EnvironmentStack(AbstractCloudFormation):
     def build_params(self):
         # create parameters from the config.yml file
         self.parameter_file = "%s-params.json" % self.environment
-        config = self.get_config()
         params = []
         params.append({ "ParameterKey": "Environment", "ParameterValue": self.environment })
         params.append({ "ParameterKey": "Release", "ParameterValue": self.release })
         # Order of the environments is priority on overwrites, authoritative is last
         for env in ['global', self.environment]:
-            for param_key, param_value in config[env]['parameters'].iteritems():
+            for param_key, param_value in self.config[env]['parameters'].iteritems():
                 count = 0 
                 overwritten = False
                 for param_item in params:
@@ -213,8 +208,8 @@ class EnvironmentStack(AbstractCloudFormation):
                 if not overwritten:
                     params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
             try:
-                for param_key, lookup_struct in config[env]['lookup_parameters'].iteritems():
-                    stack = EnvironmentStack(self.profile, self.config, lookup_struct['Stack'])
+                for param_key, lookup_struct in self.config[env]['lookup_parameters'].iteritems():
+                    stack = EnvironmentStack(self.profile, self.config_file, lookup_struct['Stack'])
                     stack.get_outputs()
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:
