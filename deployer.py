@@ -13,7 +13,7 @@ def main():
     parser = OptionParser(usage=usage) 
     parser.add_option("-c","--config", help="Path to config file.")
     parser.add_option("-e","--environment", help="Environment name of stack.")
-    parser.add_option("-x","--execute", help="Execute ( create | update | delete | change ) of stack.")
+    parser.add_option("-x","--execute", help="Execute ( create | update | delete | sync | change ) of stack.")
     parser.add_option("-p","--profile", help="Profile.")
     parser.add_option("-t","--change-set-name", help="Change Set Name.")
     parser.add_option("-d","--change-set-description", help="Change Set Description.")
@@ -68,6 +68,8 @@ def main():
             env_stack.delete_stack()
         elif opts.execute == 'change':
             env_stack.get_change_set(opts.change_set_name, opts.change_set_description)
+        elif opts.execute == 'sync':
+            syncer = s3_sync(opts.profile, opts.config, opts.environment)
         
 
 if __name__ == '__main__':

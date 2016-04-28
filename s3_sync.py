@@ -12,7 +12,7 @@ class s3_sync(object):
         self.release = self.get_config_att('release').replace('/','.')
         self.base = self.get_config_att('sync_base')
         self.sync_dirs = self.get_config_att('sync_dirs')
-        self.dest_bucket = self.get_config_att('dest_bucket')
+        self.dest_bucket = self.get_config_att('sync_dest_bucket')
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('s3')
         self.sync()
@@ -29,18 +29,6 @@ class s3_sync(object):
         if key in self.config[self.environment]:
             base = self.config[self.environment][key]
         return base
-
-    def get_destination_bucket(self):
-        alt = 'full_sync_destination'
-        if alt in self.date['global']:
-            self.destination_bucket = self.config['global'][alt].split('/',1)
-        else:
-            self.destination_bucket = self.config['global']['template_bucket']
-        if alt in self.date[self.environment]:
-            self.destination_bucket = self.config[self.environment][alt].split('/',1)
-        else:
-            self.destination_bucket = self.config[self.environment]['template_bucket']
-        return self.destination_bucket
 
     def sync(self):
         for sync_dir in self.sync_dirs:

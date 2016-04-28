@@ -1,6 +1,12 @@
 # Deployment wide parameters
 global:
   region: us-east-1
+  release: development
+  sync_base: ../derekslab/
+  sync_dirs: [
+    'cloudformation'
+  ]
+  sync_dest_bucket: derekslab-us-east-1
   parameters:
     MacroEnvironment: Dev
     Project: DereksLab
@@ -16,7 +22,7 @@ global:
 
 
 Network:
-  release: developmenttss
+  release: development
   stack_name: Dev-Network
   sync_base: ../derekslab/
   sync_dirs: [
