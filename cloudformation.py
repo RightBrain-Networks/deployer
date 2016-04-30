@@ -2,6 +2,7 @@
 
 import boto3
 from boto3.session import Session
+from botocore.exceptions import WaiterError
 import yaml
 import json
 from abc import ABCMeta, abstractmethod, abstractproperty
@@ -83,7 +84,8 @@ class AbstractCloudFormation(object):
  
 
     def create_stack(self):
-        # create the Network stack 
+        # create the stack 
+        waiter = self.client.get_waiter('stack_create_complete')
         resp = self.client.create_stack(
             StackName=self.stack_name,
             TemplateURL=self.template_url,
@@ -93,18 +95,21 @@ class AbstractCloudFormation(object):
             ] 
         )
         print "Creation Started"
-        self.reload_stack_status()
         sleep(5)
-        while self.stack_status != 'CREATE_COMPLETE':
+        print self.reload_stack_status()
+        try:
+            waiter.wait(StackName=self.stack_name)
+        except WaiterError as e:
             status = self.reload_stack_status()
             print status
-            if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED' ]:
+            if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED', 'DELETE_IN_PROGRESS' ]:
                 raise RuntimeError("Create stack Failed")
-            sleep(30)
+        print "Create Complete"
            
     
     def update_stack(self):
-        # create the Network stack 
+        # update the stack 
+        waiter = self.client.get_waiter('stack_update_complete')
         if self.stack_status: 
             resp = self.client.update_stack(
                 StackName=self.stack_name,
@@ -116,13 +121,15 @@ class AbstractCloudFormation(object):
             )
             print "Update Started"
             sleep(5)
-            self.reload_stack_status()
-            while self.stack_status != 'UPDATE_COMPLETE':
+            print self.reload_stack_status()
+            try:
+                waiter.wait(StackName=self.stack_name)
+            except WaiterError as e:
                 status = self.reload_stack_status()
                 print status
                 if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
-                    raise RuntimeError("Update stack Failed")
-                sleep(30)
+                        raise RuntimeError("Update stack Failed")
+            print "Update Complete"
         else:
             raise RuntimeError("Stack does not exist")
 
