@@ -183,7 +183,7 @@ class EnvironmentStack(AbstractCloudFormation):
         self.config = self.get_config()
         self.region = self.get_config_att('region')
         self.stack_name = self.get_config_att('stack_name')
-        self.release = self.get_config_att('release')
+        self.release = self.get_config_att('release').replace('/','.')
         self.template_url = self.construct_template_url()
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
