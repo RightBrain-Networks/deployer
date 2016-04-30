@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import signal
 import boto3
 from boto3.session import Session
 from botocore.exceptions import WaiterError
@@ -23,6 +23,16 @@ class AbstractCloudFormation(object):
     @abstractmethod
     def delete_stack(self):
         pass 
+
+    def cancel_create(self, signal, frame):
+        print('\nProcess Interupt')
+        print('Deleteing Stack: %s' % self.stack_name)
+        self.delete_stack()
+
+    def cancel_update(self, signal, frame):
+        print('\nProcess Interupt')
+        print('Cancelling Stack Update: %s' % self.stack_name)
+        self.client.cancel_update_stack(StackName=self.stack_name)
      
     def get_outputs(self):
         resp = self.client.describe_stacks(
@@ -85,6 +95,7 @@ class AbstractCloudFormation(object):
 
     def create_stack(self):
         # create the stack 
+        signal.signal(signal.SIGINT, self.cancel_create)
         waiter = self.client.get_waiter('stack_create_complete')
         resp = self.client.create_stack(
             StackName=self.stack_name,
@@ -109,6 +120,7 @@ class AbstractCloudFormation(object):
     
     def update_stack(self):
         # update the stack 
+        signal.signal(signal.SIGINT, self.cancel_update)
         waiter = self.client.get_waiter('stack_update_complete')
         if self.stack_status: 
             resp = self.client.update_stack(
