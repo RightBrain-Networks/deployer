@@ -69,14 +69,14 @@ class AbstractCloudFormation(object):
         region = None
         if key in self.config['global']:
             base = self.config['global'][key]
-        if key in self.config[self.environment]:
-            base = self.config[self.environment][key]
+        if key in self.config[self.stack]:
+            base = self.config[self.stack][key]
         return base
 
     def construct_template_url(self):
         alt = 'full_template_url'
-        if alt in self.config[self.environment]:
-            self.template_url = self.config[self.environment][alt]
+        if alt in self.config[self.stack]:
+            self.template_url = self.config[self.stack][alt]
         else:
             url_string = "https://{}.amazonaws.com/{}/{}/{}"
             self.template_bucket = self.get_config_att('template_bucket')
@@ -194,10 +194,10 @@ class AbstractCloudFormation(object):
                  
             
 
-class EnvironmentStack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, environment):
+class Stack(AbstractCloudFormation):
+    def __init__(self, profile, config_file, stack):
         self.profile = profile
-        self.environment = environment
+        self.stack = stack
         self.config_file = config_file
         self.config = self.get_config()
         self.region = self.get_config_att('region')
@@ -210,12 +210,14 @@ class EnvironmentStack(AbstractCloudFormation):
 
     def build_params(self):
         # create parameters from the config.yml file
-        self.parameter_file = "%s-params.json" % self.environment
+        self.parameter_file = "%s-params.json" % self.stack
         params = []
-        params.append({ "ParameterKey": "Environment", "ParameterValue": self.environment })
         params.append({ "ParameterKey": "Release", "ParameterValue": self.release })
-        # Order of the environments is priority on overwrites, authoritative is last
-        for env in ['global', self.environment]:
+        # Order of the stacks is priority on overwrites, authoritative is last
+        # Here we loop through all of the params in the config file, we need to 
+        # create a array of parameter objects, we have to loop through our array 
+        # to ensure we dont already have one of that key.
+        for env in ['global', self.stack]:
             for param_key, param_value in self.config[env]['parameters'].iteritems():
                 count = 0 
                 overwritten = False
