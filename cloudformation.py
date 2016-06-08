@@ -230,7 +230,7 @@ class Stack(AbstractCloudFormation):
                     params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
             try:
                 for param_key, lookup_struct in self.config[env]['lookup_parameters'].iteritems():
-                    stack = EnvironmentStack(self.profile, self.config_file, lookup_struct['Stack'])
+                    stack = Stack(self.profile, self.config_file, lookup_struct['Stack'])
                     stack.get_outputs()
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:

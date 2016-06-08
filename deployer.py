@@ -50,7 +50,7 @@ def main():
         for stack, obj in config.iteritems(): 
             if stack != 'global':
                 print stack
-                env_stack = EnvironmentStack(opts.profile, opts.config, stack)
+                env_stack = Stack(opts.profile, opts.config, stack)
                 if env_stack.stack_status:
                     print "Update %s" % stack
                     env_stack.update_stack()
@@ -59,7 +59,7 @@ def main():
                     env_stack.create_stack()
             
     else:
-        env_stack = EnvironmentStack(opts.profile, opts.config, opts.stack)
+        env_stack = Stack(opts.profile, opts.config, opts.stack)
         if opts.execute == 'create':
             env_stack.create_stack()
         elif opts.execute == 'update':
