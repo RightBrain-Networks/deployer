@@ -25,7 +25,7 @@ class s3_sync(object):
         return data
 
     def get_config_att(self, key):
-        region = None
+        base = None
         if key in self.config['global']:
             base = self.config['global'][key]
         if key in self.config[self.environment]:
@@ -34,21 +34,23 @@ class s3_sync(object):
 
     def construct_excludes(self):
         excludes = self.get_config_att('sync_exclude')
-        excludes = [ "*%s*" % exclude for exclude in excludes]
+        if excludes:
+            excludes = [ "*%s*" % exclude for exclude in excludes]
         return excludes
 
     def sync(self):
-        for sync_dir in self.sync_dirs:
-            for dirName, subdirList, fileList in os.walk("%s%s" %(self.base,sync_dir)):
-                thisdir = "".join(dirName.rsplit(self.base))
-                fileList = [os.path.join(dirName,filename) for filename in fileList]
-                for ignore in self.excludes:
-                    fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
-                for fname in fileList:
-                    only_fname = os.path.split(fname)[1]
-                    if thisdir == "":
-                        dest_key = "%s/%s" % (self.release,only_fname)
-                    else:
-                        dest_key = "%s/%s/%s" % (self.release,thisdir,only_fname)
-                    self.client.upload_file(fname, self.dest_bucket, dest_key)
-                    print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
+        if self.sync_dirs:
+            for sync_dir in self.sync_dirs:
+                for dirName, subdirList, fileList in os.walk("%s%s" %(self.base,sync_dir)):
+                    thisdir = "".join(dirName.rsplit(self.base))
+                    fileList = [os.path.join(dirName,filename) for filename in fileList]
+                    for ignore in self.excludes:
+                        fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
+                    for fname in fileList:
+                        only_fname = os.path.split(fname)[1]
+                        if thisdir == "":
+                            dest_key = "%s/%s" % (self.release,only_fname)
+                        else:
+                            dest_key = "%s/%s/%s" % (self.release,thisdir,only_fname)
+                        self.client.upload_file(fname, self.dest_bucket, dest_key)
+                        print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)

@@ -218,25 +218,24 @@ class Stack(AbstractCloudFormation):
         # create a array of parameter objects, we have to loop through our array 
         # to ensure we dont already have one of that key.
         for env in ['global', self.stack]:
-            for param_key, param_value in self.config[env]['parameters'].iteritems():
-                count = 0 
-                overwritten = False
-                for param_item in params:
-                    if param_item['ParameterKey'] == param_key:
-                        params[count] = { "ParameterKey": param_key, "ParameterValue": param_value } 
-                        overwritten = True 
-                    count += 1
-                if not overwritten:
-                    params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
-            try:
+            if 'parameters' in self.config[env]:
+                for param_key, param_value in self.config[env]['parameters'].iteritems():
+                    count = 0 
+                    overwritten = False
+                    for param_item in params:
+                        if param_item['ParameterKey'] == param_key:
+                            params[count] = { "ParameterKey": param_key, "ParameterValue": param_value } 
+                            overwritten = True 
+                        count += 1
+                    if not overwritten:
+                        params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
+            if 'lookup_parameters' in self.config[env]:
                 for param_key, lookup_struct in self.config[env]['lookup_parameters'].iteritems():
                     stack = Stack(self.profile, self.config_file, lookup_struct['Stack'])
                     stack.get_outputs()
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:
                             params.append({ "ParameterKey": param_key, "ParameterValue": output['OutputValue'] })
-            except:
-                pass
         print "Parameters Created"
         return params
 
