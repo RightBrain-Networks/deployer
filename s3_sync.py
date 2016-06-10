@@ -1,6 +1,7 @@
 import os
 import yaml
 import boto3
+import fnmatch
 from boto3.session import Session
 
 class s3_sync(object):
@@ -15,6 +16,7 @@ class s3_sync(object):
         self.dest_bucket = self.get_config_att('sync_dest_bucket')
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('s3')
+        self.excludes = self.construct_excludes()
         self.sync()
 
     def get_config(self, config):
@@ -30,12 +32,23 @@ class s3_sync(object):
             base = self.config[self.environment][key]
         return base
 
+    def construct_excludes(self):
+        excludes = self.get_config_att('sync_exclude')
+        excludes = [ "*%s*" % exclude for exclude in excludes]
+        return excludes
+
     def sync(self):
         for sync_dir in self.sync_dirs:
             for dirName, subdirList, fileList in os.walk("%s%s" %(self.base,sync_dir)):
                 thisdir = "".join(dirName.rsplit(self.base))
+                fileList = [os.path.join(dirName,filename) for filename in fileList]
+                for ignore in self.excludes:
+                    fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
                 for fname in fileList:
-                    origin_path = "%s/%s" %(dirName,fname)
-                    dest_key = "%s/%s/%s" % (self.release,thisdir,fname)
-                    self.client.upload_file(origin_path, self.dest_bucket, dest_key)
-                    print "Uploaded: %s to s3://%s/%s" % (origin_path, self.dest_bucket, dest_key)
+                    only_fname = os.path.split(fname)[1]
+                    if thisdir == "":
+                        dest_key = "%s/%s" % (self.release,only_fname)
+                    else:
+                        dest_key = "%s/%s/%s" % (self.release,thisdir,only_fname)
+                    self.client.upload_file(fname, self.dest_bucket, dest_key)
+                    print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)

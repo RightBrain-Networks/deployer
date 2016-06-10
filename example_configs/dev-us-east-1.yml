@@ -2,9 +2,17 @@
 global:
   region: us-east-1
   release: development
-  sync_base: ../derekslab/
+  sync_base: ../derekslab
   sync_dirs: [
-    'cloudformation'
+    './'
+  ]
+  sync_exclude: [
+    '.swp',
+    '.git',
+    '.chef',
+    '/chef/',
+    '.pyc',
+    'cloudtrail'
   ]
   sync_dest_bucket: derekslab-us-east-1
   parameters:
@@ -26,8 +34,7 @@ Network:
   stack_name: Dev-Network
   sync_base: ../derekslab/
   sync_dirs: [
-    'cloudformation',
-    'bootstrap'
+    ''
   ]
   sync_dest_bucket: derekslab-us-east-1
   template_bucket: derekslab-us-east-1
