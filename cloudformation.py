@@ -115,7 +115,7 @@ class AbstractCloudFormation(object):
             print status
             if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED', 'DELETE_IN_PROGRESS' ]:
                 raise RuntimeError("Create stack Failed")
-        print status
+        print self.reload_stack_status()
            
     
     def update_stack(self):
@@ -141,7 +141,7 @@ class AbstractCloudFormation(object):
                 print status
                 if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
                         raise RuntimeError("Update stack Failed")
-            print status
+            print self.reload_stack_status()
         else:
             raise RuntimeError("Stack does not exist")
 
