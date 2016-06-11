@@ -66,7 +66,7 @@ class AbstractCloudFormation(object):
         return data
 
     def get_config_att(self, key):
-        region = None
+        base = None
         if key in self.config['global']:
             base = self.config['global'][key]
         if key in self.config[self.stack]:
@@ -91,16 +91,23 @@ class AbstractCloudFormation(object):
                 self.release,
                 self.template)
         return self.template_url
- 
+
+    def construct_tags(self): 
+        tags = self.get_config_att('tags')
+        if tags:
+            tags = [ { 'Key': key, 'Value': value } for key, value in tags.iteritems() ] 
+        return tags
 
     def create_stack(self):
         # create the stack 
         signal.signal(signal.SIGINT, self.cancel_create)
         waiter = self.client.get_waiter('stack_create_complete')
+        tags = self.construct_tags()
         resp = self.client.create_stack(
             StackName=self.stack_name,
             TemplateURL=self.template_url,
             Parameters=self.build_params(),
+            Tags=self.construct_tags(),
             Capabilities=[
                 'CAPABILITY_IAM'
             ] 
@@ -127,6 +134,7 @@ class AbstractCloudFormation(object):
                 StackName=self.stack_name,
                 TemplateURL=self.template_url,
                 Parameters=self.build_params(),
+                Tags=self.construct_tags(),
                 Capabilities=[
                     'CAPABILITY_IAM'
                 ] 
