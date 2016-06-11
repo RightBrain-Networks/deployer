@@ -15,6 +15,16 @@ global:
     'cloudtrail'
   ]
   sync_dest_bucket: derekslab-us-east-1
+  tags:
+    MyKey1: MyValue1
+    MyKey2: MyValue2
+    MyKey3: MyValue3
+    MyKey4: MyValue4
+    MyKey5: MyValue5
+    MyKey6: MyValue6
+    MyKey7: MyValue7
+    MyKey8: MyValue8
+    MyKey9: MyValue9
   parameters:
     MacroEnvironment: Dev
     Project: DereksLab
