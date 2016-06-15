@@ -99,7 +99,7 @@ class AbstractCloudFormation(object):
             if len(tags) > 9:
                 raise ValueError('Resources tag limit is 10, you have provided more than 9 tags. Please limit your tagging, safe room for name tag.') 
         else:
-            tags = None
+            tags = []
         return tags
 
     def create_stack(self):
