@@ -3,6 +3,7 @@ import signal
 import boto3
 from boto3.session import Session
 from botocore.exceptions import WaiterError
+from tabulate import tabulate
 import yaml
 import json
 from abc import ABCMeta, abstractmethod, abstractproperty
@@ -193,21 +194,23 @@ class AbstractCloudFormation(object):
         )
         self.changes = resp['Changes']
         print "==================================== Change ===================================" 
-        print "= Action |\tLogicalId\t|\tResourceType\t|\tReplacement\t="
+        headers = ["Action","LogicalId","ResourceType","Replacement"]
+        table = []
         for change in self.changes:
-            print "| %s |\t%s\t|\t%s\t|\t%s\t|" % (
+            table.append([
                 change['ResourceChange']['Action'],
                 change['ResourceChange']['LogicalResourceId'],
                 change['ResourceChange']['ResourceType'],
                 change['ResourceChange']['Replacement']
-            )
-                 
+            ])
+        print tabulate(table, headers, tablefmt='simple')
             
 
 class Stack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, stack):
+    def __init__(self, profile, config_file, stack, print_events):
         self.profile = profile
         self.stack = stack
+        self.print_events = print_events
         self.config_file = config_file
         self.config = self.get_config()
         self.region = self.get_config_att('region')

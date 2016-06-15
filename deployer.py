@@ -19,7 +19,7 @@ def main():
     parser.add_option("-d","--change-set-description", help="Change Set Description.")
     parser.add_option("-y","--copy",help="copy directory structure", action="store_true", dest="sync", default=False)
     parser.add_option("-A","--all", help="Create or Update all environments in a config", action="store_true", dest="all", default=False)
-
+    parser.add_option("-e","--events",help="Print events",action="store_true",dest="events",default=False)
     (opts, args) = parser.parse_args()
 
     options_broken = False
