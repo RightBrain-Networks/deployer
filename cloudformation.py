@@ -46,7 +46,7 @@ class AbstractCloudFormation(object):
                 StackName=self.stack_name)
             self.stack_status = resp['Stacks'][0]['StackStatus']
         except Exception as e:
-            self.stack_status = 'False'
+            self.stack_status = False
         return self.stack_status
 
     def reload_change_set_status(self, change_set_name): 
