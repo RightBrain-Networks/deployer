@@ -17,6 +17,9 @@ global:
   sync_dest_bucket: derekslab-us-east-1
   tags:
     MyKey1: MyValue1
+    Project: Alt-Lab
+    Environment: Dev
+    Release : development
   parameters:
     MacroEnvironment: Dev
     Project: DereksLab
