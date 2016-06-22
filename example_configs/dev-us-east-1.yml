@@ -43,6 +43,9 @@ Network:
   ]
   tags:
     SomeTag: SomeValue
+    Project: Alt-Lab
+    Environment: Dev
+    Release : development
   sync_dest_bucket: derekslab-us-east-1
   template_bucket: derekslab-us-east-1
   template: cloudformation/Network/Top.json 
