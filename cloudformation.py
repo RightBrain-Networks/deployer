@@ -111,6 +111,7 @@ class AbstractCloudFormation(object):
             StackName=self.stack_name,
             TemplateURL=self.template_url,
             Parameters=self.build_params(),
+            DisableRollback=self.disable_rollback,
             Tags=self.construct_tags(),
             Capabilities=[
                 'CAPABILITY_IAM'
@@ -138,6 +139,7 @@ class AbstractCloudFormation(object):
                 StackName=self.stack_name,
                 TemplateURL=self.template_url,
                 Parameters=self.build_params(),
+                DisableRollback=self.disable_rollback,
                 Tags=self.construct_tags(),
                 Capabilities=[
                     'CAPABILITY_IAM'
@@ -207,10 +209,11 @@ class AbstractCloudFormation(object):
             
 
 class Stack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, stack):
+    def __init__(self, profile, config_file, stack, disable_rollback):
         self.profile = profile
         self.stack = stack
         self.config_file = config_file
+        self.disable_rollback = disable_rollback
         self.config = self.get_config()
         self.region = self.get_config_att('region')
         self.stack_name = self.get_config_att('stack_name')
