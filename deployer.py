@@ -10,7 +10,7 @@ import yaml
 
 def main():
     usage = "usage: %prog [options]"
-    parser = OptionParser(usage=usage) 
+    parser = OptionParser(usage=usage)
     parser.add_option("-c","--config", help="Path to config file.")
     parser.add_option("-s","--stack", help="Stack Name.")
     parser.add_option("-x","--execute", help="Execute ( create | update | delete | sync | change ) of stack.")
@@ -20,6 +20,7 @@ def main():
     parser.add_option("-y","--copy",help="copy directory structure", action="store_true", dest="sync", default=False)
     parser.add_option("-A","--all", help="Create or Update all environments in a config", action="store_true", dest="all", default=False)
     parser.add_option("-r","--disable-rollback", help="Disable rollback on failure.", action="store_true", dest="rollback", default=False)
+    parser.add_option("-z","--zip-lambda", help="Zip lambda functions and sync them.", dest="lambda_path")
 
     (opts, args) = parser.parse_args()
 
@@ -31,10 +32,10 @@ def main():
     if not opts.all:
         if not opts.execute:
             print "Must Specify execute flag!"
-            options_broken = True 
+            options_broken = True
         if not opts.stack:
             print "Must Specify stack flag!"
-            options_broken = True 
+            options_broken = True
     if options_broken:
         parser.print_help()
         exit(1)
@@ -48,7 +49,7 @@ def main():
             config = yaml.load(f)
 
         # Create or update all Environments
-        for stack, obj in config.iteritems(): 
+        for stack, obj in config.iteritems():
             if stack != 'global':
                 print stack
                 env_stack = Stack(opts.profile, opts.config, stack, opts.rollback)
@@ -58,7 +59,6 @@ def main():
                 else:
                     print "Create %s" % stack
                     env_stack.create_stack()
-            
     else:
         env_stack = Stack(opts.profile, opts.config, opts.stack, opts.rollback)
         if opts.execute == 'create':
@@ -71,9 +71,10 @@ def main():
             env_stack.get_change_set(opts.change_set_name, opts.change_set_description)
         elif opts.execute == 'sync':
             syncer = s3_sync(opts.profile, opts.config, opts.stack)
-        
+    if opts.lambda_path:
+        s3_sync(opts.profile, opts.config, opts.stack).sync_lambda(opts.lambda_path)
+
 
 if __name__ == '__main__':
     try: main()
     except: raise
-
