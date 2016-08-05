@@ -57,7 +57,7 @@ Network:
     BastionSSHFrom: "0.0.0.0/0" 
 
 VPN:
-  stack_name: VPN
+  stack_name: VPN21
   region: us-east-1
   # New feature full template url if path doesnt fit the below
   full_template_url: https://s3.amazonaws.com/derekslab-us-east-1/development/cloudformation/VPN/Environment.json

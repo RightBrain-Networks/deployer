@@ -131,8 +131,7 @@ class AbstractCloudFormation(object):
             except WaiterError as e:
                 status = self.reload_stack_status()
                 print status
-                if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED', 'DELETE_IN_PROGRESS' ]:
-                    raise RuntimeError("Create stack Failed")
+                self.output_events(start_time, 'create')
         print self.reload_stack_status()
            
     
@@ -163,8 +162,7 @@ class AbstractCloudFormation(object):
                 except WaiterError as e:
                     status = self.reload_stack_status()
                     print status
-                    if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
-                            raise RuntimeError("Update stack Failed")
+                    self.output_events(start_time, 'update')
                 print self.reload_stack_status()
         else:
             raise RuntimeError("Stack does not exist")
@@ -176,6 +174,7 @@ class AbstractCloudFormation(object):
             END_STATUS = 'CREATE_COMPLETE'
         elif action == 'update':
             END_STATUS = 'UPDATE_COMPLETE'
+        count = 0
         while self.stack_status != END_STATUS:
             status = self.reload_stack_status()
             table = []
@@ -185,30 +184,28 @@ class AbstractCloudFormation(object):
             events.reverse()
             for event in events:
                 if event['Timestamp'] > start_time and event['Timestamp'] > update_time:
-                    if 'ResourceStatusReason' in event:
-                        table.append([
-                            event['Timestamp'].strftime('%Y/%m/%d %H:%M:%S'),
-                            event['ResourceStatus'],
-                            event['ResourceType'],
-                            event['LogicalResourceId'],
-                            event['ResourceStatusReason']
-                        ])
-                    else:
-                        table.append([
-                            event['Timestamp'].strftime('%Y/%m/%d %H:%M:%S'),
-                            event['ResourceStatus'],
-                            event['ResourceType'],
-                            event['LogicalResourceId']
-                        ])
+                    if 'ResourceStatusReason' not in event:
+                        event['ResourceStatusReason'] = ''
+                    table.append([
+                        event['Timestamp'].strftime('%Y/%m/%d %H:%M:%S'),
+                        event['ResourceStatus'],
+                        event['ResourceType'],
+                        event['LogicalResourceId'],
+                        event['ResourceStatusReason']
+                    ])
             update_time = datetime.now(pytz.utc) 
             if len(table) > 0:
-                print tabulate(table,headers,tablefmt='simple')
+                if count == 0:
+                    print tabulate(table,headers,tablefmt='simple')
+                else:
+                    print tabulate(table,[],tablefmt='plain')
             if action == 'create':
                 if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED' ]:
                     raise RuntimeError("Create stack Failed")
             elif action == 'update':
                 if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
                     raise RuntimeError("Update stack Failed")
+            count += 1
 
     def delete_stack(self):
         resp = self.client.delete_stack(StackName=self.stack_name)
