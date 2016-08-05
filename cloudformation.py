@@ -3,10 +3,13 @@ import signal
 import boto3
 from boto3.session import Session
 from botocore.exceptions import WaiterError
+from tabulate import tabulate
 import yaml
 import json
 from abc import ABCMeta, abstractmethod, abstractproperty
 from time import sleep 
+from datetime import datetime 
+import pytz
 
 class AbstractCloudFormation(object):
     __metaclass__ = ABCMeta
@@ -106,7 +109,7 @@ class AbstractCloudFormation(object):
         # create the stack 
         signal.signal(signal.SIGINT, self.cancel_create)
         waiter = self.client.get_waiter('stack_create_complete')
-        tags = self.construct_tags()
+        start_time = datetime.now(pytz.utc) 
         resp = self.client.create_stack(
             StackName=self.stack_name,
             TemplateURL=self.template_url,
@@ -120,13 +123,16 @@ class AbstractCloudFormation(object):
         print "Creation Started"
         sleep(5)
         print self.reload_stack_status()
-        try:
-            waiter.wait(StackName=self.stack_name)
-        except WaiterError as e:
-            status = self.reload_stack_status()
-            print status
-            if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED', 'DELETE_IN_PROGRESS' ]:
-                raise RuntimeError("Create stack Failed")
+        if self.print_events:
+            self.output_events(start_time, 'create')
+        else:
+            try:
+                waiter.wait(StackName=self.stack_name)
+            except WaiterError as e:
+                status = self.reload_stack_status()
+                print status
+                if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED', 'DELETE_IN_PROGRESS' ]:
+                    raise RuntimeError("Create stack Failed")
         print self.reload_stack_status()
            
     
@@ -134,6 +140,7 @@ class AbstractCloudFormation(object):
         # update the stack 
         signal.signal(signal.SIGINT, self.cancel_update)
         waiter = self.client.get_waiter('stack_update_complete')
+        start_time = datetime.now(pytz.utc) 
         if self.stack_status: 
             resp = self.client.update_stack(
                 StackName=self.stack_name,
@@ -148,16 +155,60 @@ class AbstractCloudFormation(object):
             print "Update Started"
             sleep(5)
             print self.reload_stack_status()
-            try:
-                waiter.wait(StackName=self.stack_name)
-            except WaiterError as e:
-                status = self.reload_stack_status()
-                print status
-                if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
-                        raise RuntimeError("Update stack Failed")
-            print self.reload_stack_status()
+            if self.print_events:
+                self.output_events(start_time, 'update')
+            else:
+                try:
+                    waiter.wait(StackName=self.stack_name)
+                except WaiterError as e:
+                    status = self.reload_stack_status()
+                    print status
+                    if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
+                            raise RuntimeError("Update stack Failed")
+                print self.reload_stack_status()
         else:
             raise RuntimeError("Stack does not exist")
+
+    def output_events(self, start_time, action):
+        update_time = start_time
+        headers = [ 'Time', 'Status', 'Type', 'Logical ID', 'Status Reason' ]
+        if action == 'create':
+            END_STATUS = 'CREATE_COMPLETE'
+        elif action == 'update':
+            END_STATUS = 'UPDATE_COMPLETE'
+        while self.stack_status != END_STATUS:
+            status = self.reload_stack_status()
+            table = []
+            sleep(15)
+            events = self.client.describe_stack_events(StackName=self.stack_name)
+            events = events['StackEvents']
+            events.reverse()
+            for event in events:
+                if event['Timestamp'] > start_time and event['Timestamp'] > update_time:
+                    if 'ResourceStatusReason' in event:
+                        table.append([
+                            event['Timestamp'].strftime('%Y/%m/%d %H:%M:%S'),
+                            event['ResourceStatus'],
+                            event['ResourceType'],
+                            event['LogicalResourceId'],
+                            event['ResourceStatusReason']
+                        ])
+                    else:
+                        table.append([
+                            event['Timestamp'].strftime('%Y/%m/%d %H:%M:%S'),
+                            event['ResourceStatus'],
+                            event['ResourceType'],
+                            event['LogicalResourceId']
+                        ])
+            update_time = datetime.now(pytz.utc) 
+            if len(table) > 0:
+                print tabulate(table,headers,tablefmt='simple')
+            if action == 'create':
+                if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED' ]:
+                    raise RuntimeError("Create stack Failed")
+            elif action == 'update':
+                if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
+                    raise RuntimeError("Update stack Failed")
 
     def delete_stack(self):
         resp = self.client.delete_stack(StackName=self.stack_name)
@@ -197,23 +248,25 @@ class AbstractCloudFormation(object):
         )
         self.changes = resp['Changes']
         print "==================================== Change ===================================" 
-        print "= Action |\tLogicalId\t|\tResourceType\t|\tReplacement\t="
+        headers = ["Action","LogicalId","ResourceType","Replacement"]
+        table = []
         for change in self.changes:
-            print "| %s |\t%s\t|\t%s\t|\t%s\t|" % (
+            table.append([
                 change['ResourceChange']['Action'],
                 change['ResourceChange']['LogicalResourceId'],
                 change['ResourceChange']['ResourceType'],
                 change['ResourceChange']['Replacement']
-            )
-                 
+            ])
+        print tabulate(table, headers, tablefmt='simple')
             
 
 class Stack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, stack, disable_rollback):
+    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False):
         self.profile = profile
         self.stack = stack
         self.config_file = config_file
         self.disable_rollback = disable_rollback
+        self.print_events = print_events
         self.config = self.get_config()
         self.region = self.get_config_att('region')
         self.stack_name = self.get_config_att('stack_name')

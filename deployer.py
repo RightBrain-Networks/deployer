@@ -20,6 +20,7 @@ def main():
     parser.add_option("-y","--copy",help="copy directory structure", action="store_true", dest="sync", default=False)
     parser.add_option("-A","--all", help="Create or Update all environments in a config", action="store_true", dest="all", default=False)
     parser.add_option("-r","--disable-rollback", help="Disable rollback on failure.", action="store_true", dest="rollback", default=False)
+    parser.add_option("-e","--events",help="Print events",action="store_true",dest="events",default=False)
 
     (opts, args) = parser.parse_args()
 
@@ -51,7 +52,8 @@ def main():
         for stack, obj in config.iteritems(): 
             if stack != 'global':
                 print stack
-                env_stack = Stack(opts.profile, opts.config, stack, opts.rollback)
+                env_stack = Stack(opts.profile, opts.config, stack, opts.rollback, opts.events)
+                env_stack = Stack(opts.profile, opts.config, stack, opts.events)
                 if env_stack.stack_status:
                     print "Update %s" % stack
                     env_stack.update_stack()
@@ -60,7 +62,7 @@ def main():
                     env_stack.create_stack()
             
     else:
-        env_stack = Stack(opts.profile, opts.config, opts.stack, opts.rollback)
+        env_stack = Stack(opts.profile, opts.config, opts.stack, opts.rollback, opts.events)
         if opts.execute == 'create':
             env_stack.create_stack()
         elif opts.execute == 'update':
