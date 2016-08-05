@@ -8,6 +8,8 @@ import yaml
 import json
 from abc import ABCMeta, abstractmethod, abstractproperty
 from time import sleep 
+from datetime import datetime 
+import pytz
 
 class AbstractCloudFormation(object):
     __metaclass__ = ABCMeta
@@ -119,7 +121,7 @@ class AbstractCloudFormation(object):
         sleep(5)
         print self.reload_stack_status()
         if self.print_events:
-            echo "get events"
+            print "get events"
         else:
             try:
                 waiter.wait(StackName=self.stack_name)
@@ -135,6 +137,8 @@ class AbstractCloudFormation(object):
         # update the stack 
         signal.signal(signal.SIGINT, self.cancel_update)
         waiter = self.client.get_waiter('stack_update_complete')
+        start_time = datetime.now(pytz.utc) 
+        update_time = start_time
         if self.stack_status: 
             resp = self.client.update_stack(
                 StackName=self.stack_name,
@@ -148,16 +152,59 @@ class AbstractCloudFormation(object):
             print "Update Started"
             sleep(5)
             print self.reload_stack_status()
-            try:
-                waiter.wait(StackName=self.stack_name)
-            except WaiterError as e:
-                status = self.reload_stack_status()
-                print status
-                if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
-                        raise RuntimeError("Update stack Failed")
-            print self.reload_stack_status()
+            if self.print_events:
+                self.output_events(start_time, 'update')
+            else:
+                try:
+                    waiter.wait(StackName=self.stack_name)
+                except WaiterError as e:
+                    status = self.reload_stack_status()
+                    print status
+                    if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
+                            raise RuntimeError("Update stack Failed")
+                print self.reload_stack_status()
         else:
             raise RuntimeError("Stack does not exist")
+
+    def output_events(self, start_time, action):
+        update_time = start_time
+        headers = [ 'Time', 'Status', 'Type', 'Logical ID', 'Status Reason' ]
+        if action == 'create':
+            END_STATUS = 'CREATE_COMPLETE'
+        elif action == 'update':
+            END_STATUS = 'UPDATE_COMPLETE'
+        while self.stack_status != END_STATUS:
+            table = []
+            sleep(15)
+            events = self.client.describe_stack_events(StackName=self.stack_name)
+            events = events['StackEvents']
+            events.reverse()
+            for event in events:
+                if event['Timestamp'] > start_time and event['Timestamp'] > update_time:
+                    if 'ResourceStatusReason' in event:
+                        table.append([
+                            event['Timestamp'].strftime('%Y/%m/%d %H:%M:%S'),
+                            event['ResourceStatus'],
+                            event['ResourceType'],
+                            event['LogicalResourceId'],
+                            event['ResourceStatusReason']
+                        ])
+                    else:
+                        table.append([
+                            event['Timestamp'].strftime('%Y/%m/%d %H:%M:%S'),
+                            event['ResourceStatus'],
+                            event['ResourceType'],
+                            event['LogicalResourceId']
+                        ])
+            update_time = datetime.now(pytz.utc) 
+            print tabulate(table,headers,tablefmt='simple')
+            status = self.reload_stack_status()
+            if action == 'create':
+                if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
+                    raise RuntimeError("Update stack Failed")
+            elif action == 'update':
+                if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
+                    raise RuntimeError("Update stack Failed")
 
     def delete_stack(self):
         resp = self.client.delete_stack(StackName=self.stack_name)
