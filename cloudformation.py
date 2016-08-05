@@ -118,13 +118,16 @@ class AbstractCloudFormation(object):
         print "Creation Started"
         sleep(5)
         print self.reload_stack_status()
-        try:
-            waiter.wait(StackName=self.stack_name)
-        except WaiterError as e:
-            status = self.reload_stack_status()
-            print status
-            if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED', 'DELETE_IN_PROGRESS' ]:
-                raise RuntimeError("Create stack Failed")
+        if self.print_events:
+            echo "get events"
+        else:
+            try:
+                waiter.wait(StackName=self.stack_name)
+            except WaiterError as e:
+                status = self.reload_stack_status()
+                print status
+                if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED', 'DELETE_IN_PROGRESS' ]:
+                    raise RuntimeError("Create stack Failed")
         print self.reload_stack_status()
            
     
