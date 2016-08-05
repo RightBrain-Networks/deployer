@@ -145,7 +145,6 @@ class AbstractCloudFormation(object):
                 StackName=self.stack_name,
                 TemplateURL=self.template_url,
                 Parameters=self.build_params(),
-                DisableRollback=self.disable_rollback,
                 Tags=self.construct_tags(),
                 Capabilities=[
                     'CAPABILITY_IAM'
