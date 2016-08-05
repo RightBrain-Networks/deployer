@@ -34,6 +34,10 @@ Command line takes a optional -s for sync to s3. Walks {sync_base} for {sync_dir
 * sync_dirs: directories from sync_base to sync to s3
 * sync_dest_bucket: bucket to sync to 
 
+## Lambda Sync
+Optional parameters `-z` or `--zip-lambda` take the path of the directory that houses the lambda functions.
+* `$ ./deployer.py ... -z cloudformation/lambda` would temporarily create a working directory for installing depedencies via pip, zipping the directory with the lambda function up, then remove the temporary working directories.
+
 ##### Parameters
 These parameters correspond to parameters that need to be passed to the Top.json template.
 
