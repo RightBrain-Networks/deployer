@@ -44,8 +44,9 @@ class s3_sync(object):
     def sync(self):
         if self.sync_dirs:
             for sync_dir in self.sync_dirs:
+                sync_dir = sync_dir.strip(".")
                 for dirName, subdirList, fileList in os.walk("%s%s" %(self.base,sync_dir)):
-                    thisdir = "".join(dirName.rsplit(self.base))
+                    thisdir = "".join(dirName.rsplit(self.base)).strip("/")
                     fileList = [os.path.join(dirName,filename) for filename in fileList]
                     for ignore in self.excludes:
                         fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
@@ -57,25 +58,3 @@ class s3_sync(object):
                             dest_key = "%s/%s/%s" % (self.release,thisdir,only_fname)
                         self.client.upload_file(fname, self.dest_bucket, dest_key)
                         print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
-
-    def sync_lambda(self, lambda_path):
-        if os.path.exists(lambda_path):
-            for root, dirs, files in os.walk(lambda_path):
-                for dir in dirs:
-                    temp_dir = dir + "_temp"
-                    shutil.copytree("/".join([root, dir]), temp_dir)
-                    if os.path.exists("/".join([temp_dir, "requirements.txt"])):
-                        req_txt = "/".join([temp_dir, "requirements.txt"])
-                        pip.main(["install", "-q", "-r", req_txt, "-t", temp_dir])
-                    shutil.make_archive(dir, "zip", temp_dir)
-                    shutil.rmtree(temp_dir)
-                    file_name = "{}.zip".format(dir)
-                    dest_key = "/".join([self.release, lambda_path, file_name])
-                    self.client.upload_file(
-                                file_name,
-                                self.dest_bucket,
-                                "/".join([self.release, lambda_path, file_name]))
-                    print "Uploaded: %s to s3://%s/%s" % (file_name, self.dest_bucket, dest_key)
-                    os.remove(file_name)
-        else:
-            print "Lambda path does not exist."
