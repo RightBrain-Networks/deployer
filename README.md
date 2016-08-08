@@ -36,6 +36,33 @@ Command line takes a optional -s for sync to s3. Walks {sync_base} for {sync_dir
 
 ## Zipping Lambda Functions
 Optional parameters `-z` or `--zip-lambdas` will set a flag to True to indicate the zipping of lambda packages within the project. These lambdas will be zipped and moved into the base directory to be synced.
+Lambda directories are specified in the yaml configuration. These directories are stored in a yaml list like so:
+```yaml
+global:
+  region: us-east-1
+  release: development
+  ...
+  ...
+  lambda_dirs: [
+    'lambdas/ECR-Cleanup',
+    'your/lambda/directory'
+  ]
+  ...
+  ...
+```
+or can similarly be tied to a specific stack configuration like so:
+```yaml
+Network:
+  release: development
+  ...
+  ...
+  lambda_dirs: [
+    'lambdas/NAT-Function'
+  ]
+  ...
+  ...
+```
+If there are no `lambda_dirs` for the specified Stack when running `deployer`, any globally configured `lambda_dirs` will be the fallback for this operation. If a particular lambda directory does not exist, this operation will raise a `ValueError` with the specific directory that does not exist, which caused the error.
 
 ##### Parameters
 These parameters correspond to parameters that need to be passed to the Top.json template.
