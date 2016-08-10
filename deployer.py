@@ -45,6 +45,9 @@ def main():
     if opts.zip_lambdas:
         LambdaPrep(opts.config, opts.stack).zip_lambdas()
 
+    if opts.sync:
+        syncer = s3_sync(opts.profile, opts.config, opts.stack)
+
     if opts.all:
         # Read Environment Config
         with open(opts.config) as f:
