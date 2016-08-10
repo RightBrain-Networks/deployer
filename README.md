@@ -62,9 +62,35 @@ Command line takes a optional -y to copy files to s3. The code will walk {sync_b
 * sync_dest_bucket: S3 bucket to sync to.
 * sync_exclude: A list of expressions to exclude from the copy, example might be .swp or .git.
 
-## Lambda Sync
-Optional parameters `-z` or `--zip-lambda` take the path of the directory that houses the lambda functions.
-* `$ ./deployer.py ... -z cloudformation/lambda` would temporarily create a working directory for installing depedencies via pip, zipping the directory with the lambda function up, then remove the temporary working directories.
+## Zipping Lambda Functions
+Optional parameters `-z` or `--zip-lambdas` will set a flag to True to indicate the zipping of lambda packages within the project. These lambdas will be zipped and moved into the base directory to be synced.
+Lambda directories are specified in the yaml configuration. These directories are stored in a yaml list like so:
+```yaml
+global:
+  region: us-east-1
+  release: development
+  ...
+  ...
+  lambda_dirs: [
+    'lambdas/ECR-Cleanup',
+    'your/lambda/directory'
+  ]
+  ...
+  ...
+```
+or can similarly be tied to a specific stack configuration like so:
+```yaml
+Network:
+  release: development
+  ...
+  ...
+  lambda_dirs: [
+    'lambdas/NAT-Function'
+  ]
+  ...
+  ...
+```
+If there are no `lambda_dirs` for the specified Stack when running `deployer`, any globally configured `lambda_dirs` will be the fallback for this operation. If a particular lambda directory does not exist, this operation will raise a `ValueError` with the specific directory that does not exist, which caused the error.
 
 ## Parameters
 These parameters correspond to parameters that need to be passed to the Top.json template.

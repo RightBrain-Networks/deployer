@@ -3,6 +3,7 @@ from cloudformation import Stack
 from s3_sync import s3_sync
 from optparse import OptionParser
 from ConfigParser import ConfigParser
+from lambda_prep import LambdaPrep
 
 import yaml
 
@@ -21,7 +22,7 @@ def main():
     parser.add_option("-A","--all", help="Create or Update all environments in a config", action="store_true", dest="all", default=False)
     parser.add_option("-r","--disable-rollback", help="Disable rollback on failure.", action="store_true", dest="rollback", default=False)
     parser.add_option("-e","--events",help="Print events",action="store_true",dest="events",default=False)
-    parser.add_option("-z","--zip-lambda", help="Zip lambda functions and sync them.", dest="lambda_path")
+    parser.add_option("-z","--zip-lambdas", help="Zip lambda functions move them to synced directory", action="store_true", dest="zip_lambdas", default=False)
 
     (opts, args) = parser.parse_args()
 
@@ -41,8 +42,8 @@ def main():
         parser.print_help()
         exit(1)
 
-    if opts.sync:
-        syncer = s3_sync(opts.profile, opts.config, opts.stack)
+    if opts.zip_lambdas:
+        LambdaPrep(opts.config, opts.stack).zip_lambdas()
 
     if opts.all:
         # Read Environment Config
@@ -71,10 +72,8 @@ def main():
             env_stack.delete_stack()
         elif opts.execute == 'change':
             env_stack.get_change_set(opts.change_set_name, opts.change_set_description)
-        elif opts.execute == 'sync':
+        elif opts.sync or opts.execute == 'sync':
             syncer = s3_sync(opts.profile, opts.config, opts.stack)
-    if opts.lambda_path:
-        s3_sync(opts.profile, opts.config, opts.stack).sync_lambda(opts.lambda_path)
 
 
 if __name__ == '__main__':
