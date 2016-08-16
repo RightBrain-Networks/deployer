@@ -1,14 +1,21 @@
 #!/usr/bin/env python2.7
 from optparse import OptionParser
 from ConfigParser import ConfigParser
-import yaml
+import ruamel.yaml
+import json
+
+def config_update(config,item):
+    for thing in item.iteritems():
+        if isinstance(thing[1],dict):
+            config[thing[0]] = config_update(config[thing[0]],thing[1])
+        else:
+            config[thing[0]] = thing[1]
+    return config
 
 def main():
     usage = "usage: %prog [options]"
     parser = OptionParser(usage=usage)
     parser.add_option("-c","--config", help="Path to config file.")
-    parser.add_option("-s","--stack", help="Stack Name.")
-    parser.add_option("-A","--all", help="Create or Update all stacks in a config", action="store_true", dest="all", default=False)
     parser.add_option("-u","--updates", help="The updates that need to be changed in JSON formatted string.")
 
     (opts, args) = parser.parse_args()
@@ -20,6 +27,13 @@ def main():
         parser.print_help()
         exit(1)
 
+    updates = json.loads(opts.updates)
+    with open(opts.config) as f:
+        config = ruamel.yaml.round_trip_load(f)
+    config = config_update(config,updates) 
+
+    with open(opts.config, 'w') as f:
+        f.write(ruamel.yaml.round_trip_dump(config))
 
 if __name__ == '__main__':
     try: main()
