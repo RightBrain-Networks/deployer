@@ -152,3 +152,18 @@ This is the class that builds zip archives for lambdas and copies directories to
 
 **Note** 
 Network Class has been removed, it's irrelivant now. It was in place because of a work around in cloudformation limitations. The abstract class may not be relivant, all of the methods are simmular enough but starting this way provides flexablility if the need arise to model the class in a different way. 
+
+
+# Config Updater
+
+The config_updater.py command is meant to help with updating config files in the CI/CD process to allow for automated deploys via deployer. Specify the config file you need to update then a JSON string representing the changes that need to take place. You can update multiple environments or attributes at once. 
+
+## Usage
+
+* -c <config file> (REQUIRED) -- Yaml configuration file to run against.
+* -u <updates> (REQUIRED) -- JSON formated string representing the changes you want to take place
+
+## Example
+
+`./config_updater.py -c example_configs/dummy.yml -u "{ \"Network\": { \"release\": \"$RELEASE\", \"parameters\":{ \"VirtualPrivateGateway\":\"someotherthing\"} } }"`
+`./config_updater.py -c example_configs/dummy.yml -u '{ "Network": { "release": "1.0.2" }, "Dev-Env": { "release": "1.0.2" } }'`
