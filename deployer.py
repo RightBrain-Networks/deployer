@@ -15,7 +15,7 @@ def main():
     parser.add_option("-c","--config", help="Path to config file.")
     parser.add_option("-s","--stack", help="Stack Name.")
     parser.add_option("-x","--execute", help="Execute ( create | update | delete | sync | change ) of stack.")
-    parser.add_option("-p","--profile", help="Profile.")
+    parser.add_option("-p","--profile", help="Profile.",default=None)
     parser.add_option("-t","--change-set-name", help="Change Set Name.")
     parser.add_option("-d","--change-set-description", help="Change Set Description.")
     parser.add_option("-y","--copy",help="copy directory structure", action="store_true", dest="sync", default=False)
@@ -27,8 +27,6 @@ def main():
     (opts, args) = parser.parse_args()
 
     options_broken = False
-    if not opts.profile:
-        opts.profile = 'default'
     if not opts.config:
         opts.config = 'config.yml'
     if not opts.all:
