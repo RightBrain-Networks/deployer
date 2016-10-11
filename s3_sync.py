@@ -56,5 +56,7 @@ class s3_sync(object):
                             dest_key = "%s/%s" % (self.release,only_fname)
                         else:
                             dest_key = "%s/%s/%s" % (self.release,thisdir,only_fname)
+                        if os.name == 'nt':
+                            dest_key = dest_key.replace("\\", "/")
                         self.client.upload_file(fname, self.dest_bucket, dest_key)
                         print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)

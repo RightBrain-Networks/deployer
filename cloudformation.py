@@ -117,7 +117,8 @@ class AbstractCloudFormation(object):
             DisableRollback=self.disable_rollback,
             Tags=self.construct_tags(),
             Capabilities=[
-                'CAPABILITY_IAM'
+                'CAPABILITY_IAM',
+                'CAPABILITY_NAMED_IAM'
             ] 
         )
         print "Creation Started"
@@ -147,7 +148,8 @@ class AbstractCloudFormation(object):
                 Parameters=self.build_params(),
                 Tags=self.construct_tags(),
                 Capabilities=[
-                    'CAPABILITY_IAM'
+                    'CAPABILITY_IAM',
+                    'CAPABILITY_NAMED_IAM'
                 ] 
             )
             print "Update Started"
@@ -218,7 +220,8 @@ class AbstractCloudFormation(object):
                 TemplateURL=self.template_url,
                 Parameters=self.build_params(),
                 Capabilities=[
-                    'CAPABILITY_IAM'
+                    'CAPABILITY_IAM',
+                    'CAPABILITY_NAMED_IAM'
                 ],
                 ChangeSetName=change_set_name, 
                 Description=change_set_description
