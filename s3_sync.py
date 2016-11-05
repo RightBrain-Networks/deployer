@@ -4,6 +4,7 @@ import fnmatch
 import os
 import pip
 import yaml
+import hashlib
 from boto3.session import Session
 
 
@@ -41,6 +42,20 @@ class s3_sync(object):
             excludes = ["*%s*" % exclude for exclude in excludes]
         return excludes
 
+    def generate_etag(self,fname):
+        md5s = []
+        with open(fname, 'rb') as f:
+            count = 0
+            for chunk in iter(lambda: f.read(8388608), b""):
+                md5s.append(hashlib.md5(chunk))
+        if len(md5s) > 1:
+            digests = b"".join(m.digest() for m in md5s)
+            new_md5 = hashlib.md5(digests)
+            etag = '"%s-%s"' % (new_md5.hexdigest(),len(md5s))
+        else: 
+            etag = '"%s"' % md5s[0].hexdigest()
+        return etag
+
     def sync(self):
         if self.sync_dirs:
             for sync_dir in self.sync_dirs:
@@ -58,5 +73,10 @@ class s3_sync(object):
                             dest_key = "%s/%s/%s" % (self.release,thisdir,only_fname)
                         if os.name == 'nt':
                             dest_key = dest_key.replace("\\", "/")
-                        self.client.upload_file(fname, self.dest_bucket, dest_key)
-                        print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
+                        try:
+                            etag = self.generate_etag(fname)
+                            s3_obj = self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+                            print "Skipped: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
+                        except Exception as e:
+                            self.client.upload_file(fname, self.dest_bucket, dest_key)
+                            print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
