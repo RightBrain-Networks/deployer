@@ -76,7 +76,7 @@ class s3_sync(object):
                         try:
                             etag = self.generate_etag(fname)
                             s3_obj = self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
-                            print "Skipped: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
+                            print "Skipped: %s" % (fname)
                         except Exception as e:
                             self.client.upload_file(fname, self.dest_bucket, dest_key)
                             print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
