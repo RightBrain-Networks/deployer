@@ -6,6 +6,7 @@ import pip
 import yaml
 import hashlib
 from boto3.session import Session
+from multiprocessing import Process
 
 
 class s3_sync(object):
@@ -56,6 +57,22 @@ class s3_sync(object):
             etag = '"%s"' % md5s[0].hexdigest()
         return etag
 
+    def skip_or_send(self, fname, thisdir):
+        only_fname = os.path.split(fname)[1]
+        if thisdir == "":
+            dest_key = "%s/%s" % (self.release,only_fname)
+        else:
+            dest_key = "%s/%s/%s" % (self.release,thisdir,only_fname)
+        if os.name == 'nt':
+            dest_key = dest_key.replace("\\", "/")
+        try:
+            etag = self.generate_etag(fname)
+            s3_obj = self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+            print "Skipped: %s" % (fname)
+        except Exception as e:
+            self.client.upload_file(fname, self.dest_bucket, dest_key)
+            print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
+
     def sync(self):
         if self.sync_dirs:
             for sync_dir in self.sync_dirs:
@@ -65,18 +82,13 @@ class s3_sync(object):
                     fileList = [os.path.join(dirName,filename) for filename in fileList]
                     for ignore in self.excludes:
                         fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
+                    count = 0
                     for fname in fileList:
-                        only_fname = os.path.split(fname)[1]
-                        if thisdir == "":
-                            dest_key = "%s/%s" % (self.release,only_fname)
-                        else:
-                            dest_key = "%s/%s/%s" % (self.release,thisdir,only_fname)
-                        if os.name == 'nt':
-                            dest_key = dest_key.replace("\\", "/")
-                        try:
-                            etag = self.generate_etag(fname)
-                            s3_obj = self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
-                            print "Skipped: %s" % (fname)
-                        except Exception as e:
-                            self.client.upload_file(fname, self.dest_bucket, dest_key)
-                            print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
+                        rv = Process(target=self.skip_or_send, args=(fname, thisdir))
+                        rv.deamon = True
+                        rv.start()
+                        if count % 20 == 0:
+                            rv.join()
+                        count += 1
+                    if 'rv' in vars():
+                        rv.join()
