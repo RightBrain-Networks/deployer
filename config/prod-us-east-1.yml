@@ -89,29 +89,44 @@ Jenkins:
 
 
 
+ECSCluster:
+  release: develop
+  stack_name: RBN-Ops-ECS-Cluster
+  template_bucket: rbn-ops-us-east-1
+  template: cloudformation/ecs-cluster/top.json
+  lambda_dirs: []
+  parameters:
+    Environment: Prod
+    Role: ECS-Cluster
+    EC2KeyPair: common-us-east-1
+    AMI: ami-8f7687e2
+    LogHost: ""
+    CloudToolsBucket: rbn-ops-us-east-1
+  lookup_parameters:
+    VPC: {Stack: Network, OutputKey: VPC}
+    VPCCIDR: {Stack: Network, OutputKey: VPCCIDR}
+    PublicSubnetList: {Stack: Network, OutputKey: PublicSubnets}
+    PrivateSubnetList: {Stack: Network, OutputKey: PrivateSubnets}
+
 
 Vibeio:
   release: develop
   stack_name: Vibeio
   template_bucket: rbn-ops-us-east-1
   template: cloudformation/services/vibeio/top.json
-  lambda_dirs: [lambda/attach_hosted_zone]
+  lambda_dirs: []
   parameters:
     Environment: Prod
     Role: Vibeio
-    EC2KeyPair: common-us-east-1
     CpuUnits: '160'
     MemoryUnits: '160'
-    MinCapacity: '1'
-    MaxCapacity: '4'
     AMI: ami-8f7687e2
-    MinClusterCount: '2'
-    MaxClusterCount: '4'
-    ClusterInstanceType: t2.small
     LogHost: ""
     PrivateDomain: awsinternal.ops.rightbrainnetworks.com
     PublicDomain: 'ops.rightbrainnetworks.com'
     CloudToolsBucket: rbn-ops-us-east-1
+    MaxCapacity: "4"
+    MinCapacity: "2"
   lookup_parameters:
     VPC: {Stack: Network, OutputKey: VPC}
     VPCCIDR: {Stack: Network, OutputKey: VPCCIDR}
@@ -119,3 +134,7 @@ Vibeio:
     PrivateSubnetList: {Stack: Network, OutputKey: PrivateSubnets}
     RDSSubnetGroup: {Stack: Network, OutputKey: RDSSubnetGroup}
     ALBSubnetList: {Stack: Network, OutputKey: PublicSubnets}
+    ECSCluster: {Stack: ECSCluster, OutputKey: ECSCluster}
+    ECSClusterSecurityGroup: {Stack: ECSCluster, OutputKey: ECSClusterSecurityGroup}
+
+

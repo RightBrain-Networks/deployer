@@ -23,10 +23,10 @@
       "Description": "VPC ID",
       "Type": "AWS::EC2::VPC::Id"
     },
-    "Role" : {
-      "Description": "Role",
+    "ECSClusterSecurityGroup": {
+      "Description": "ECS Cluster Security Group",
       "Type": "String",
-      "Default": "webapp"
+      "Default": ""
     }
   },
   "Resources": {
@@ -48,94 +48,12 @@
           { "Key" : "Name", "Value": "ECS-ALB" }
         ]
       }
-    },
-    "ECSClusterSecurityGroup": {
-      "Type": "AWS::EC2::SecurityGroup",
-      "Properties": {
-        "GroupDescription": "ECS Cluster Security Group.",
-        "VpcId": { "Ref": "VPC" },
-        "SecurityGroupIngress": [
-          { "IpProtocol": "tcp", "FromPort": "0", "ToPort": "65535", "CidrIp": { "Ref": "VPCCIDR" }},
-          { "IpProtocol": "tcp", "FromPort": "80", "ToPort": "80", "CidrIp": { "Ref": "VPCCIDR" }},
-          { "IpProtocol": "tcp", "FromPort": "22", "ToPort": "22", "CidrIp": { "Ref": "VPCCIDR" }},
-          { "IpProtocol": "tcp", "FromPort": "443", "ToPort": "443", "CidrIp": { "Ref": "VPCCIDR" }}
-        ],
-        "SecurityGroupEgress": [
-          { "IpProtocol": "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp": "0.0.0.0/0" },
-          { "IpProtocol": "tcp", "FromPort": "0", "ToPort": "65535", "CidrIp": "0.0.0.0/0" },
-          { "IpProtocol": "udp", "FromPort": "0", "ToPort": "65535", "CidrIp": "0.0.0.0/0" }
-        ],
-        "Tags" : [
-          { "Key" : "Name", "Value": "ECS-Cluster" }
-        ]
-      }
-    },
-    "EFSSecurityGroup": {
-      "Type": "AWS::EC2::SecurityGroup",
-      "Properties": {
-        "GroupDescription": "ECS Cluster Security Group.",
-        "VpcId": { "Ref": "VPC" },
-        "SecurityGroupIngress": [
-          { "IpProtocol": "tcp", "FromPort": "2049", "ToPort": "2049", "CidrIp": { "Ref": "VPCCIDR" }}
-        ],
-        "SecurityGroupEgress": [
-        ],
-        "Tags" : [
-          { "Key" : "Name", "Value": "EFS-Mount-Point" }
-        ]
-      }
-    },
-    "RDSSecurityGroup": {
-      "Type": "AWS::EC2::SecurityGroup",
-      "Properties": {
-        "GroupDescription": "RDS Cluster Security Group.",
-        "VpcId": { "Ref": "VPC" },
-        "SecurityGroupIngress": [
-          { "IpProtocol": "tcp", "FromPort": "3306", "ToPort": "3306", "CidrIp": { "Ref": "VPCCIDR" }}
-        ],
-        "SecurityGroupEgress": [
-        ],
-        "Tags" : [
-          { "Key" : "Name", "Value": "RDS-Cluster-Security-Group" }
-        ]
-      }
-    },
-    "RedisCacheSecurityGroup" : {
-      "Type" : "AWS::EC2::SecurityGroup",
-      "Properties" : {
-        "GroupDescription" : "Enable communication to Redis ElastiCache.",
-        "VpcId" : { "Ref" : "VPC" },
-        "SecurityGroupIngress" : [
-          { "IpProtocol" : "tcp", "FromPort" : "6379", "ToPort" : "6379", "CidrIp" : { "Ref": "VPCCIDR" } },
-        ],
-        "SecurityGroupEgress" : [
-        ],
-        "Tags" : [
-          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "ElastiCache", "Redis" ] ] } }
-        ]
-      }
     }
   },
   "Outputs": {
     "ALBSecurityGroup": {
       "Description": "ALB Security Group ID",
       "Value": { "Ref": "ALBSecurityGroup" }
-    },
-    "ECSClusterSecurityGroup": {
-      "Description": "ECS Cluster Security Group ID",
-      "Value": { "Ref": "ECSClusterSecurityGroup" }
-    },
-    "EFSSecurityGroup": {
-      "Description": "EFS Mount Point Security Group ID",
-      "Value": { "Ref": "EFSSecurityGroup" }
-    },
-    "RDSSecurityGroup": {
-      "Description": "RDS Security groups",
-      "Value": { "Ref": "RDSSecurityGroup" }
-    },
-    "RedisCacheSecurityGroup": {
-      "Description": "Redis Security Groups",
-      "Value": { "Ref": "RedisCacheSecurityGroup" }
     }
   }
 }

@@ -3,7 +3,7 @@ RUN useradd -d /vibeio vibeio  # Create 'vibeio' user
 WORKDIR /var
 
 
-# Add files from host to container dir and set permissions
+# Add files from host to container dir
 ADD /vibeio/vibeio/setup.cfg /vibeio/vibeio/development.ini  /var/vibeio/
 ADD /vibeio/README.md /var/vibeio/README.txt
 ADD /vibeio/CHANGES.txt /var/vibeio/CHANGES.txt

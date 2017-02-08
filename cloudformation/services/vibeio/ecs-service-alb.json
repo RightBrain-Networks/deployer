@@ -340,7 +340,7 @@
                   "Options": { "syslog-address": { "Fn::Join" : [ "", [ "tcp://", {"Ref":"LogHost"},":8499" ] ] } }
                 },
                 { 
-                  "LogDriver": "awslogs",
+                  "LogDriver": "json-file",
                   "Options": { "awslogs-region": { "Ref": "AWS::Region" }, "awslogs-group": { "Ref": "LogGroup" } }
                 }
               ]

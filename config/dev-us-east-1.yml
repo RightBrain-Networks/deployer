@@ -60,24 +60,17 @@ Network:
     CloudToolsBucket: rbn-ops-us-east-1
 
 
-ECS-Cluster:
+ECSCluster:
   release: develop
   stack_name: RBN-Ops-ECS-Cluster
   template_bucket: rbn-ops-us-east-1
   template: cloudformation/ecs-cluster/top.json
   lambda_dirs: []
   parameters:
-    Environment: Prod
+    Environment: Dev
     Role: ECS-Cluster
     EC2KeyPair: common-us-east-1
-    CpuUnits: '160'
-    MemoryUnits: '160'
-    MinCapacity: '1'
-    MaxCapacity: '4'
     AMI: ami-8f7687e2
-    MinClusterCount: '2'
-    MaxClusterCount: '4'
-    ClusterInstanceType: t2.small
     LogHost: ""
     CloudToolsBucket: rbn-ops-us-east-1
   lookup_parameters:
@@ -85,5 +78,3 @@ ECS-Cluster:
     VPCCIDR: {Stack: Network, OutputKey: VPCCIDR}
     PublicSubnetList: {Stack: Network, OutputKey: PublicSubnets}
     PrivateSubnetList: {Stack: Network, OutputKey: PrivateSubnets}
-    RDSSubnetGroup: {Stack: Network, OutputKey: RDSSubnetGroup}
-    ALBSubnetList: {Stack: Network, OutputKey: PublicSubnets}

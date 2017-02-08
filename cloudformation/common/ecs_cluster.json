@@ -345,7 +345,6 @@
       }
     }
   },
-
   "Outputs" : {
     "ECSCluster" : {
       "Value" : { "Ref" : "ECSCluster" }
