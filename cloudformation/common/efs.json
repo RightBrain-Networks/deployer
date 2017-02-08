@@ -1,0 +1,63 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description": "EFS Cloudformation Template",
+  "Parameters" : {
+    "KeyName": {
+      "Description": "Key Name for the EFS Volume",
+      "Type": "String",
+      "Default": "Name"
+    },
+    "KeyValue": {
+      "Description": "Value of Key for EFS Volume",
+      "Type": "String",
+      "Default": ""
+    },
+    "SecurityGroups": {
+      "Description": "Security Groups for the EFS mountpoints to reside in",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    },
+    "SubnetIds": {
+      "Description": "EFS Subnets",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    }
+  },
+  "Resources": {
+    "ElasticFileSystem": {
+      "Type": "AWS::EFS::FileSystem",
+      "Properties": {
+        "FileSystemTags": [
+          {
+            "Key": { "Ref": "KeyName" },
+            "Value": { "Ref": "KeyValue" }
+          }
+        ]
+      }
+    },
+    "ElasticFileSystemMountPointAz1": {
+      "Type": "AWS::EFS::MountTarget",
+      "Properties": {
+        "FileSystemId": { "Ref": "ElasticFileSystem" },
+        "SecurityGroups": { "Ref": "SecurityGroups" },
+        "SubnetId": { "Fn::Select": [ "0", { "Ref": "SubnetIds" } ] }
+      }
+    },
+    "ElasticFileSystemMountPointAz2": {
+      "Type": "AWS::EFS::MountTarget",
+      "Properties": {
+        "FileSystemId": { "Ref": "ElasticFileSystem" },
+        "SecurityGroups": { "Ref": "SecurityGroups" },
+        "SubnetId": { "Fn::Select": [ "1", { "Ref": "SubnetIds" } ] }
+      }
+    },
+    "ElasticFileSystemMountPointAz3": {
+      "Type": "AWS::EFS::MountTarget",
+      "Properties": {
+        "FileSystemId": { "Ref": "ElasticFileSystem" },
+        "SecurityGroups": { "Ref": "SecurityGroups" },
+        "SubnetId": { "Fn::Select": [ "2", { "Ref": "SubnetIds" } ] }
+      }
+    }
+  },
+  "Outputs": {
+  }
+}

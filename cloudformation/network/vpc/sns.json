@@ -1,0 +1,36 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "Network SNS OpsAlert.",
+  "Parameters" : {
+    "Project" : {
+      "Description" : "Project Name",
+      "Type" : "String",
+      "Default" : "PROJECT",
+      "ConstraintDescription" : "must be a string."
+    },
+    "Environment" : {
+      "Description" : "Environment Name",
+      "Type" : "String",
+      "Default" : "ENV",
+      "ConstraintDescription" : "must be a string."
+    }
+  },
+  "Mappings" : {
+  },
+  "Resources" : {
+    "NetworkOperations":{
+      "Type":"AWS::SNS::Topic",
+      "Properties":{
+        "DisplayName":{ "Fn::Join": [ "-", [ { "Ref": "Project" }, { "Ref": "Environment" }, "Network-Operations" ] ] },
+        "TopicName": { "Fn::Join": [ "-", [ { "Ref": "Project" }, { "Ref": "Environment" }, "Network-Operations" ] ] }
+      }
+    }
+  },
+  "Outputs" : {
+    "NetworkOperations":{
+      "Description":"ID of new NetworkOperations",
+      "Value": { "Ref":"NetworkOperations" }
+    }
+  }
+}
+

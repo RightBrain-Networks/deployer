@@ -1,0 +1,170 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Vibeio Service CloudFormation Stack",
+  "Parameters": {
+    "VPCCIDR": {
+      "Description": "VPCCIDR",
+      "Type": "String",
+      "Default": "VPCCIDR for the application"
+    },
+    "VPC": {
+      "Description": "VPC ID",
+      "Type": "AWS::EC2::VPC::Id"
+    },
+    "Role" : {
+      "Description": "Role",
+      "Type": "String",
+      "Default": "webapp"
+    },
+    "Project" : {
+      "Description": "Project Name",
+      "Type": "String",
+      "Default": ""
+    },
+    "Environment": {
+      "Description": "Environment name assigned to EC2 instances (e.g. 'prod' or 'test').",
+      "Type": "String", 
+      "Default": "Live",
+      "ConstraintDescription": "Must be a string."
+    },
+    "CloudToolsBucket": {
+      "Description":"Name of S3 bucket containing CloudTools scripts.",
+      "Type": "String",
+      "Default": ""
+    },
+    "CommonBootstrapFile": {
+      "Description": "Name of common bootstrap file to be used by many instances.",
+      "Type": "String",
+      "Default": "common.sh"
+    },
+    "Release" : {
+      "Description" : "Release Number",
+      "Type" : "String",
+      "Default" : "0.0.1"
+    },
+    "EC2KeyPair": {
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the ECS instances"
+    },
+    "PrivateSubnetList": {
+      "Description":"A list of subnet IDs in your VPC to attach to your EC2 instances.",
+      "Type": "String"
+    },
+    "PublicSubnetList": {
+      "Type": "String",
+      "Description": "List of an existing subnet IDs to use for load balancer"
+    },
+    "AMI": {
+      "Type": "String",
+      "Description": "ECS optimized AMI"
+    },
+    "LogHost": {
+      "Type": "String",
+      "Description": "Hosted Zone Name for the Route 53 Record",
+      "Default": ""
+    },
+    "MaxCapacity": {
+      "Description": "Max allowed ECS service instances",
+      "Type": "Number",
+      "Default": "4"
+    },
+    "MinCapacity": {
+      "Description": "Min allowed ES service instances",
+      "Type": "Number",
+      "Default": "2"
+    },
+    "MaxClusterCount": {
+      "Description": "Maximum number of EC2 instances in the ASG.",
+      "Type": "Number",
+      "Default": "2",
+      "MinValue": "0",
+      "MaxValue": "10000"
+    },
+    "MinClusterCount": {
+      "Description": "Minimum number of EC2 instances in the ASG.",
+      "Type": "Number",
+      "Default": "2",
+      "MinValue": "0",
+      "MaxValue": "1000"
+    },
+    "ClusterInstanceType" : {
+      "Description" : "The EC2 instance type",
+      "Type" : "String",
+      "Default" : "m3.medium",
+      "AllowedValues" : [ "t2.micro", "t2.small", "t2.medium", "t2.large", "m3.medium", "m3.large", "m3.xlarge", "m3.2xlarge",
+        "m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge", "m4.10xlarge", "c3.large", "c3.xlarge", "c3.2xlarge", "c3.4xlarge", "c3.8xlarge",
+        "c4.large", "c4.xlarge", "c4.2xlarge", "c4.4xlarge", "c4.8xlarge", "r3.large", "r3.xlarge", "r3.2xlarge", "r3.4xlarge", "r3.8xlarge",
+        "i2.xlarge", "i2.2xlarge", "i2.4xlarge", "i2.8xlarge", "d2.xlarge", "d2.2xlarge", "d2.4xlarge", "d2.8xlarge",
+        "hi1.4xlarge", "hs1.8xlarge", "cr1.8xlarge", "cc2.8xlarge"],
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+   "Resources": {
+    "IAM": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref": "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/ecs-cluster/iam.json" ]] },
+        "Parameters": {
+          "CloudToolsBucket": { "Ref": "CloudToolsBucket" }
+        }
+      }
+    },
+    "SNS": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref": "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/ecs-cluster/sns.json" ]] },
+        "Parameters": {
+          "Project": { "Ref": "Project" },
+          "Environment": { "Ref": "Environment" }
+        }
+      }
+    },
+    "SecurityGroups": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref": "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/ecs-cluster/security_groups.json" ]] },
+        "Parameters": {
+          "VPC": { "Ref": "VPC" },
+          "VPCCIDR": { "Ref": "VPCCIDR" },
+          "Project": { "Ref": "Project" },
+          "Environment": { "Ref": "Environment" }
+        }
+      }
+    },
+    "ECSCluster": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref": "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/common/ecs_cluster.json" ]] },
+        "Parameters": {
+          "Project": { "Ref": "Project" },
+          "Environment": { "Ref": "Environment" },
+          "Role": { "Ref": "Role" },
+          "IAMInstanceProfile": { "Fn::GetAtt": [ "IAM", "Outputs.IAMInstanceProfile" ] },
+          "AMI": { "Ref" : "AMI" },
+          "EC2KeyPair": { "Ref" : "EC2KeyPair" },
+          "PrivateSubnetList" : { "Ref": "PrivateSubnetList" },
+          "InstanceSecurityGroups" : { "Fn::GetAtt": [ "SecurityGroups", "Outputs.ECSClusterSecurityGroup" ] },
+          "BootstrapS3BucketName": { "Fn::Join": [ "/", [ { "Ref": "CloudToolsBucket" }, { "Ref": "Release" }, "bootstrap" ] ] },
+          "BootstrapFileName": "common.sh",
+	      "CloudWatchAlarmSNSTopic": { "Fn::GetAtt": [ "SNS","Outputs.ApplicationOperations" ] },
+          "RollingUpdatePauseTime": "PT5M",
+          "MaxInstancesCount": { "Ref": "MaxClusterCount" },
+          "MinInstancesCount": { "Ref": "MinClusterCount" },
+          "InstanceType": { "Ref": "ClusterInstanceType" }
+        }
+      }
+    },
+    "EFSVolume": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref" : "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/common/efs.json" ] ] },
+        "Parameters": {
+          "KeyValue": { "Fn::Join": ["-", [ { "Ref": "Environment" }, "EFS" ] ] },
+          "SecurityGroups": { "Fn::GetAtt": [ "SecurityGroups", "Outputs.EFSSecurityGroup" ] },
+	      "SubnetIds": { "Ref": "PrivateSubnetList" }
+        }
+      }
+    }
+  },
+  "Outputs": {
+  }
+}

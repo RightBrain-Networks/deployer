@@ -1,0 +1,354 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Vibeio Service CloudFormation Stack",
+  "Parameters": {
+    "VPCCIDR": {
+      "Description": "VPCCIDR",
+      "Type": "String",
+      "Default": "VPCCIDR for the application"
+    },
+    "VPC": {
+      "Description": "VPC ID",
+      "Type": "AWS::EC2::VPC::Id"
+    },
+    "Role" : {
+      "Description": "Role",
+      "Type": "String",
+      "Default": "webapp"
+    },
+    "Project" : {
+      "Description": "Project Name",
+      "Type": "String",
+      "Default": ""
+    },
+    "Environment": {
+      "Description": "Environment name assigned to EC2 instances (e.g. 'prod' or 'test').",
+      "Type": "String", 
+      "Default": "Live",
+      "ConstraintDescription": "Must be a string."
+    },
+    "PrivateDomain": {
+      "Description": "Private domain name.",
+      "Type": "String",
+      "Default": ""
+    },
+    "PublicDomain": {
+      "Description": "Public domain name.",
+      "Type": "String",
+      "Default": ""
+    },
+    "CloudToolsBucket": {
+      "Description":"Name of S3 bucket containing CloudTools scripts.",
+      "Type": "String",
+      "Default": ""
+    },
+    "CommonBootstrapFile": {
+      "Description": "Name of common bootstrap file to be used by many instances.",
+      "Type": "String",
+      "Default": "common.sh"
+    },
+    "Release" : {
+      "Description" : "Release Number",
+      "Type" : "String",
+      "Default" : "0.0.1"
+    },
+    "SSLCertId": {
+      "Description": "SSL Cert Id",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a Id."
+    },
+    "EC2KeyPair": {
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the ECS instances"
+    },
+    "PrivateSubnetList": {
+      "Description":"A list of subnet IDs in your VPC to attach to your EC2 instances.",
+      "Type": "String"
+    },
+    "PublicSubnetList": {
+      "Type": "String",
+      "Description": "List of an existing subnet IDs to use for load balancer"
+    },
+    "ALBSubnetList": {
+       "Description":"A list of subnet IDs in your VPC to attach to your EC2 instances.",
+       "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "RDSSubnetGroup": {
+      "Type": "String",
+      "Description": "List of existing subnet ID's to use with RDS"
+    },
+    "CpuUnits": {
+      "Type": "String",
+      "Description": "The amount of Cpu alloted to the container. 1024 is a single core.",
+      "ConstraintDescription" : "must be a string.",
+      "Default": "300"
+    },
+    "MemoryUnits": {
+      "Type": "String",
+      "Description": "The amount of memory alloted to the container in megabytes.",
+      "ConstraintDescription" : "must be a string.",
+      "Default": "300"
+    },
+    "AMI": {
+      "Type": "String",
+      "Description": "ECS optimized AMI"
+    },
+    "LogHost": {
+      "Type": "String",
+      "Description": "Hosted Zone Name for the Route 53 Record",
+      "Default": ""
+    },
+    "MaxCapacity": {
+      "Description": "Max allowed ECS service instances",
+      "Type": "Number",
+      "Default": "4"
+    },
+    "MinCapacity": {
+      "Description": "Min allowed ES service instances",
+      "Type": "Number",
+      "Default": "2"
+    },
+    "MaxClusterCount": {
+      "Description": "Maximum number of EC2 instances in the ASG.",
+      "Type": "Number",
+      "Default": "2",
+      "MinValue": "0",
+      "MaxValue": "10000"
+    },
+    "MinClusterCount": {
+      "Description": "Minimum number of EC2 instances in the ASG.",
+      "Type": "Number",
+      "Default": "2",
+      "MinValue": "0",
+      "MaxValue": "1000"
+    },
+    "ClusterInstanceType" : {
+      "Description" : "The EC2 instance type",
+      "Type" : "String",
+      "Default" : "m3.medium",
+      "AllowedValues" : [ "t2.micro", "t2.small", "t2.medium", "t2.large", "m3.medium", "m3.large", "m3.xlarge", "m3.2xlarge",
+        "m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge", "m4.10xlarge", "c3.large", "c3.xlarge", "c3.2xlarge", "c3.4xlarge", "c3.8xlarge",
+        "c4.large", "c4.xlarge", "c4.2xlarge", "c4.4xlarge", "c4.8xlarge", "r3.large", "r3.xlarge", "r3.2xlarge", "r3.4xlarge", "r3.8xlarge",
+        "i2.xlarge", "i2.2xlarge", "i2.4xlarge", "i2.8xlarge", "d2.xlarge", "d2.2xlarge", "d2.4xlarge", "d2.8xlarge",
+        "hi1.4xlarge", "hs1.8xlarge", "cr1.8xlarge", "cc2.8xlarge"],
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+    "DBName": {
+      "Type": "String",
+      "Description": "Sample database name",
+      "Default": ""
+    },
+    "DBUser": {
+      "Type": "String",
+      "Description": "Sample database username",
+      "Default": ""
+    },
+    "DBPassword": {
+      "Type": "String",
+      "Description": "Sample database password",
+      "Default": ""
+    }
+  },
+  "Conditions": {
+    "LambdaAvailable": { "Fn::Not": [
+      { "Fn::Or": [
+        { "Fn::Equals": [ { "Ref": "AWS::Region" }, "us-west-1" ] },
+        { "Fn::Equals": [ { "Ref": "AWS::Region" }, "ap-southeast-1" ] },
+        { "Fn::Equals": [ { "Ref": "AWS::Region" }, "ap-northeast-2" ] },
+        { "Fn::Equals": [ { "Ref": "AWS::Region" }, "sa-east-1" ] }
+      ]}
+    ]},
+    "IsRegionUSStandard": { "Fn::Equals": [ { "Ref": "AWS::Region" }, "us-east-1" ] },
+    "NotProd": { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "Environment" }, "Prod" ] } ] }
+  },
+  "Resources": {
+    "IAM": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref": "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/services/vibeio/iam.json" ]] },
+        "Parameters": {
+          "CloudToolsBucket": { "Ref": "CloudToolsBucket" }
+        }
+      }
+    },
+    "SNS": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref": "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/services/vibeio/sns.json" ]] },
+        "Parameters": {
+          "Project": { "Ref": "Project" },
+          "Environment": { "Ref": "Environment" }
+        }
+      }
+    },
+    "SecurityGroups": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref": "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/services/vibeio/security_groups.json" ]] },
+        "Parameters": {
+          "VPC": { "Ref": "VPC" },
+          "VPCCIDR": { "Ref": "VPCCIDR" },
+          "Project": { "Ref": "Project" },
+          "Environment": { "Ref": "Environment" }
+        }
+      }
+    },
+    "ECSCluster": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref": "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/common/ecs_cluster.json" ]] },
+        "Parameters": {
+          "Project": { "Ref": "Project" },
+          "Environment": { "Ref": "Environment" },
+          "Role": { "Ref": "Role" },
+          "IAMInstanceProfile": { "Fn::GetAtt": [ "IAM", "Outputs.IAMInstanceProfile" ] },
+          "AMI": { "Ref" : "AMI" },
+          "EC2KeyPair": { "Ref" : "EC2KeyPair" },
+          "PrivateSubnetList" : { "Ref": "PrivateSubnetList" },
+          "InstanceSecurityGroups" : { "Fn::GetAtt": [ "SecurityGroups", "Outputs.ECSClusterSecurityGroup" ] },
+          "BootstrapS3BucketName": { "Fn::Join": [ "/", [ { "Ref": "CloudToolsBucket" }, { "Ref": "Release" }, "bootstrap" ] ] },
+          "BootstrapFileName": "common.sh",
+	      "CloudWatchAlarmSNSTopic": { "Fn::GetAtt": [ "SNS","Outputs.ApplicationOperations" ] },
+          "RollingUpdatePauseTime": "PT5M",
+          "MaxInstancesCount": { "Ref": "MaxClusterCount" },
+          "MinInstancesCount": { "Ref": "MinClusterCount" },
+          "InstanceType": { "Ref": "ClusterInstanceType" }
+        }
+      }
+    },
+    "ApplicationLoadBalancer" : {
+      "Type" : "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties" : {
+        "Name": { "Fn::Join": ["-",[{ "Ref": "Environment" },{ "Ref": "Role" }, "ALB" ]]},
+        "Subnets" : { "Ref" : "ALBSubnetList" },
+        "SecurityGroups":  [{ "Fn::GetAtt": [ "SecurityGroups", "Outputs.ALBSecurityGroup" ] }]
+      }
+    },
+    "ALBListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "DefaultActions": [{
+          "Type": "forward",
+          "TargetGroupArn": { "Ref": "TargetGroup" }
+        }],
+       "LoadBalancerArn": { "Ref": "ApplicationLoadBalancer" },
+       "Port": 80,
+       "Protocol": "HTTP"
+      }
+    },
+    "TargetGroup" : {
+      "Type" : "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties" : {
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckProtocol": "HTTP",
+        "HealthCheckTimeoutSeconds": 10,
+        "HealthyThresholdCount": 4,
+        "Matcher" : {
+          "HttpCode" : "200"
+        },
+        "HealthCheckPath": "/Home",
+        "Name": { "Fn::Join": ["-", ["Vibeio", { "Ref": "Environment" }, { "Ref": "Role" }]]},
+        "Port": 5001,
+        "Protocol": "HTTP",
+        "TargetGroupAttributes": [{
+          "Key": "deregistration_delay.timeout_seconds",
+          "Value": "20"
+        }],
+        "VpcId": { "Ref" : "VPC" },
+        "Tags" : [
+          { "Key" : "Environment", "Value" : { "Ref": "Environment" }},
+          { "Key" : "Role", "Value" : { "Ref": "Role" }}
+        ]
+      }
+    },
+    "ALBListenerRule1": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Properties": {
+        "Actions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "TargetGroup"
+            }
+          }
+        ],
+        "Conditions": [
+          { "Field": "path-pattern",
+            "Values": ["/helloworld1"]
+          }
+        ],
+        "ListenerArn": { "Ref": "ALBListener" },
+        "Priority": 1
+      }
+    },
+    "Vibeio": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref" : "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/services/vibeio/ecs-service-alb.json" ] ] },
+        "Parameters": {
+          "IsELBInternal": "True",
+          "Project": { "Ref": "Project" },
+          "Role": { "Ref": "Role" },
+          "VPC": { "Ref": "VPC" },
+          "EcsCluster": { "Fn::GetAtt": [ "ECSCluster", "Outputs.ECSCluster" ] },
+          "ELBSubnetList" : { "Ref": "PublicSubnetList" },
+          "Project": { "Ref": "Project" },
+          "Environment": { "Ref": "Environment" },
+          "Release": { "Ref": "Release" },
+          "ContainerName": "Vibeio",
+          "ContainerImage": "356438515751.dkr.ecr.us-east-1.amazonaws.com/vibeio:latest",
+          "ContainerPort": "5001",
+          "TargetGroup": { "Ref": "TargetGroup" },
+          "ContainerMemory": { "Ref": "MemoryUnits" },
+          "ContainerCpuUnits": { "Ref": "CpuUnits" },
+          "InstancePort": "80",
+          "InstanceListenerProtocol": "TCP",
+          "PublicSubnetList": { "Ref": "PublicSubnetList" },
+          "EcsServiceRole" : { "Fn::GetAtt": [ "IAM", "Outputs.ECSServiceRole" ] },
+          "HostedZoneName" : { "Ref": "PrivateDomain" },
+          "PrivateDomain" : { "Ref": "PrivateDomain" },
+          "PublicDomain" : { "Ref": "PublicDomain" },
+	      "ECSServiceMaxCapacity": { "Ref": "MaxCapacity" },
+	      "ECSServiceMinCapacity": { "Ref": "MinCapacity" },
+          "LogHost": { "Ref" : "LogHost" },
+          "VolumeName": "user",
+          "VolumeContainerPath": "/var/vibeio",
+          "VolumeHostPath": "/mnt/efs/vibeio",
+          "ExposeDockerDaemon": "False",
+          "DBHost": "localhost",
+          "DBName": { "Ref": "DBName" },
+          "DBUser": { "Ref": "DBUser" },
+          "DBPassword": { "Ref": "DBPassword" }
+        }
+      }
+    },
+    "EFSVolume": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref" : "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/common/efs.json" ] ] },
+        "Parameters": {
+          "KeyValue": { "Fn::Join": ["-", [ { "Ref": "Environment" }, "EFS" ] ] },
+          "SecurityGroups": { "Fn::GetAtt": [ "SecurityGroups", "Outputs.EFSSecurityGroup" ] },
+	      "SubnetIds": { "Ref": "PrivateSubnetList" }
+        }
+      }
+    },
+    "ALBEndpoint" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" :                      { "Fn::Join" : [ "", [ { "Ref": "PrivateDomain" }, "." ]] },
+        "Comment" :                             { "Fn::Join" : [ "", [ "DNS name for Gateway Endpoint in ", { "Ref": "Environment" } ]]},
+        "Name" :                                { "Fn::Join" : [ "", ["myalb", ".", { "Ref": "Environment" }, ".", { "Ref": "PrivateDomain" }, "." ] ] },
+        "Type" :                                "A",
+        "AliasTarget": {
+          "DNSName":                            { "Fn::GetAtt": [ "ApplicationLoadBalancer", "DNSName" ] },
+          "HostedZoneId":                       { "Fn::GetAtt": [ "ApplicationLoadBalancer", "CanonicalHostedZoneID" ] },
+          "EvaluateTargetHealth":               "False"
+        }
+      }
+    }
+  },
+  "Outputs": {
+  }
+}

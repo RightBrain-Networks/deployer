@@ -1,0 +1,252 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Allways On Instance.",
+  "Parameters": {
+    "Role": {
+      "Description": "Name which will be applied to EC2 instances in the ASG (e.g. 'web' or 'app').",
+      "Type": "String",
+      "Default": "ROLE",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Environment": {
+      "Description": "Environment name assigned to EC2 instances (e.g. 'prod' or 'test').",
+      "Type": "String",
+      "Default": "ENV",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Release" : {
+      "Description" : "Release Number",
+      "Type" : "String",
+      "Default" : "0.0.1"
+    },
+    "InstanceType": {
+      "Description": "The EC2 instance type assigned to the Launch Configuration for EC2 instances in the ASG.",
+      "Type": "String",
+      "Default": "t2.small",
+      "ConstraintDescription": "Must be a string."
+    },
+    "AMI": {
+      "Description": "The AMI ID assigned to the Launch Configuration for EC2 instances in the ASG.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "OS": {
+      "Description": "The type of operating system used, e.g. debian, rhel, windows",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "BootstrapFileName": {
+      "Description": "The config file name",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "AssociatePublicIPAddress": {
+      "Description": "Whether or not the EC2 instances in the ASG will be given a public IP address.",
+      "Type": "String",
+      "Default": "True",
+      "AllowedValues" : ["True", "False"],
+      "ConstraintDescription": "Must be 'True' or 'False'."
+    },
+    "IAMInstanceProfile": {
+      "Description":"ARN of the instance profile associated with the IAM role for the instance. The instance profile contains the IAM role.",
+      "Type":"String",
+      "Default":""
+    },
+    "InstanceSubnet": {
+      "Description":"A list of subnet IDs in your VPC to attach to your EC2 instances.",
+      "Type": "AWS::EC2::Subnet::Id"
+    },
+    "InstanceSecurityGroups": {
+      "Description": "A list of security groups assigned to EC2 instances in the ASG.",
+      "Type": "String",
+      "Default": ""
+    },
+    "CloudWatchAlarmSNSTopic": {
+      "Description": "SNS topic to send AutoScaling Events to.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "EC2KeyPair": {
+      "Description": "Name of the EC2 key pair assigned to instances in the ASG.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be an existing EC2 key pair."
+    },
+    "BootstrapBucket": {
+      "Description": "The name of the S3 bucket containing provision/bootstrap scripts to be executed within UserData.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Project": {
+      "Description": "Project name.",
+      "Type": "String",
+      "Default": "PROJECT",
+      "ConstraintDescription": "Must be a string."
+    },
+    "HostedZoneName": {
+      "Description": "FQDN of the domain you want to add record to",
+      "Type": "String",
+      "Default": ""
+    },
+    "PublicDomain": {
+      "Description": "Public Domain Name",
+      "Type": "String",
+      "Default": ""
+    },
+    "PrivateDomain": {
+      "Description": "Private Domain Name",
+      "Type": "String",
+      "Default": ""
+    },
+    "PrivateIp": {
+      "Description": "Private IP address",
+      "Type": "String",
+      "Default": ""
+    },
+    "KMSKey": {
+      "Description": "KMS Key used to encrypt/decrypt Jenkins backups",
+      "Type": "String",
+      "Default": ""
+    }
+  },
+
+  "Mappings": {
+  },
+
+  "Conditions": {
+    "IsPublic": { "Fn::Equals": [ "True", { "Ref": "AssociatePublicIPAddress" } ] }
+
+  },
+
+  "Resources": {
+    "EIP": {
+      "Type" : "AWS::EC2::EIP",
+      "Condition": "IsPublic",
+      "Properties" : {
+         "Domain" : "vpc"
+      }
+    },
+    "EIPAssociation": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Condition": "IsPublic",
+      "Properties": {
+        "AllocationId": { "Fn::GetAtt": [ "EIP", "AllocationId" ] },
+        "InstanceId": { "Ref": "Instance" }
+      }
+    },
+    "Instance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId": { "Ref": "AMI" },
+        "KeyName": { "Ref": "EC2KeyPair" },
+        "IamInstanceProfile": { "Ref": "IAMInstanceProfile" },
+        "SecurityGroupIds": [ { "Ref": "InstanceSecurityGroups" } ],
+        "InstanceType": { "Ref": "InstanceType" },
+        "SubnetId": { "Ref": "InstanceSubnet" },
+        "SourceDestCheck": { "Fn::If": [ "IsPublic", "False", "True" ] },
+        "UserData": {
+          "Fn::Base64": { "Fn::Join": ["", [
+            "#!/usr/bin/env bash\n",
+            "export PROJECT=", { "Ref" : "Project" }, "\n",
+            "export ROLE=", { "Ref" : "Role" }, "\n",
+            "export ENV=", { "Ref" : "Environment" }, "\n",
+            "export SNS_TOPIC=", { "Ref" : "CloudWatchAlarmSNSTopic" }, "\n",
+	    "if [ $(which apt-get) ] ; then", "\n",
+	    "export DEBIAN_FRONTEND=noninteractive", "\n",
+	    "apt-get update", "\n",
+	    "apt-get -y install python-pip", "\n",
+	    "elif [ $(which yum) ] ; then", "\n",
+            "yum install epel-release -y", "\n",
+	    "yum makecache fast", "\n",
+	    "yum -y install python-pip", "\n",
+	    "fi", "\n",
+            "rm -rf /tmp/pip_build_root", "\n",
+	    "pip install --upgrade awscli", "\n",
+            "aws s3 cp s3://", { "Ref" : "BootstrapBucket" }, "/", { "Ref": "BootstrapFileName" },
+              " /usr/local/bin/", { "Ref" : "BootstrapFileName" },
+              " --region ", { "Ref" : "AWS::Region" }, " \n",
+            "chmod 770 /usr/local/bin/", { "Ref" : "BootstrapFileName" }, " \n",
+            "/usr/local/bin/", { "Ref": "BootstrapFileName" },
+              " -b ", { "Ref": "BootstrapBucket" },
+              " -c ", { "Fn::Join": [ "/", [ { "Ref": "BootstrapBucket" }, "chef" ] ] },
+              " -n ", { "Ref": "Role" },
+              " -p ", { "Ref": "Project" },
+              " -e ", { "Ref": "Environment" },
+              " -r ", { "Ref": "Release" },
+              " -u ", { "Ref": "PublicDomain" },
+              " -t ", { "Ref": "PrivateDomain" },
+              " -k ", { "Ref": "KMSKey" },
+              " -o ", { "Ref": "OS" },
+              " -s ", { "Ref": "CloudWatchAlarmSNSTopic" }, " \n"
+          ] ] }
+        },
+        "Tags": [ 
+          { "Key": "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, { "Ref": "Role" } ] ] } },
+          { "Key": "environment", "Value": { "Ref": "Environment" } }, 
+          { "Key": "role", "Value": { "Ref": "Role" } } 
+        ]
+      }
+    },
+    "CloudWatchAlarmEC2InstanceStatusSystemAz1": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Trigger Recovery of Instance if instance status System check fails.",
+        "MetricName": "StatusCheckFailed_System",
+        "Namespace": "AWS/EC2",
+        "Statistic": "Minimum",
+        "Period": "60",
+        "EvaluationPeriods": "3",
+        "Threshold": "0",
+        "AlarmActions": [ { "Ref": "CloudWatchAlarmSNSTopic" },
+                          {"Fn::Join" : ["", ["arn:aws:automate:", { "Ref" : "AWS::Region" }, ":ec2:recover" ]]} ],
+        "OKActions": [],
+        "Dimensions": [
+          {
+            "Name": "InstanceId",
+            "Value": { "Ref": "Instance" }
+          }
+        ],
+        "ComparisonOperator": "GreaterThanThreshold"
+      }
+    },
+    "CloudWatchAlarmEC2InstanceStatusInstanceAz1": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Trigger Recovery of Instance if instance status Instance check fails.",
+        "MetricName": "StatusCheckFailed_Instance",
+        "Namespace": "AWS/EC2",
+        "Statistic": "Minimum",
+        "Period": "60",
+        "EvaluationPeriods": "3",
+        "Threshold": "0",
+        "AlarmActions": [ { "Ref": "CloudWatchAlarmSNSTopic" },
+                          {"Fn::Join" : ["", ["arn:aws:automate:", { "Ref" : "AWS::Region" }, ":ec2:reboot" ]]} ],
+        "OKActions": [],
+        "Dimensions": [
+          {
+            "Name": "InstanceId",
+            "Value": { "Ref": "Instance" }
+          }
+        ],
+        "ComparisonOperator": "GreaterThanThreshold"
+      }
+    }
+  },
+  "Outputs": {
+    "InstanceId": {
+      "Description": "Pysical Id of Instance", 
+      "Value": { "Ref": "Instance" }
+    },
+    "InstanceIp": {
+      "Description": "Ip Address of the Instance", 
+      "Value": { "Ref": "EIP" }
+    }
+
+  }
+
+}

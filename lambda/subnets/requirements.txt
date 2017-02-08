@@ -1,0 +1,4 @@
+boto3==1.3.0
+botocore==1.4.11
+cfn-response==0.0.3
+netaddr==0.7.18

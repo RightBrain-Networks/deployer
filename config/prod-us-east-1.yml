@@ -1,0 +1,121 @@
+# Deployment wide parameters
+# NOTE:THIS FILE HAS BEEN UPDATED TO REFLECT THE NEW RBN ALT ACCOUNT
+global:
+  region: us-east-1
+  release: development
+  sync_base: ./
+  sync_dirs: [
+    'cloudformation',
+    'bootstrap'
+  ]
+  sync_exclude: [
+    '.swp',
+    '.git',
+    '.DS_Store',
+    '/chef/',
+    'README.md'
+  ]
+  sync_dest_bucket: rbn-ops-us-east-1
+  template_bucket: rbn-ops-us-east-1
+  tags:
+    Project: ALT-220
+    Environment: Dev
+    Release : development
+  CloudToolsBucket: rbn-ops-us-east-1
+
+Network:
+  release: development
+  stack_name: RBN-Ops-Network
+  sync_base: ./
+  sync_dirs: [
+    'cloudformation',
+    'builds',
+    'lambda'
+  ]
+  lambda_dirs: [
+    'lambda/attach_hosted_zone',
+    'lambda/number_azs',
+    'lambda/peer',
+    'lambda/subnets',
+    'lambda/vpc_cidr'
+  ]
+  template: cloudformation/network/vpc/top.json 
+  parameters:
+    Project: ALT-220
+    SSLCertId: ""
+    CommonBootstrapFile: common.sh
+    PrivateDomain: awsinternal.ops.rightbrainnetworks.com
+    PublicDomain: 'ops.rightbrainnetworks.com'
+    InternalHostedZone: Z3BSTGMXUCYSV7
+    Environment: Test
+    VPNCIDR: "10.0.0.0/8"
+    GlobalCIDR: "10.0.0.0/8"
+    ReservedCidrs: ""
+    MaskBit: "22"
+    # This bastion from is the RBN Office
+    BastionSSHFrom: "50.241.213.107/32" 
+    EC2KeyPair: bastion-us-east-1
+    BastionInstanceType: t2.nano
+    BastionAMI: ami-0b33d91d
+    CloudToolsBucket: rbn-ops-us-east-1
+
+
+Jenkins:
+  release: develop
+  stack_name: Jenkins
+  template_bucket: rbn-ops-us-east-1
+  template: cloudformation/jenkins/jenkins.json
+  lambda_dirs: [ 'lambda/code_commit_post_hook' ]
+  sync_dirs: [
+    'bootstrap',
+    'builds',
+    'cloudformation',
+    'lambda'
+  ]
+  parameters:
+    Environment: Prod
+    Role: Jenkins
+    EC2KeyPair: common-us-east-1
+    JenkinsImage: 356438515751.dkr.ecr.us-east-1.amazonaws.com/jenkins:develop
+    AMI: ami-8f7687e2
+    BackupBucket: rbn-ops-assets-us-east-1/backups
+    SSLCertId: ""
+    #PublicHostedZone: Z2IORW62P3872I
+  lookup_parameters:
+    VPC: { Stack: Network, OutputKey: VPC }
+    VPCCIDR: { Stack: Network, OutputKey: VPCCIDR }
+    PublicSubnetList: { Stack: Network, OutputKey: PublicSubnets }
+    PrivateSubnetList: { Stack: Network, OutputKey: PrivateSubnets }
+
+
+
+
+Vibeio:
+  release: develop
+  stack_name: Vibeio
+  template_bucket: rbn-ops-us-east-1
+  template: cloudformation/services/vibeio/top.json
+  lambda_dirs: [lambda/attach_hosted_zone]
+  parameters:
+    Environment: Prod
+    Role: Vibeio
+    EC2KeyPair: common-us-east-1
+    CpuUnits: '160'
+    MemoryUnits: '160'
+    MinCapacity: '1'
+    MaxCapacity: '4'
+    AMI: ami-8f7687e2
+    MinClusterCount: '2'
+    MaxClusterCount: '4'
+    ClusterInstanceType: t2.small
+    LogHost: ""
+    PrivateDomain: awsinternal.ops.rightbrainnetworks.com
+    PublicDomain: 'ops.rightbrainnetworks.com'
+    CloudToolsBucket: rbn-ops-us-east-1
+  lookup_parameters:
+    VPC: {Stack: Network, OutputKey: VPC}
+    VPCCIDR: {Stack: Network, OutputKey: VPCCIDR}
+    PublicSubnetList: {Stack: Network, OutputKey: PublicSubnets}
+    PrivateSubnetList: {Stack: Network, OutputKey: PrivateSubnets}
+    RDSSubnetGroup: {Stack: Network, OutputKey: RDSSubnetGroup}
+    ALBSubnetList: {Stack: Network, OutputKey: PublicSubnets}

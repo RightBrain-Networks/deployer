@@ -1,0 +1,80 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Network Security Groups.",
+  "Parameters": {
+    "Environment": {
+      "Description": "Environment name assigned to EC2 instances (e.g. 'prod' or 'test').",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Project" : {
+      "Description" : "Project name.",
+      "Type" : "String",
+      "Default" : "",
+      "ConstraintDescription" : "Must be a string."
+    },
+    "VPCCIDR": {
+      "Description": "VPCCIDR",
+      "Type": "String",
+      "Default" : ""
+    },
+    "VPC": {
+      "Description": "VPC ID",
+      "Type": "AWS::EC2::VPC::Id"
+    },
+    "Role" : {
+      "Description": "Role",
+      "Type": "String",
+      "Default": "webapp"
+    }
+  },
+  "Resources": {
+    "ECSClusterSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ECS Cluster Security Group.",
+        "VpcId": { "Ref": "VPC" },
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": "0", "ToPort": "65535", "CidrIp": { "Ref": "VPCCIDR" }},
+          { "IpProtocol": "tcp", "FromPort": "80", "ToPort": "80", "CidrIp": { "Ref": "VPCCIDR" }},
+          { "IpProtocol": "tcp", "FromPort": "22", "ToPort": "22", "CidrIp": { "Ref": "VPCCIDR" }},
+          { "IpProtocol": "tcp", "FromPort": "443", "ToPort": "443", "CidrIp": { "Ref": "VPCCIDR" }}
+        ],
+        "SecurityGroupEgress": [
+          { "IpProtocol": "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp": "0.0.0.0/0" },
+          { "IpProtocol": "tcp", "FromPort": "0", "ToPort": "65535", "CidrIp": "0.0.0.0/0" },
+          { "IpProtocol": "udp", "FromPort": "0", "ToPort": "65535", "CidrIp": "0.0.0.0/0" }
+        ],
+        "Tags" : [
+          { "Key" : "Name", "Value": "ECS-Cluster" }
+        ]
+      }
+    },
+    "EFSSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ECS Cluster Security Group.",
+        "VpcId": { "Ref": "VPC" },
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": "2049", "ToPort": "2049", "CidrIp": { "Ref": "VPCCIDR" }}
+        ],
+        "SecurityGroupEgress": [
+        ],
+        "Tags" : [
+          { "Key" : "Name", "Value": "EFS-Mount-Point" }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "ECSClusterSecurityGroup": {
+      "Description": "ECS Cluster Security Group ID",
+      "Value": { "Ref": "ECSClusterSecurityGroup" }
+    },
+    "EFSSecurityGroup": {
+      "Description": "EFS Mount Point Security Group ID",
+      "Value": { "Ref": "EFSSecurityGroup" }
+    }
+  }
+}

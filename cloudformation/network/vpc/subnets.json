@@ -1,0 +1,429 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Network Subnets",
+
+  "Parameters": {
+    "NumberOfAzs": {
+      "Description": "How Many Az's to use",
+      "Type": "Number",
+      "Default": "3",
+      "MaxValue": "4",
+      "MinValue": "2"
+    },
+    "Project": {
+      "Description": "Project name.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Environment" : {
+      "Description" : "Environment Name",
+      "Type" : "String",
+      "Default" : "dev-branch-1",
+      "ConstraintDescription" : "must be a string."
+    },
+    "VPC": {
+      "Type": "AWS::EC2::VPC::Id"
+    },
+    "VPCCIDR" : {
+      "Description" : "CIDR block of the VPC.",
+      "Type" : "String",
+      "MinLength" : "9",
+      "MaxLength" : "18",
+      "Default": "10.0.0.0/16",
+      "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription" : "Must be valid CIDR notation (i.e. x.x.x.x/x)."
+    },
+    "LambdaSubnetArn": {
+      "Description": "Lambda vpc cidr arn",
+      "Type": "String"
+    },
+    "PublicRouteTable": {
+      "Description": "Physical ID of Public Route Table",
+      "Type": "String"
+    },
+    "PrivateRouteTableAz1": {
+      "Description": "Physical ID of Private Route Table Az1",
+      "Type": "String"
+    },
+    "PrivateRouteTableAz2": {
+      "Description": "Physical ID of Private Route Table Az2",
+      "Type": "String"
+    },
+    "PrivateRouteTableAz3": {
+      "Description": "Physical ID of Private Route Table Az3",
+      "Type": "String"
+    },
+    "PrivateRouteTableAz4": {
+      "Description": "Physical ID of Private Route Table Az3",
+      "Type": "String"
+    },
+    "PublicSubnetAz1Cidr": {
+      "Description":"Cidr of the Public Subnet in Az1",
+      "Type":"String",
+      "MinLength":"9",
+      "MaxLength":"18",
+      "Default":"10.238.43.0/24",
+      "AllowedPattern":"(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription":"must be a valid CIDR range of the form x.x.x.x/x."
+    },
+    "PublicSubnetAz2Cidr": {
+      "Description":"Cidr of the Public Subnet in Az2",
+      "Type":"String",
+      "MinLength":"9",
+      "MaxLength":"18",
+      "Default":"10.238.43.0/24",
+      "AllowedPattern":"(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription":"must be a valid CIDR range of the form x.x.x.x/x."
+    },
+    "PublicSubnetAz3Cidr": {
+      "Description":"Cidr of the Public Subnet in Az3",
+      "Type":"String",
+      "MinLength":"9",
+      "MaxLength":"18",
+      "Default":"10.238.43.0/24",
+      "AllowedPattern":"(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription":"must be a valid CIDR range of the form x.x.x.x/x."
+    },
+    "PublicSubnetAz4Cidr": {
+      "Description":"Cidr of the Public Subnet in Az4",
+      "Type":"String",
+      "MinLength":"9",
+      "MaxLength":"18",
+      "Default":"10.238.43.0/24",
+      "AllowedPattern":"(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription":"must be a valid CIDR range of the form x.x.x.x/x."
+    },
+    "PrivateSubnetAz1Cidr": {
+      "Description":"Cidr of the Private Subnet in Az1",
+      "Type":"String",
+      "MinLength":"9",
+      "MaxLength":"18",
+      "Default":"10.238.43.0/24",
+      "AllowedPattern":"(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription":"must be a valid CIDR range of the form x.x.x.x/x."
+    },
+    "PrivateSubnetAz2Cidr": {
+      "Description":"Cidr of the Private Subnet in Az2",
+      "Type":"String",
+      "MinLength":"9",
+      "MaxLength":"18",
+      "Default":"10.238.43.0/24",
+      "AllowedPattern":"(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription":"must be a valid CIDR range of the form x.x.x.x/x."
+    },
+    "PrivateSubnetAz3Cidr": {
+      "Description":"Cidr of the Private Subnet in Az3",
+      "Type":"String",
+      "MinLength":"9",
+      "MaxLength":"18",
+      "Default":"10.238.43.0/24",
+      "AllowedPattern":"(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription":"must be a valid CIDR range of the form x.x.x.x/x."
+    },
+    "PrivateSubnetAz4Cidr": {
+      "Description":"Cidr of the Private Subnet in Az4",
+      "Type":"String",
+      "MinLength":"9",
+      "MaxLength":"18",
+      "Default":"10.238.43.0/24",
+      "AllowedPattern":"(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription":"must be a valid CIDR range of the form x.x.x.x/x."
+    }
+
+  },
+
+  "Mappings":{
+  },
+  "Conditions": {
+    "LambdaAvailable": { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "LambdaSubnetArn" }, "" ] } ] },
+    "ThirdAz": { "Fn::Or": [
+      { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "3" ] },
+      { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "4" ] }
+    ] },
+    "FourthAz": { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "4" ] }
+  },
+  "Resources":{
+    "PublicSubnetAz1":{
+      "Type":"AWS::EC2::Subnet",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "CidrBlock":{ "Fn::If": [ "LambdaAvailable",{ "Fn::GetAtt": [ "SubnetGenerator", "PublicSubnetAz1" ] }, { "Ref": "PublicSubnetAz1Cidr" }]},
+        "AvailabilityZone": { "Fn::Select" : [ "0", { "Fn::GetAZs" : "" } ] },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "Public-AZ1" ] ] } }
+        ]
+      }
+    },
+    "PublicSubnetAz2":{
+      "Type":"AWS::EC2::Subnet",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "CidrBlock":{ "Fn::If": [ "LambdaAvailable",{ "Fn::GetAtt": [ "SubnetGenerator", "PublicSubnetAz2" ] }, { "Ref": "PublicSubnetAz2Cidr" }]},
+        "AvailabilityZone": { "Fn::Select" : [ "1", { "Fn::GetAZs" : "" } ] },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "Public-AZ2" ] ] } }
+        ]
+      }
+    },
+    "PublicSubnetAz3":{
+      "Type":"AWS::EC2::Subnet",
+      "Condition": "ThirdAz",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "CidrBlock":{ "Fn::If": [ "LambdaAvailable",{ "Fn::GetAtt": [ "SubnetGenerator", "PublicSubnetAz3" ] }, { "Ref": "PublicSubnetAz3Cidr" }]},
+        "AvailabilityZone": { "Fn::Select" : [ "2", { "Fn::GetAZs" : "" } ] },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "Public-AZ3" ] ] } }
+        ]
+      }
+    },
+    "PublicSubnetAz4":{
+      "Type":"AWS::EC2::Subnet",
+      "Condition": "FourthAz",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "CidrBlock":{ "Fn::If": [ "LambdaAvailable",{ "Fn::GetAtt": [ "SubnetGenerator", "PublicSubnetAz4" ] }, { "Ref": "PublicSubnetAz4Cidr" }]},
+        "AvailabilityZone": { "Fn::Select" : [ "3", { "Fn::GetAZs" : "" } ] },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "Public-AZ4" ] ] } }
+        ]
+      }
+    },
+    "PrivateSubnetAz1":{
+      "Type":"AWS::EC2::Subnet",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "CidrBlock":{ "Fn::If": [ "LambdaAvailable",{ "Fn::GetAtt": [ "SubnetGenerator", "PrivateSubnetAz1" ] }, { "Ref": "PrivateSubnetAz1Cidr" }]},
+        "AvailabilityZone": { "Fn::Select" : [ "0", { "Fn::GetAZs" : "" } ] },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "Private-AZ1" ] ] } }
+        ]
+      }
+    },
+    "PrivateSubnetAz2":{
+      "Type":"AWS::EC2::Subnet",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "CidrBlock":{ "Fn::If": [ "LambdaAvailable",{ "Fn::GetAtt": [ "SubnetGenerator", "PrivateSubnetAz2" ] }, { "Ref": "PrivateSubnetAz2Cidr" }]},
+        "AvailabilityZone": { "Fn::Select" : [ "1", { "Fn::GetAZs" : "" } ] },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "Private-AZ2" ] ] } }
+        ]
+      }
+    },
+    "PrivateSubnetAz3":{
+      "Type":"AWS::EC2::Subnet",
+      "Condition": "ThirdAz",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "CidrBlock":{ "Fn::If": [ "LambdaAvailable",{ "Fn::GetAtt": [ "SubnetGenerator", "PrivateSubnetAz3" ] }, { "Ref": "PrivateSubnetAz3Cidr" }]},
+        "AvailabilityZone": { "Fn::Select" : [ "2", { "Fn::GetAZs" : "" } ] },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "Private-AZ3" ] ] } }
+        ]
+      }
+    },
+    "PrivateSubnetAz4":{
+      "Type":"AWS::EC2::Subnet",
+      "Condition": "FourthAz",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "CidrBlock":{ "Fn::If": [ "LambdaAvailable",{ "Fn::GetAtt": [ "SubnetGenerator", "PrivateSubnetAz4" ] }, { "Ref": "PrivateSubnetAz4Cidr" }]},
+        "AvailabilityZone": { "Fn::Select" : [ "3", { "Fn::GetAZs" : "" } ] },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "Private-AZ4" ] ] } }
+        ]
+      }
+    },
+    "RDSSubnetGroup": {
+      "Type": "AWS::RDS::DBSubnetGroup",
+      "Properties": {
+        "DBSubnetGroupDescription":"Subnets for RDS.",
+        "SubnetIds": { "Fn::If": [  
+            "FourthAz", 
+            [ { "Ref":"PrivateSubnetAz1" }, { "Ref":"PrivateSubnetAz3" }, { "Ref":"PrivateSubnetAz3" }, { "Ref":"PrivateSubnetAz4" } ],
+            { "Fn::If": [ 
+              "ThirdAz",
+              [ { "Ref":"PrivateSubnetAz1" }, { "Ref":"PrivateSubnetAz3" }, { "Ref":"PrivateSubnetAz3" } ],
+              [ { "Ref":"PrivateSubnetAz1" }, { "Ref":"PrivateSubnetAz2" } ] 
+            ] }
+          ]
+        },
+        "Tags": [
+          { "Key" : "Name", "Value" : { "Fn::Join": [ "", [ { "Ref": "Environment" }, "RDSSubnetGroup" ] ] } }
+        ]
+      }
+    },
+    "ElastiCacheSubnetGroup" : {
+      "Type" : "AWS::ElastiCache::SubnetGroup",
+      "Properties" : {
+        "Description" : "Production ElastiCache subnet group",
+        "SubnetIds": { "Fn::If": [  
+            "FourthAz", 
+            [ { "Ref":"PrivateSubnetAz1" }, { "Ref":"PrivateSubnetAz3" }, { "Ref":"PrivateSubnetAz3" }, { "Ref":"PrivateSubnetAz4" } ],
+            { "Fn::If": [ 
+              "ThirdAz",
+              [ { "Ref":"PrivateSubnetAz1" }, { "Ref":"PrivateSubnetAz3" }, { "Ref":"PrivateSubnetAz3" } ],
+              [ { "Ref":"PrivateSubnetAz1" }, { "Ref":"PrivateSubnetAz2" } ] 
+            ] }
+          ]
+        }
+      }
+    },
+    "PublicSubnetRouteTableAssociationPublicAz1":{
+      "Type":"AWS::EC2::SubnetRouteTableAssociation",
+      "Properties":{
+        "SubnetId":{ "Ref":"PublicSubnetAz1" },
+        "RouteTableId":{ "Ref":"PublicRouteTable" }
+      }
+    },
+    "PublicSubnetRouteTableAssociationPublicAz2":{
+      "Type":"AWS::EC2::SubnetRouteTableAssociation",
+      "Properties":{
+        "SubnetId":{ "Ref":"PublicSubnetAz2" },
+        "RouteTableId":{ "Ref":"PublicRouteTable" }
+      }
+    },
+    "PublicSubnetRouteTableAssociationPublicAz3":{
+      "Type":"AWS::EC2::SubnetRouteTableAssociation",
+      "Condition": "ThirdAz",
+      "Properties":{
+        "SubnetId":{ "Ref":"PublicSubnetAz3" },
+        "RouteTableId":{ "Ref":"PublicRouteTable" }
+      }
+    },
+    "PublicSubnetRouteTableAssociationPublicAz4":{
+      "Type":"AWS::EC2::SubnetRouteTableAssociation",
+      "Condition": "FourthAz",
+      "Properties":{
+        "SubnetId":{ "Ref":"PublicSubnetAz4" },
+        "RouteTableId":{ "Ref":"PublicRouteTable" }
+      }
+    },
+    "PrivateSubnetRouteTableAssociationPrivateAz1":{
+      "Type":"AWS::EC2::SubnetRouteTableAssociation",
+      "Properties":{
+        "SubnetId":{ "Ref":"PrivateSubnetAz1" },
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz1" }
+      }
+    },
+    "PrivateSubnetRouteTableAssociationPrivateAz2":{
+      "Type":"AWS::EC2::SubnetRouteTableAssociation",
+      "Properties":{
+        "SubnetId":{ "Ref":"PrivateSubnetAz2" },
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz2" }
+      }
+    },
+    "PrivateSubnetRouteTableAssociationPrivateAz3":{
+      "Type":"AWS::EC2::SubnetRouteTableAssociation",
+      "Condition": "ThirdAz",
+      "Properties":{
+        "SubnetId":{ "Ref":"PrivateSubnetAz3" },
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz3" }
+      }
+    },
+    "PrivateSubnetRouteTableAssociationPrivateAz4":{
+      "Type":"AWS::EC2::SubnetRouteTableAssociation",
+      "Condition": "FourthAz",
+      "Properties":{
+        "SubnetId":{ "Ref":"PrivateSubnetAz4" },
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz4" }
+      }
+    },
+    "SubnetGenerator": {
+      "Condition": "LambdaAvailable",
+      "Type": "Custom::SubnetGenerator",
+      "Properties": {
+        "ServiceToken": { "Ref": "LambdaSubnetArn" },
+        "VpcCidr": { "Ref" : "VPCCIDR" }
+      }
+    }
+  },
+  "Outputs": {
+    "PublicSubnets": {
+      "Description": "Comma Separated Subnet Ids for Public",
+      "Value": { "Fn::If": [ "FourthAz",
+        { "Fn::Join": [ ",", [
+          { "Ref": "PublicSubnetAz1" },
+          { "Ref": "PublicSubnetAz2" },
+          { "Ref": "PublicSubnetAz3" },
+          { "Ref": "PublicSubnetAz4" }
+        ] ] },
+        { "Fn::If": [ "ThirdAz",
+          { "Fn::Join": [ ",", [
+            { "Ref": "PublicSubnetAz1" },
+            { "Ref": "PublicSubnetAz2" },
+            { "Ref": "PublicSubnetAz3" }
+          ] ] },
+          { "Fn::Join": [ ",", [
+            { "Ref": "PublicSubnetAz1" },
+            { "Ref": "PublicSubnetAz2" }
+          ] ] }
+        ] }
+      ] }
+    },
+    "PrivateSubnets": {
+      "Description": "Comma Separated Subnet Ids for Private",
+      "Value": { "Fn::If": [ "FourthAz",
+        { "Fn::Join": [ ",", [
+          { "Ref": "PrivateSubnetAz1" },
+          { "Ref": "PrivateSubnetAz2" },
+          { "Ref": "PrivateSubnetAz3" },
+          { "Ref": "PrivateSubnetAz4" }
+        ] ] },
+        { "Fn::If": [ "ThirdAz",
+          { "Fn::Join": [ ",", [
+            { "Ref": "PrivateSubnetAz1" },
+            { "Ref": "PrivateSubnetAz2" },
+            { "Ref": "PrivateSubnetAz3" }
+          ] ] },
+          { "Fn::Join": [ ",", [
+            { "Ref": "PrivateSubnetAz1" },
+            { "Ref": "PrivateSubnetAz2" }
+          ] ] }
+        ] }
+      ] }
+    },
+    "PublicSubnetAz1":{
+      "Description":"ID of PublicSubnetAz1",
+      "Value": { "Ref":"PublicSubnetAz1" }
+    },
+    "PublicSubnetAz2":{
+      "Description":"ID of PublicSubnetAz2",
+      "Value": { "Ref":"PublicSubnetAz2" }
+    },
+    "PublicSubnetAz3":{
+      "Description":"ID of PublicSubnetAz3",
+      "Value": { "Fn::If": [ "ThirdAz", { "Ref":"PublicSubnetAz3" }, "" ] }
+    },
+    "PublicSubnetAz4":{
+      "Description":"ID of PublicSubnetAz3",
+      "Value": { "Fn::If": [ "FourthAz", { "Ref":"PublicSubnetAz4" }, "" ] }
+    },
+    "PrivateSubnetAz1":{
+      "Description":"ID of PrivateSubnetAz1",
+      "Value": { "Ref":"PrivateSubnetAz1" }
+    },
+    "PrivateSubnetAz2":{
+      "Description":"ID of PrivateSubnetAz2",
+      "Value": { "Ref":"PrivateSubnetAz2" }
+    },
+    "PrivateSubnetAz3":{
+      "Description":"ID of PrivateSubnetAz3",
+      "Value": { "Fn::If": [ "ThirdAz", { "Ref":"PrivateSubnetAz3" }, "" ] }
+    },
+    "PrivateSubnetAz4":{
+      "Description":"ID of PrivateSubnetAz4",
+      "Value": { "Fn::If": [ "FourthAz", { "Ref":"PrivateSubnetAz4" }, "" ] }
+    },
+    "RDSSubnetGroup":{
+      "Description":"ID of RDSSubnetGroup",
+      "Value": { "Ref":"RDSSubnetGroup" }
+    },
+    "ElastiCacheSubnetGroup":{
+      "Description":"ID of ElastiCacheSubnetGroup",
+      "Value": { "Ref":"ElastiCacheSubnetGroup" }
+    }
+  }
+}

@@ -1,0 +1,410 @@
+{
+  "AWSTemplateFormatVersion":"2010-09-09",
+  "Description":"Network VPC Stack.",
+  "Parameters":{
+    "NumberOfAzs": {
+      "Description": "How Many Az's to use",
+      "Type": "Number",
+      "Default": "3",
+      "MaxValue": "4",
+      "MinValue": "2"
+    },
+    "Project" : {
+      "Description" : "Project Name",
+      "Type" : "String",
+      "Default" : "rbndemo",
+      "ConstraintDescription" : "must be a string."
+    },
+    "Environment" : {
+      "Description" : "Environment Name",
+      "Type" : "String",
+      "Default" : "dev-branch-1",
+      "ConstraintDescription" : "must be a string."
+    },
+    "InternalDomain": {
+      "Description": "The internal zone for dhcp.",
+      "Type": "String"
+    },
+    "GlobalCIDR":{
+      "Description":"Cidr of the global network",
+      "Type":"String",
+      "MinLength":"9",
+      "MaxLength":"18",
+      "Default":"10.238.43.0/24",
+      "AllowedPattern":"(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription":"must be a valid CIDR range of the form x.x.x.x/x."
+    },
+    "VPCCIDR" : {
+      "Description" : "CIDR block of the VPC.",
+      "Type" : "String",
+      "MinLength" : "9",
+      "MaxLength" : "18",
+      "Default": "10.0.0.0/16",
+      "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription" : "Must be valid CIDR notation (i.e. x.x.x.x/x)."
+    },
+    "PeerVPCCidr":{
+      "Description":"Cidr of the shared services vpc",
+      "Type":"String",
+      "Default":""
+    },
+    "MaskBit":{
+      "Description":"Desired mask bit length",
+      "Type":"Number",
+      "MinValue":"16",
+      "MaxValue":"28",
+      "ConstraintDescription":"must be a valid number between 16 and 28"
+    },
+    "ReservedCidrs":{
+      "Description":"Reserved vpc cidr blocks",
+      "Type":"CommaDelimitedList"
+    },
+    "LambdaVpcCidrArn": {
+      "Description": "Lambda vpc cidr arn",
+      "Type": "String",
+      "Default": ""
+    },
+    "PeerVPC": {
+      "Description": "VPC to peer with or empty string",
+      "Type": "String",
+      "Default": ""
+    },
+    "PublicPeerRouteTable": {
+      "Description": "Public Route Table",
+      "Type": "String"
+    },
+    "PrivatePeerRouteTableAz1": {
+      "Description": "Private Route Table Az1",
+      "Type": "String"
+    },
+    "PrivatePeerRouteTableAz2": {
+      "Description": "Private Route Table Az2",
+      "Type": "String"
+    },
+    "PrivatePeerRouteTableAz3": {
+      "Description": "Private Route Table Az3",
+      "Type": "String"
+    },
+    "PrivatePeerRouteTableAz4": {
+      "Description": "Private Route Table Az4",
+      "Type": "String"
+    }
+  },
+  "Conditions": { 
+    "PeerCondition": { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "PeerVPC" }, "" ] } ] },
+    "LambdaAvailable": { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "LambdaVpcCidrArn" }, "" ] } ] },
+    "ThirdAz": { "Fn::Or": [
+      { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "3" ] },
+      { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "4" ] }
+    ] },
+    "FourthAz": { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "4" ] },
+    "ThirdAzPeerCondition": {
+      "Fn::And": [
+      { "Fn::Or": [
+        { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "3" ] },
+        { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "4" ] }
+        ] },
+        { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "PeerVPC" }, "" ] } ] }
+     ]},
+    "FourthAzPeerCondition": {
+        "Fn::And": [
+            { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "4" ] },
+            { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "PeerVPC" }, "" ] } ] }
+        ] }
+  }, 
+  "Resources":{
+    "VPC":{
+      "Type":"AWS::EC2::VPC",
+      "Properties":{
+        "CidrBlock":{ "Fn::If": [ "LambdaAvailable", { "Ref": "CidrSelector" }, { "Ref": "VPCCIDR" } ] },
+    	"EnableDnsSupport" : "true",
+    	"EnableDnsHostnames" : "true",
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": ["-", [ { "Ref": "Environment" }, { "Ref": "Project" } ] ] } }
+        ]
+      }
+    },
+    "InternetGateway":{
+      "Type":"AWS::EC2::InternetGateway",
+      "Properties":{
+        "Tags" : [
+          { "Key" : "Name", "Value": "VPCInternetGateway" }
+        ]
+      }
+    },
+    "GatewayToInternet":{
+      "Type":"AWS::EC2::VPCGatewayAttachment",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "InternetGatewayId":{ "Ref":"InternetGateway"}
+      }
+    },
+    "VirtualPrivateGateway": {
+      "Type": "AWS::EC2::VPNGateway",
+      "Properties": {
+        "Type": "ipsec.1",
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "VirtualPrivateGateway" ] ] } }
+        ]
+      }
+    },
+    "GatewayToCorp":{
+      "Type":"AWS::EC2::VPCGatewayAttachment",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "VpnGatewayId":{ "Ref":"VirtualPrivateGateway"}
+      }
+    },
+    "PeeringConnection": {
+      "Condition": "PeerCondition",
+      "Type" : "AWS::EC2::VPCPeeringConnection",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "PeerVpcId": { "Ref": "PeerVPC" },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": [ "-", [ { "Ref": "Environment" }, "Peering" ] ] } }
+        ]
+      }
+    },
+    "PublicRouteTable":{
+      "Type":"AWS::EC2::RouteTable",
+      "Properties":{
+        "VpcId": { "Ref":"VPC" },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": ["-",[ {"Ref": "Environment"}, "PublicRouteTable" ]]}}
+        ]
+      }
+    },
+    "PublicRoute":{
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PublicRouteTable" },
+        "DestinationCidrBlock":"0.0.0.0/0",
+        "GatewayId":{ "Ref":"InternetGateway" }
+      }
+    },
+    "PrivateRouteTableAz1":{
+      "Type":"AWS::EC2::RouteTable",
+      "Properties":{
+      "VpcId":{ "Ref":"VPC" },
+      "Tags" : [
+        { "Key" : "Name", "Value": { "Fn::Join": ["-",[ {"Ref": "Environment"}, "PrivateRouteTableAz1" ]]}}
+      ]
+     }
+    },
+    "PublicVPNRoute1":{
+      "DependsOn": [ "GatewayToCorp" ],
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PublicRouteTable" },
+        "DestinationCidrBlock": { "Ref": "GlobalCIDR" },
+        "GatewayId":{ "Ref":"VirtualPrivateGateway" }
+      }
+    },
+    "PublicVPNRoute2":{
+      "Condition": "PeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PublicRouteTable" },
+        "DestinationCidrBlock":{ "Ref": "PeerVPCCidr" },
+        "VpcPeeringConnectionId":{ "Ref":"PeeringConnection" }
+      }
+    },
+    "PrivateVPNRoute1Az1":{
+      "Condition": "PeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz1" },
+        "DestinationCidrBlock":{ "Ref": "PeerVPCCidr" },
+        "VpcPeeringConnectionId":{ "Ref":"PeeringConnection" }
+      }
+    },
+    "PrivateRouteTableAz2":{
+      "Type":"AWS::EC2::RouteTable",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": ["-",[ {"Ref": "Environment"}, "PrivateRouteTableAz2" ]]}}
+        ]
+      }
+    },
+    "PrivateVPNRoute1Az2":{
+      "Condition": "PeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz2" },
+        "DestinationCidrBlock":{ "Ref": "PeerVPCCidr" },
+        "VpcPeeringConnectionId":{ "Ref":"PeeringConnection" }
+      }
+    },
+    "PrivateRouteTableAz3":{
+      "Condition": "ThirdAz",
+      "Type":"AWS::EC2::RouteTable",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "Tags" : [
+         { "Key" : "Name", "Value": { "Fn::Join": ["-",[ {"Ref": "Environment"}, "PrivateRouteTableAz3" ]]}}
+        ]
+      }
+    },
+    "PrivateVPNRoute1Az3":{
+      "Condition": "ThirdAzPeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz3" },
+        "DestinationCidrBlock":{ "Ref": "PeerVPCCidr" },
+        "VpcPeeringConnectionId":{ "Ref":"PeeringConnection" }
+      }
+    },
+    "PrivateRouteTableAz4":{
+      "Condition": "FourthAz",
+      "Type":"AWS::EC2::RouteTable",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": ["-",[ {"Ref": "Environment"}, "PrivateRouteTableAz4" ]]}}
+        ]
+      }
+    },
+    "PrivateVPNRoute1Az4":{
+      "Condition": "FourthAzPeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz4" },
+        "DestinationCidrBlock":{ "Ref": "PeerVPCCidr" },
+        "VpcPeeringConnectionId":{ "Ref":"PeeringConnection" }
+      }
+    },
+    "PublicPeerRoute":{
+      "Condition": "PeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref": "PublicPeerRouteTable" },
+        "DestinationCidrBlock": { "Fn::If": [ "LambdaAvailable", { "Ref": "CidrSelector" }, { "Ref": "VPCCIDR" } ] },
+        "VpcPeeringConnectionId": { "Ref":"PeeringConnection" }
+      }
+    },
+    "PrivatePeerRouteAz1":{
+      "Condition": "PeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref": "PrivatePeerRouteTableAz1" },
+        "DestinationCidrBlock": { "Fn::If": [ "LambdaAvailable", { "Ref": "CidrSelector" }, { "Ref": "VPCCIDR" } ] },
+        "VpcPeeringConnectionId": { "Ref":"PeeringConnection" }
+      }
+    },
+    "PrivatePeerRouteAz2":{
+      "Condition": "PeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref": "PrivatePeerRouteTableAz2" },
+        "DestinationCidrBlock": { "Fn::If": [ "LambdaAvailable", { "Ref": "CidrSelector" }, { "Ref": "VPCCIDR" } ] },
+        "VpcPeeringConnectionId": { "Ref":"PeeringConnection" }
+     }
+    },
+    "PrivatePeerRouteAz3":{
+      "Condition":"ThirdAzPeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref": "PrivatePeerRouteTableAz3" },
+        "DestinationCidrBlock": { "Fn::If": [ "LambdaAvailable", { "Ref": "CidrSelector" }, { "Ref": "VPCCIDR" } ] },
+        "VpcPeeringConnectionId": { "Ref":"PeeringConnection" }
+     }
+    },
+    "PrivatePeerRouteAz4":{
+      "Condition":"FourthAzPeerCondition",
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref": "PrivatePeerRouteTableAz4" },
+        "DestinationCidrBlock": { "Fn::If": [ "LambdaAvailable", { "Ref": "CidrSelector" }, { "Ref": "VPCCIDR" } ] },
+        "VpcPeeringConnectionId": { "Ref":"PeeringConnection" }
+      }
+    },
+    "DhcpOptions":{
+      "Type":"AWS::EC2::DHCPOptions",
+      "Properties":{
+        "DomainName": { "Ref": "InternalDomain" },
+        "DomainNameServers":[ "AmazonProvidedDNS" ],
+        "Tags" : [
+          { "Key" : "Name", "Value": { "Fn::Join": ["-", [ { "Ref": "Environment" }, { "Ref": "Project" } ] ] } }
+        ]
+      }
+    },
+    "DHCPOptionsAssociation":{
+      "Type":"AWS::EC2::VPCDHCPOptionsAssociation",
+      "Properties":{
+        "VpcId":{ "Ref":"VPC" },
+        "DhcpOptionsId":{ "Ref":"DhcpOptions" }
+      }
+    },
+    "S3Endpoint": {
+      "Type": "AWS::EC2::VPCEndpoint",
+      "Properties": {
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect" : "Allow",
+            "Principal": "*",
+            "Action":["s3:*"],
+            "Resource":["arn:aws:s3:::*"]
+          }]
+        },
+        "RouteTableIds": { "Fn::If": [
+          "FourthAz",
+          [{"Ref":"PublicRouteTable"},{"Ref": "PrivateRouteTableAz1"},{"Ref":"PrivateRouteTableAz2"},{"Ref":"PrivateRouteTableAz3"},{"Ref":"PrivateRouteTableAz4"}],
+          { "Fn::If": [
+            "ThirdAz",
+            [{"Ref":"PublicRouteTable"},{"Ref": "PrivateRouteTableAz1"},{"Ref":"PrivateRouteTableAz2"},{"Ref":"PrivateRouteTableAz3"}],
+            [{"Ref":"PublicRouteTable"},{"Ref": "PrivateRouteTableAz1"},{"Ref":"PrivateRouteTableAz2"}]
+          ]}
+        ]},
+        "ServiceName": { "Fn::Join":["",["com.amazonaws.", { "Ref": "AWS::Region"}, ".s3"]]},
+        "VpcId": {"Ref": "VPC"}
+      }
+    },
+    "CidrSelector": {
+      "Condition": "LambdaAvailable",
+      "Type": "Custom::CidrSelector",
+        "Properties": {
+          "ServiceToken": { "Ref": "LambdaVpcCidrArn" },
+          "GlobalCidr": { "Ref" : "GlobalCIDR" },
+          "MaskBit": { "Ref": "MaskBit" },
+          "Reserved": { "Ref": "ReservedCidrs" }
+        }
+     }
+  },
+  "Outputs":{
+    "VPC":{
+      "Description": "Pysical ID of VPC",
+      "Value": { "Ref": "VPC" }
+    },
+    "VPCCIDR":{
+      "Description": "CIDR of newly created VPC",
+      "Value": { "Fn::If": [ "LambdaAvailable", { "Ref": "CidrSelector" }, { "Ref": "VPCCIDR" } ] }
+    },
+    "PublicRouteTable": {
+      "Description": "Physical Id of PublicRouteTable",
+      "Value": { "Ref": "PublicRouteTable" }
+    },
+    "PrivateRouteTableAz1": {
+      "Description": "Physical Id of PrivateRouteTableAz1",
+      "Value": { "Ref": "PrivateRouteTableAz1" }
+    },
+    "PrivateRouteTableAz2": {
+      "Description": "Physical Id of PrivateRouteTableAz2",
+      "Value": { "Ref": "PrivateRouteTableAz2" }
+    },
+    "PrivateRouteTableAz3": {
+      "Description": "Physical Id of PrivateRouteTableAz3",
+      "Value": { "Fn::If": [ "ThirdAz", { "Ref": "PrivateRouteTableAz3" }, "" ] }
+    },
+    "PrivateRouteTableAz4": {
+      "Description": "Physical Id of PrivateRouteTableAz4",
+      "Value": { "Fn::If": [ "FourthAz", { "Ref": "PrivateRouteTableAz4" }, "" ] }
+    },
+    "S3Endpoint": {
+      "Description": "Physical ID of the S3 Endpoint",
+      "Value": { "Ref": "S3Endpoint" }
+    }
+  }
+}

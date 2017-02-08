@@ -1,0 +1,118 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "ESC IAM",
+  "Parameters": {
+    "CloudToolsBucket": {
+      "Description": "Name of the S3 bucket for cloud tools.",
+      "Type": "String"
+    }
+  },
+  "Mappings": {},
+  "Conditions": {},
+  "Resources": {
+    "IAMInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [ { "Ref": "ECSServiceRole" } ]
+      }
+    },
+    "ECSServiceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ecs.amazonaws.com",
+                  "ec2.amazonaws.com",
+		  "application-autoscaling.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/AWSCodePipelineCustomActionAccess"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "ecs-service",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "elasticfilesystem:DescribeTags",
+                    "elasticfilesystem:DescribeMountTargets",
+                    "elasticfilesystem:DescribeFileSystems"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:*"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "elasticloadbalancing:Describe*",
+                    "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+                    "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+                    "elasticloadbalancing:DeregisterTargets",
+                    "elasticloadbalancing:RegisterTargets",
+                    "ec2:Describe*",
+                    "ec2:AuthorizeSecurityGroupIngress",
+                    "ecr:*",
+                    "ecs:*",
+		            "application-autoscaling:*",
+		            "cloudwatch:DescribeAlarms",
+		            "cloudwatch:PutMetricAlarm"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "AllowS3ListAllBuckets",
+                  "Action": [
+                    "s3:ListAllMyBuckets"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "AllowS3CloudToolsBucket",
+                  "Action": "s3:*",
+                  "Effect": "Allow",
+                  "Resource": [
+                    { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "CloudToolsBucket" } ] ] },
+                    { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "CloudToolsBucket" }, "/*" ] ] }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "IAMInstanceProfile":{
+      "Description":"ECS IAM Instance Profile",
+      "Value": { "Ref":"IAMInstanceProfile" }
+    },
+    "ECSServiceRole":{
+      "Description":"ECS Service Role",
+      "Value": { "Ref":"ECSServiceRole" }
+    }
+  }
+}
+

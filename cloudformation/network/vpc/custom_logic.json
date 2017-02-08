@@ -1,0 +1,108 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS Lambda function",
+  "Parameters": {
+    "CloudToolsBucket": {
+      "Type": "String",
+      "Description": "S3 bucket where lambda function resides"
+    },
+    "LambdaRoleArn": {
+      "Type": "String",
+      "Description": "Lambda Role created in IAM stack"
+    },
+    "Release" : {
+      "Description" : "Release Number",
+      "Type" : "String",
+      "Default" : "0.0.1"
+    }
+  },
+  "Resources": {
+    "LambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "lambda_handler.lambda_handler",
+        "Role": { "Ref" : "LambdaRoleArn" },
+        "Code": {
+          "S3Bucket" : { "Ref": "CloudToolsBucket" },
+          "S3Key" : { "Fn::Join": [ "/", [ { "Ref": "Release" }, "lambda/vpc_cidr.zip" ] ] }
+        },
+        "Timeout" : "60",
+          "Runtime": "python2.7"
+        }
+    },
+    "LambdaAzFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "lambda_handler.lambda_handler",
+        "Role": { "Ref" : "LambdaRoleArn" },
+        "Code": {
+          "S3Bucket" : { "Ref": "CloudToolsBucket" },
+          "S3Key" : { "Fn::Join": [ "/", [ { "Ref": "Release" }, "lambda/number_azs.zip" ] ] }
+        },
+        "Timeout" : "60",
+        "Runtime": "python2.7"
+      }
+    },
+    "LambdaSubnetFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "lambda_handler.lambda_handler",
+        "Role": { "Ref" : "LambdaRoleArn" },
+        "Code": {
+          "S3Bucket" : { "Ref": "CloudToolsBucket" },
+          "S3Key" : { "Fn::Join": [ "/", [ { "Ref": "Release" }, "lambda/subnets.zip" ] ] }
+        },
+        "Timeout" : "60",
+        "Runtime": "python2.7"
+      }
+    },
+    "LambdaPeeringFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "lambda_handler.lambda_handler",
+        "Role": { "Ref" : "LambdaRoleArn" },
+        "Code": {
+          "S3Bucket" : { "Ref": "CloudToolsBucket" },
+          "S3Key" : { "Fn::Join": [ "/", [ { "Ref": "Release" }, "lambda/peer.zip" ] ] }
+        },
+        "Timeout" : "60",
+        "Runtime": "python2.7"
+      }
+    },
+    "LambdaAttachHostedZoneFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "lambda_handler.lambda_handler",
+        "Role": { "Ref" : "LambdaRoleArn" },
+        "Code": {
+          "S3Bucket" : { "Ref": "CloudToolsBucket" },
+          "S3Key" : { "Fn::Join": [ "", [ { "Ref": "Release" }, "/lambda/attach_hosted_zone.zip" ] ] }
+        },
+        "Timeout" : "60",
+        "Runtime": "python2.7"
+      }
+    }
+  },
+  "Outputs": {
+    "LambdaVpcCidrArn": {
+      "Description": "Lambda function arn",
+      "Value": { "Fn::GetAtt": [ "LambdaFunction", "Arn"] }
+    },
+    "LambdaAzArn": {
+      "Description": "Lambda # AZ per region function arn",
+      "Value": { "Fn::GetAtt": [ "LambdaAzFunction", "Arn"] }
+    },
+    "LambdaSubnetArn": {
+      "Description": "Lambda subnet selector function arn",
+      "Value": { "Fn::GetAtt": [ "LambdaSubnetFunction", "Arn"] }
+    },
+    "LambdaPeeringArn": {
+      "Description": "Lambda peering function arn",
+      "Value": { "Fn::GetAtt": [ "LambdaPeeringFunction", "Arn"] }
+    },
+    "LambdaAttachHostedZoneArn": {
+      "Description": "Lambda attach hosted zone function arn",
+      "Value": { "Fn::GetAtt": [ "LambdaAttachHostedZoneFunction", "Arn"] }
+    }
+  }
+}

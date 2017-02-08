@@ -1,0 +1,200 @@
+{
+  "AWSTemplateFormatVersion":"2010-09-09",
+  "Description":"Nat Gateway Network Stack.",
+  "Parameters":{
+    "NumberOfAzs": {
+      "Description": "How Many Az's to use",
+      "Type": "Number",
+      "Default": "3",
+      "MaxValue": "4",
+      "MinValue": "2"
+    },
+    "Project" : {
+      "Description" : "Project Name",
+      "Type" : "String",
+      "Default" : "Partner-Upload",
+      "ConstraintDescription" : "must be a string."
+    },
+    "Environment" : {
+      "Description" : "Environment Name",
+      "Type" : "String",
+      "Default" : "dev-branch-1",
+      "ConstraintDescription" : "must be a string."
+    },
+    "VPC": {
+      "Description": "VPC ID",
+      "Type": "AWS::EC2::VPC::Id"
+    },
+    "PrivateRouteTableAz1": {
+      "Description": "PrivateAz1 Route Table ID",
+      "Type": "String"
+    },
+    "PrivateRouteTableAz2": {
+      "Description": "PrivateAz2 Route Table ID",
+      "Type": "String"
+    },
+    "PrivateRouteTableAz3": {
+      "Description": "PrivateAz3 Route Table ID",
+      "Type": "String"
+    },
+    "PrivateRouteTableAz4": {
+      "Description": "PrivateAz4 Route Table ID",
+      "Type": "String"
+    },
+    "PublicSubnetAz1": {
+      "Description": "Subnet for Public Az1",
+      "Type": "AWS::EC2::Subnet::Id"
+    },
+    "PublicSubnetAz2": {
+      "Description": "Subnet for Public Az2",
+      "Type": "AWS::EC2::Subnet::Id"
+    },
+    "PublicSubnetAz3": {
+      "Description": "Subnet for Public Az3",
+      "Type": "String"
+    },
+    "PublicSubnetAz4": {
+      "Description": "Subnet for Public Az4",
+      "Type": "String"
+    }
+  },
+  "Mappings":{
+  },
+  "Conditions": {
+    "ThirdAz": { "Fn::Or": [
+      { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "3" ] },
+      { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "4" ] }
+    ] },
+    "FourthAz": { "Fn::Equals": [ { "Ref": "NumberOfAzs" }, "4" ] }
+  },
+  "Resources":{
+    "PrivateRouteAz1":{
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz1" },
+        "DestinationCidrBlock":"0.0.0.0/0",
+        "NatGatewayId": { "Ref": "NatGatewayAz1" }
+      }
+    },
+    "PrivateRouteAz2":{
+      "Type":"AWS::EC2::Route",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz2" },
+        "DestinationCidrBlock":"0.0.0.0/0",
+        "NatGatewayId": { "Ref": "NatGatewayAz2" }
+      }
+    },
+    "PrivateRouteAz3":{
+      "Type":"AWS::EC2::Route",
+      "Condition": "ThirdAz",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz3" },
+        "DestinationCidrBlock":"0.0.0.0/0",
+        "NatGatewayId": { "Ref": "NatGatewayAz3" }
+      }
+    },
+    "PrivateRouteAz4":{
+      "Type":"AWS::EC2::Route",
+      "Condition": "FourthAz",
+      "Properties":{
+        "RouteTableId":{ "Ref":"PrivateRouteTableAz4" },
+        "DestinationCidrBlock":"0.0.0.0/0",
+        "NatGatewayId": { "Ref": "NatGatewayAz4" }
+      }
+    },
+    "NatEipAz1" : {
+      "Type" : "AWS::EC2::EIP",
+      "Properties" : {
+         "Domain" : "vpc"
+      }
+    },
+    "NatEipAz2" : {
+      "Type" : "AWS::EC2::EIP",
+      "Properties" : {
+         "Domain" : "vpc"
+      }
+    },
+    "NatEipAz3" : {
+      "Type" : "AWS::EC2::EIP",
+      "Condition": "ThirdAz",
+      "Properties" : {
+         "Domain" : "vpc"
+      }
+    },
+    "NatEipAz4" : {
+      "Type" : "AWS::EC2::EIP",
+      "Condition": "FourthAz",
+      "Properties" : {
+         "Domain" : "vpc"
+      }
+    },
+    "NatGatewayAz1": {
+      "Type" : "AWS::EC2::NatGateway",
+      "Properties" : {
+        "AllocationId" : { "Fn::GetAtt": [ "NatEipAz1", "AllocationId" ] },
+        "SubnetId" : { "Ref": "PublicSubnetAz1" }
+      }
+    },
+    "NatGatewayAz2": {
+      "Type" : "AWS::EC2::NatGateway",
+      "Properties" : {
+        "AllocationId" : { "Fn::GetAtt": [ "NatEipAz2", "AllocationId" ] },
+        "SubnetId" : { "Ref": "PublicSubnetAz2" }
+      }
+    },
+    "NatGatewayAz3": {
+      "Type" : "AWS::EC2::NatGateway",
+      "Condition": "ThirdAz",
+      "Properties" : {
+        "AllocationId" : { "Fn::GetAtt": [ "NatEipAz3", "AllocationId" ] },
+        "SubnetId" : { "Ref": "PublicSubnetAz3" }
+      }
+    },
+    "NatGatewayAz4": {
+      "Type" : "AWS::EC2::NatGateway",
+      "Condition": "FourthAz",
+      "Properties" : {
+        "AllocationId" : { "Fn::GetAtt": [ "NatEipAz4", "AllocationId" ] },
+        "SubnetId" : { "Ref": "PublicSubnetAz4" }
+      }
+    }
+  },
+  "Outputs":{
+    "NatGatewayAz1": {
+      "Description": "PhysicalId of Nat Gateway Az1",
+      "Value": { "Ref": "NatGatewayAz1" }
+    },
+    "NatGatewayAz2": {
+      "Description": "PhysicalId of Nat Gateway Az2",
+      "Value": { "Ref": "NatGatewayAz2" }
+    },
+    "NatGatewayAz3": {
+      "Condition": "ThirdAz",
+      "Description": "PhysicalId of Nat Gateway Az3",
+      "Value": { "Ref": "NatGatewayAz3" }
+    },
+    "NatGatewayAz4": {
+      "Condition": "FourthAz",
+      "Description": "PhysicalId of Nat Gateway Az4",
+      "Value": { "Ref": "NatGatewayAz4" }
+    },
+    "NatEipAz1": {
+      "Description": "EC2 Elastic IP for Az1",
+      "Value": { "Ref": "NatEipAz1" }
+    },
+    "NatEipAz2": {
+      "Description": "EC2 Elastic IP for Az2",
+      "Value": { "Ref": "NatEipAz2" }
+    },
+    "NatEipAz3": {
+      "Condition": "ThirdAz",
+      "Description": "EC2 Elastic IP for Az3",
+      "Value": { "Ref": "NatEipAz3" }
+    },
+    "NatEipAz4": {
+      "Condition": "FourthAz",
+      "Description": "EC2 Elastic IP for Az4",
+      "Value": { "Ref": "NatEipAz4" }
+    }
+  }
+}

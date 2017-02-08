@@ -1,0 +1,402 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "ASG",
+
+  "Parameters": {
+    "Role": {
+      "Description": "Name which will be applied to EC2 instances in the ASG (e.g. 'web' or 'app').",
+      "Type": "String",
+      "Default": "ROLE",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Environment": {
+      "Description": "Environment name assigned to EC2 instances (e.g. 'prod' or 'test').",
+      "Type": "String",
+      "Default": "ENV",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Release" : {
+      "Description" : "Release Number",
+      "Type" : "String",
+      "Default" : "0.0.1"
+    },
+    "InstanceType": {
+      "Description": "The EC2 instance type assigned to the Launch Configuration for EC2 instances in the ASG.",
+      "Type": "String",
+      "Default": "t2.small",
+      "ConstraintDescription": "Must be a string."
+    },
+    "AMI": {
+      "Description": "The AMI ID assigned to the Launch Configuration for EC2 instances in the ASG.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "BootstrapFileName": {
+      "Description": "The config file name",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "AssociatePublicIPAddress": {
+      "Description": "Whether or not the EC2 instances in the ASG will be given a public IP address.",
+      "Type": "String",
+      "Default": "False",
+      "AllowedValues" : ["True", "False"],
+      "ConstraintDescription": "Must be 'True' or 'False'."
+    },
+    "RootVolumeDevice": {
+      "Description": "Device to attach Root Volume",
+      "Type": "String",
+      "Default": "/dev/xvda",
+      "AllowedValues": ["/dev/sda1", "/dev/xvda"]
+    },
+    "RootEBSVolumeSize": {
+      "Description": "Size in GB of the root volume to attach to this EC2 instance.",
+      "Type": "Number",
+      "Default": "10",
+      "MinValue" : "10",
+      "MaxValue" : "1024"
+    },
+    "EBSVolumeType": {
+      "Description": "Type of EBS volume.",
+      "Type": "String",
+      "Default": "standard",
+      "AllowedValues" : ["standard", "gp2"],
+      "ConstraintDescription": "Must be 'standard' or 'gp2'."
+    },
+    "DeleteEBSVolumesOnTermination": {
+      "Description": "Should the EBS volumes be deleted upon termination.",
+      "Type": "String",
+      "Default": "True",
+      "AllowedValues" : ["True", "False"],
+      "ConstraintDescription": "Must be 'True' or 'False'."
+    },
+    "ASGHealthCheckType": {
+      "Description": "Health check type for the ASG.",
+      "Type": "String",
+      "Default": "EC2",
+      "AllowedValues" : ["EC2"],
+      "ConstraintDescription": "Must be 'EC2'."
+    },
+    "HealthCheckGracePeriod": { 
+      "Description": "The length of time in seconds after a new EC2 instance comes into service that Auto Scaling starts checking its health.",
+      "Type": "Number",
+      "Default": "300",
+      "MinValue": "1",
+      "ConstraintDescription": "Must be an integer."
+    },
+    "MaxInstancesCount": {
+      "Description": "Maximum number of EC2 instances in the ASG.",
+      "Type": "Number",
+      "Default": "2",
+      "MinValue": "0",
+      "MaxValue": "10000"
+    },
+    "MinInstancesCount": {
+      "Description": "Minimum number of EC2 instances in the ASG.",
+      "Type": "Number",
+      "Default": "2",
+      "MinValue": "0",
+      "MaxValue": "1000"
+    },
+    "ScaleUpAdjustment": {
+      "Description": "Number of instances to add when scaling up.",
+      "Type": "Number",
+      "Default": "2"
+    },
+    "ScaleUpCooldown": {
+      "Description": "Number of seconds for cooldown between scale-up events.",
+      "Type": "Number",
+      "Default": "300"
+    },
+    "ScaleDownAdjustment": {
+      "Description": "Number of instances to remove when scaling down. Must be a negative value.",
+      "Type": "String",
+      "Default": "-1"
+    },
+    "ScaleDownCooldown": {
+      "Description": "Number of seconds for cooldown between scale-down events.",
+      "Type": "Number",
+      "Default": "300"
+    },
+    "HighCPUThreshold": {
+      "Description": "Average CPU threshold for scaling up EC2 instances in ASG. (Greater than or equal to)",
+      "Type": "Number",
+      "Default": "75",
+      "MinValue": "1"
+    },
+    "HighCPUPeriod": {
+      "Description": "The time over which the specified statistic is applied. You must specify a time in seconds that is also a multiple of 60.",
+      "Type": "Number",
+      "Default": "60",
+      "MinValue": "60",
+      "ConstraintDescription": "Must be an integer that is a multiple of 60."
+    },
+    "LowCPUThreshold": {
+      "Description": "Average CPU threshold for scaling down EC2 instances in ASG. (Less than or equal to)",
+      "Type": "Number",
+      "Default": "25",
+      "MinValue": "1"
+    },
+    "LowCPUPeriod": {
+      "Description": "The time over which the specified statistic is applied. You must specify a time in seconds that is also a multiple of 60.",
+      "Type": "Number",
+      "Default": "60",
+      "MinValue": "60",
+      "ConstraintDescription": "Must be an integer that is a multiple of 60."
+    },
+    "RollingUpdateMinInstancesInService": {
+      "Description": "Minimum number of EC2 instances to remain in service during rolling update.",
+      "Type": "Number",
+      "Default": "1",
+      "MinValue": "1",
+      "MaxValue": "10000"
+    },
+    "RollingUpdateMaxBatchSize": {
+      "Description": "Maximum number of EC2 instances for batch during rolling update.",
+      "Type": "Number",
+      "Default": "1",
+      "MinValue": "1",
+      "MaxValue": "10000"
+    },
+    "RollingUpdatePauseTime": {
+      "Description": "Amount of time to pause before adding or removing autoscaling instances during rolling update.",
+      "Type": "String",
+      "Default": "PT0M30S"
+    },
+    "IAMInstanceProfile": {
+      "Description":"ARN of the instance profile associated with the IAM role for the instance. The instance profile contains the IAM role.",
+      "Type":"String",
+      "Default":""
+    },
+    "InstanceSubnetList": {
+      "Description":"A list of subnet IDs in your VPC to attach to your EC2 instances.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "InstanceSecurityGroups": {
+      "Description": "A list of security groups assigned to EC2 instances in the ASG.",
+      "Type": "String",
+      "Default": ""
+    },
+    "CloudWatchAlarmSNSTopic": {
+      "Description": "SNS topic to send AutoScaling Events to.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "EC2KeyPair": {
+      "Description": "Name of the EC2 key pair assigned to instances in the ASG.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be an existing EC2 key pair."
+    },
+    "BootstrapBucket": {
+      "Description": "The name of the S3 bucket containing provision/bootstrap scripts to be executed within UserData.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "ConfigBucket": {
+      "Description": "The name of the S3 bucket containing Config to be executed within UserData.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Project": {
+      "Description": "Project name.",
+      "Type": "String",
+      "Default": "PROJECT",
+      "ConstraintDescription": "Must be a string."
+    }
+
+  },
+
+  "Mappings": {
+  },
+
+  "Conditions": {
+
+  },
+
+  "Resources": {
+
+    "ASG": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+        "UpdatePolicy": {
+          "AutoScalingRollingUpdate": {
+            "MinInstancesInService": { "Ref": "RollingUpdateMinInstancesInService" },
+            "MaxBatchSize": { "Ref": "RollingUpdateMaxBatchSize" },
+            "PauseTime": { "Ref": "RollingUpdatePauseTime" }
+          }
+        },
+      "Properties": {
+        "VPCZoneIdentifier": { "Ref": "InstanceSubnetList" },
+        "LaunchConfigurationName": { "Ref": "ASGLaunchConfig" },
+        "HealthCheckType": { "Ref": "ASGHealthCheckType" },
+        "HealthCheckGracePeriod": { "Ref": "HealthCheckGracePeriod" }, 
+        "MaxSize": { "Ref": "MaxInstancesCount" },
+        "MinSize": { "Ref": "MinInstancesCount" },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [ { "Ref": "Environment" }, "-", { "Ref": "Role" }, "-ASG" ]
+              ]
+            },
+            "PropagateAtLaunch": "true"
+          },
+          {
+            "Key": "role",
+            "Value": { "Ref": "Role" },
+            "PropagateAtLaunch": "true" 
+          }
+        ]
+      },
+      "DependsOn": []
+    },
+    "ASGLaunchConfig": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "AssociatePublicIpAddress": { "Ref": "AssociatePublicIPAddress" },
+        "ImageId": { "Ref": "AMI" },
+        "KeyName": { "Ref": "EC2KeyPair" },
+        "IamInstanceProfile": { "Ref": "IAMInstanceProfile" },
+        "SecurityGroups": [ { "Ref": "InstanceSecurityGroups" } ],
+        "InstanceType": { "Ref": "InstanceType" },
+        "BlockDeviceMappings" : [ 
+          { 
+            "DeviceName" : { "Ref": "RootVolumeDevice" },
+            "Ebs" : { "VolumeSize" : { "Ref" : "RootEBSVolumeSize" }, "VolumeType" : { "Ref" : "EBSVolumeType" }, "DeleteOnTermination" : { "Ref" : "DeleteEBSVolumesOnTermination" } }
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": { "Fn::Join": ["", [
+            "#!/usr/bin/env bash\n",
+            "if [ $(which apt-get) ] ; then", "\n",
+            "export DEBIAN_FRONTEND=noninteractive", "\n",
+            "apt-get update", "\n",
+            "apt-get -y install python-pip", "\n",
+            "elif [ $(which yum) ] ; then", "\n",
+            "yum install epel-release -y", "\n",
+	    "yum makecache fast", "\n",
+            "yum -y install python-pip", "\n",
+            "fi", "\n",
+	    "rm -rf /tmp/pip_build_root", "\n",
+            "pip install --upgrade awscli", "\n",
+            "aws s3 cp s3://", { "Ref" : "BootstrapBucket" }, "/", { "Ref": "BootstrapFileName" },
+              " /usr/local/bin/", { "Ref" : "BootstrapFileName" },
+              " --region ", { "Ref" : "AWS::Region" }, " \n",
+            "chmod 770 /usr/local/bin/", { "Ref" : "BootstrapFileName" }, " \n",
+            "/usr/local/bin/", { "Ref": "BootstrapFileName" },
+              " -b ", { "Ref": "BootstrapBucket" },
+              " -c ", { "Ref": "ConfigBucket" },
+              " -n ", { "Ref": "Role" },
+              " -p ", { "Ref": "Project" },
+              " -e ", { "Ref": "Environment" },
+              " -r ", { "Ref": "Release" },
+              " -s ", { "Ref": "CloudWatchAlarmSNSTopic" }, " \n"
+          ] ] }
+        }
+      }
+    },
+    "CloudWatchAlarmEC2Status": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "EC2 Health Check Status Alarm",
+        "MetricName": "StatusCheckFailed",
+        "Namespace": "AWS/EC2",
+        "Statistic": "Average",
+        "Period": "60",
+        "EvaluationPeriods": "1",
+        "Threshold": "1",
+        "AlarmActions": [ { "Ref": "CloudWatchAlarmSNSTopic" } ],
+        "OKActions": [],
+        "Dimensions": [
+          {
+            "Name": "AutoScalingGroupName",
+            "Value": { "Ref": "ASG" }
+          }
+        ],
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+      }
+    },
+    "CloudWatchAlarmHighCPU": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "High CPU",
+        "MetricName": "CPUUtilization",
+        "Namespace": "AWS/EC2",
+        "Statistic": "Average",
+        "Period": { "Ref": "HighCPUPeriod" },
+        "EvaluationPeriods": "1",
+        "Threshold": { "Ref": "HighCPUThreshold" },
+        "AlarmActions": [ { "Ref": "ScaleUpPolicy" }, { "Ref": "CloudWatchAlarmSNSTopic" } ],
+        "OKActions": [],
+        "Dimensions": [
+          {
+            "Name": "AutoScalingGroupName",
+            "Value": { "Ref": "ASG" }
+          }
+        ],
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+      }
+    },
+    "CloudWatchAlarmLowCPU": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Low CPU",
+        "MetricName": "CPUUtilization",
+        "Namespace": "AWS/EC2",
+        "Statistic": "Average",
+        "Period": { "Ref": "LowCPUPeriod" },
+        "EvaluationPeriods": "1",
+        "Threshold": { "Ref": "LowCPUThreshold" },
+        "AlarmActions": [ { "Ref": "ScaleDownPolicy" } ],
+        "OKActions": [],
+        "Dimensions": [
+          {
+            "Name": "AutoScalingGroupName",
+            "Value": { "Ref": "ASG" }
+          }
+        ],
+        "ComparisonOperator": "LessThanOrEqualToThreshold"
+      }
+    },
+    "ScaleUpPolicy": {
+      "Type": "AWS::AutoScaling::ScalingPolicy",
+      "Properties": {
+        "AdjustmentType": "ChangeInCapacity",
+        "AutoScalingGroupName": { "Ref": "ASG" },
+        "Cooldown": { "Ref": "ScaleUpCooldown" },
+        "ScalingAdjustment": { "Ref": "ScaleUpAdjustment" }
+      }
+    },
+    "ScaleDownPolicy": {
+      "Type": "AWS::AutoScaling::ScalingPolicy",
+      "Properties": {
+        "AdjustmentType": "ChangeInCapacity",
+        "AutoScalingGroupName": { "Ref": "ASG" },
+        "Cooldown": { "Ref": "ScaleDownCooldown" },
+        "ScalingAdjustment": { "Ref": "ScaleDownAdjustment" }
+      }
+    }
+
+  },
+
+  "Outputs": {
+    "ScaleUpPolicy": {
+      "Description": "Id of Policy for Scale up",
+      "Value": { "Ref": "ScaleUpPolicy" }
+    },
+    "ScaleDownPolicy": {
+      "Description": "Id of Policy for Scale Down",
+      "Value": { "Ref": "ScaleDownPolicy" }
+    }
+
+
+  }
+
+}

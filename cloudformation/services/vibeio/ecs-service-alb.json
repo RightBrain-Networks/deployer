@@ -1,0 +1,620 @@
+{
+
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description": "Creates the Elastic Load Balancer, ECS Service, and Task Definition for a microservice to be run in ECS.",
+  "Parameters" : {
+    "IsELBInternal": {
+      "Description": "Will this ELB be internal? ('True' for internal or 'False' for internet-facing')",
+      "Type": "String",
+      "Default": "False",
+      "AllowedValues" : ["True", "False"],
+      "ConstraintDescription": "Must be 'True' or 'False'."
+    },
+    "UseELBCookieStickinessPolicy": {
+      "Description": "Will this ELB have a cookie stickiness policy? ('True' for internal or 'False' for internet-facing')",
+      "Type": "String",
+      "Default": "False",
+      "AllowedValues" : ["True", "False"],
+      "ConstraintDescription": "Must be 'True or 'False'."
+    },
+    "EcsCluster": {
+      "Type": "String",
+      "Description": "The name of the ECS Cluster which the resources will be assigned to"
+    },
+    "ELBSubnetList": {
+      "Type": "List<AWS::EC2::Subnet::Id>",
+      "Description": "List of an existing subnet IDs to use for load balancer"
+    },
+    "ContainerName": {
+      "Type": "String",
+      "Description": "The name of the docker container which will run the task",
+      "ConstraintDescription" : "must be a string."
+    },
+    "ContainerImage": {
+      "Type": "String",
+      "Description": "The name of the docker image which will be used to create the container. Must be of the form [NAME]:[VERSION], e.g. httpd:2.4",
+      "ConstraintDescription" : "must be a string."
+    },
+    "ContainerCpuUnits": {
+      "Type": "Number",
+      "Default" : "1024",
+      "Description": "The minimum Cpu units to reserve for the container. There are 1024 cpu units in a single core",
+      "ConstraintDescription" : "must be a number."
+    },
+    "ContainerMemory": {
+      "Type": "Number",
+      "Default" : "300",
+      "Description": "The memory to reserve for the container in MiB",
+      "ConstraintDescription" : "must be a number."
+    },
+    "ContainerPort": {
+      "Type": "Number",
+      "Default" : "80",
+      "Description": "The port for the container on which the task can be reached",
+      "ConstraintDescription" : "must be a number."
+    },
+    "InstancePort": {
+      "Type": "Number",
+      "Default" : "80",
+      "Description": "The port for the instance on which the task can be reached",
+      "ConstraintDescription" : "must be a number."
+    },
+    "InstanceListenerProtocol": {
+      "Description": "[First] listener protocol for the EC2 instance.",
+      "Type": "String",
+      "Default": "HTTP",
+      "AllowedValues": ["HTTP", "HTTPS", "TCP", "SSL"]
+    },
+    "EcsServiceRole" : {
+      "Type": "String",
+      "Description": "The IAM role for the ECS service"
+    },
+    "VPC": {
+      "Description": "VPC ID",
+      "Type": "AWS::EC2::VPC::Id"
+    },
+    "HostedZoneName": {
+      "Type": "String",
+      "Description": "Hosted Zone Name for the Route 53 Record"
+    },
+    "PrivateDomain": {
+      "Description": "Private domain name.",
+      "Type": "String",
+      "Default": ""
+    },
+    "PublicDomain": {
+      "Description": "Public domain name.",
+      "Type": "String",
+      "Default": ""
+    },
+    "LogHost": {
+      "Type": "String",
+      "Description": "Hosted Zone Name for the Route 53 Record",
+      "Default": ""
+    },
+    "Environment": {
+      "Description": "Environment name assigned to EC2 instances (e.g. 'prod' or 'test').",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Release" : {
+      "Description" : "Release Number",
+      "Type" : "String",
+      "Default" : "0.0.1"
+    },
+    "Project": {
+      "Description": "Project name.",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "Role": {
+      "Description": "Role",
+      "Type": "String",
+      "Default": ""
+    },
+    "UserEndpoint": {
+      "Description": "Endpoint in which to proxy to Dashboard.",
+      "Type": "String",
+      "Default": ""
+    },
+    "PythonEndpoint": {
+      "Description": "Endpoint in which to proxy to Python.",
+      "Type": "String",
+      "Default": ""
+    },
+    "DBHost": {
+      "Description": "DB Host name.",
+      "Type": "String",
+      "Default": ""
+    },
+    "DBName": {
+      "Description": "DB name.",
+      "Type": "String",
+      "Default": ""
+    },
+    "DBUser": {
+      "Description": "DB User name.",
+      "Type": "String",
+      "Default": ""
+    },
+    "DBPassword": {
+      "Description": "DB Password.",
+      "Type": "String",
+      "Default": ""
+    },
+    "ExposeDockerDaemon": {
+      "Description": "If set to True, the host docker daemon will be exposed to container",
+      "Type": "String",
+      "Default": "False",
+      "AllowedValues": [ "True", "False" ]
+    },
+    "VolumeHostPath": {
+      "Description": "Volume host path (if empty does not mount).",
+      "Type": "String",
+      "Default": ""
+    },
+    "VolumeContainerPath": {
+      "Description": "Volume container path.",
+      "Type": "String",
+      "Default": ""
+    },
+    "VolumeName": {
+      "Description": "Volume name.",
+      "Type": "String",
+      "Default": "volume"
+    },
+    "VolumeHostPath2": {
+      "Description": "Volume host path (if empty does not mount).",
+      "Type": "String",
+      "Default": ""
+    },
+    "VolumeContainerPath2": {
+      "Description": "Volume container path.",
+      "Type": "String",
+      "Default": ""
+    },
+    "VolumeName2": {
+      "Description": "Volume name.",
+      "Type": "String",
+      "Default": "volume"
+    },
+    "ECSServiceMaxCapacity": {
+      "Description": "Max allowed ECS service instances",
+      "Type": "Number"
+    },
+    "ECSServiceMinCapacity": {
+      "Description": "Min allowed ES service instances",
+      "Type": "Number"
+    },
+    "PublicSubnetList": {
+      "Description":"A list of subnet IDs in your VPC to attach to your EC2 instances.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "Scales": {
+      "Description": "Will this ELB be internal? ('True' for internal or 'False' for internet-facing')",
+      "Type": "String",
+      "Default": "True",
+      "AllowedValues" : ["True", "False"],
+      "ConstraintDescription": "Must be 'True' or 'False'."
+    },
+    "TargetGroup": {
+      "Description": "TargetGroupArn for the ALB",
+      "Type": "String",
+      "Default": ""
+    }
+  },
+  "Conditions": {
+    "ELBInternalCondition": { "Fn::Equals": [ { "Ref": "IsELBInternal" }, "False"] },
+    "LogCondition": { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "LogHost" }, ""] } ] },
+    "VolumeCondition": { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "VolumeHostPath" }, ""] } ] },
+    "VolumeCondition2": { "Fn::Not": [ { "Fn::Equals": [ { "Ref": "VolumeHostPath2" }, ""] } ] },
+    "DaemonCondition": { "Fn::Equals": [ { "Ref": "ExposeDockerDaemon" }, "True"] },
+    "UseCookieStickinessPolicy": { "Fn::Equals": [ { "Ref": "UseELBCookieStickinessPolicy" }, "True"] },
+    "AutoScales": { "Fn::Equals": [ { "Ref": "Scales" }, "True"] }
+  },
+  "Resources" : {
+    "LogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "RetentionInDays": 7,
+        "LogGroupName": { "Fn::Join": ["-",["LogGroup", { "Ref": "ContainerName" }, { "Ref": "Environment" } ]] }
+      }
+    },
+    "TaskDefinition" : {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties" : {
+        "ContainerDefinitions" : [
+          {
+            "Name": { "Ref" : "ContainerName" },
+            "Cpu": { "Ref" : "ContainerCpuUnits" },
+            "Essential": "true",
+            "Image": {"Ref" : "ContainerImage"},
+            "Memory": { "Ref" : "ContainerMemory" },
+            "PortMappings": [
+              {
+                "HostPort": 0,
+                "ContainerPort": { "Ref" : "ContainerPort" }
+              }
+            ],
+            "MountPoints": { 
+              "Fn::If": [ "VolumeCondition2",
+                { "Fn::If": [ "VolumeCondition",
+                  { "Fn::If": [ "DaemonCondition", 
+                    [
+                      {
+                        "SourceVolume": { "Ref": "VolumeName" },
+                        "ContainerPath": { "Ref": "VolumeContainerPath" }
+                      },
+                      {
+                        "SourceVolume": { "Ref": "VolumeName2" },
+                        "ContainerPath": { "Ref": "VolumeContainerPath2" }
+                      },
+                      {
+                        "SourceVolume": "dockercommand",
+                        "ContainerPath": "/usr/bin/docker"
+                      },
+                      {
+                        "SourceVolume": "dockersocket",
+                        "ContainerPath": "/var/run/docker.sock"
+                      }
+                    ],
+                    [
+                      {
+                        "SourceVolume": { "Ref": "VolumeName" },
+                        "ContainerPath": { "Ref": "VolumeContainerPath" }
+                      },
+                      {
+                        "SourceVolume": { "Ref": "VolumeName2" },
+                        "ContainerPath": { "Ref": "VolumeContainerPath2" }
+                      }
+                    ]
+                  ]},
+                  { "Fn::If": [ "DaemonCondition", 
+                    [
+                      {
+                        "SourceVolume": { "Ref": "VolumeName2" },
+                        "ContainerPath": { "Ref": "VolumeContainerPath2" }
+                      },
+                      {
+                        "SourceVolume": "dockercommand",
+                        "ContainerPath": "/usr/bin/docker"
+                      },
+                      {
+                        "SourceVolume": "dockersocket",
+                        "ContainerPath": "/var/run/docker.sock"
+                      }
+                    ],
+                    [
+                      {
+                        "SourceVolume": { "Ref": "VolumeName2" },
+                        "ContainerPath": { "Ref": "VolumeContainerPath2" }
+                      }
+                    ]
+                  ]} 
+                ]},
+                { "Fn::If": [ "VolumeCondition",
+                  { "Fn::If": [ "DaemonCondition", 
+                    [
+                      {
+                        "SourceVolume": { "Ref": "VolumeName" },
+                        "ContainerPath": { "Ref": "VolumeContainerPath" }
+                      },
+                      {
+                        "SourceVolume": "dockercommand",
+                        "ContainerPath": "/usr/bin/docker"
+                      },
+                      {
+                        "SourceVolume": "dockersocket",
+                        "ContainerPath": "/var/run/docker.sock"
+                      }
+                    ],
+                    [
+                      {
+                        "SourceVolume": { "Ref": "VolumeName" },
+                        "ContainerPath": { "Ref": "VolumeContainerPath" }
+                      }
+                    ]
+                  ]},
+                  { "Fn::If": [ "DaemonCondition", 
+                    [
+                      {
+                        "SourceVolume": "dockercommand",
+                        "ContainerPath": "/usr/bin/docker"
+                      },
+                      {
+                        "SourceVolume": "dockersocket",
+                        "ContainerPath": "/var/run/docker.sock"
+                      }
+                    ],
+                    { "Ref": "AWS::NoValue" }
+                  ]} 
+                ]}
+              ]
+            },
+            "LogConfiguration": {
+              "Fn::If": [ "LogCondition", 
+                {
+                  "LogDriver": "syslog",
+                  "Options": { "syslog-address": { "Fn::Join" : [ "", [ "tcp://", {"Ref":"LogHost"},":8499" ] ] } }
+                },
+                { 
+                  "LogDriver": "awslogs",
+                  "Options": { "awslogs-region": { "Ref": "AWS::Region" }, "awslogs-group": { "Ref": "LogGroup" } }
+                }
+              ]
+            },
+            "Environment": [
+              {"Name": "ENVIRONMENT", "Value": {"Ref": "Environment" } },
+              {"Name": "PROJECT", "Value": {"Ref": "Project" } },
+              {"Name": "RELEASE", "Value": {"Ref": "Release" } },
+              {"Name": "PRIVATEDOMAIN", "Value": {"Ref": "PrivateDomain"} },
+              {"Name": "PUBLICDOMAIN", "Value": {"Ref": "PublicDomain"} },
+              {"Name": "DB_HOST", "Value": {"Ref": "DBHost" } },
+              {"Name": "DB_NAME", "Value": {"Ref": "DBName" } },
+              {"Name": "DB_USER", "Value": {"Ref": "DBUser" } },
+              {"Name": "DB_PASS", "Value": {"Ref": "DBPassword" } },
+              {"Name": "PYTHON_ENDPOINT", "Value": {"Ref": "PythonEndpoint" } }
+            ]
+          }
+        ],
+        "Volumes": { "Fn::If": [ "VolumeCondition2",
+          { "Fn::If": [ "VolumeCondition",
+            { "Fn::If": [ "DaemonCondition", 
+              [
+                {
+                  "Name": { "Ref": "VolumeName" },
+                  "Host": {
+                    "SourcePath": { "Ref": "VolumeHostPath" }
+                  }
+                },
+                {
+                  "Name": { "Ref": "VolumeName2" },
+                  "Host": {
+                    "SourcePath": { "Ref": "VolumeHostPath2" }
+                  }
+                },
+                {
+                  "Name": "dockercommand",
+                  "Host": {
+                    "SourcePath": "/usr/bin/docker"
+                  }
+                },
+                {
+                  "Name": "dockersocket",
+                  "Host": {
+                    "SourcePath": "/var/run/docker.sock"
+                  }
+                }
+              ],
+              [
+                {
+                  "Name": { "Ref": "VolumeName2" },
+                  "Host": {
+                    "SourcePath": { "Ref": "VolumeHostPath2" }
+                  }
+                },
+                {
+                  "Name": { "Ref": "VolumeName" },
+                  "Host": {
+                    "SourcePath": { "Ref": "VolumeHostPath" }
+                  }
+                }
+              ]
+            ]},
+            { "Fn::If": [ "DaemonCondition", 
+              [
+                {
+                  "Name": { "Ref": "VolumeName2" },
+                  "Host": {
+                    "SourcePath": { "Ref": "VolumeHostPath2" }
+                  }
+                },
+                {
+                  "Name": "dockercommand",
+                  "Host": {
+                    "SourcePath": "/usr/bin/docker"
+                  }
+                },
+                {
+                  "Name": "dockersocket",
+                  "Host": {
+                    "SourcePath": "/var/run/docker.sock"
+                  }
+                }
+              ],
+              { "Ref": "AWS::NoValue" }
+            ]}
+          ]},
+          { "Fn::If": [ "VolumeCondition",
+            { "Fn::If": [ "DaemonCondition", 
+              [
+                {
+                  "Name": { "Ref": "VolumeName" },
+                  "Host": {
+                    "SourcePath": { "Ref": "VolumeHostPath" }
+                  }
+                },
+                {
+                  "Name": "dockercommand",
+                  "Host": {
+                    "SourcePath": "/usr/bin/docker"
+                  }
+                },
+                {
+                  "Name": "dockersocket",
+                  "Host": {
+                    "SourcePath": "/var/run/docker.sock"
+                  }
+                }
+              ],
+              [
+                {
+                  "Name": { "Ref": "VolumeName" },
+                  "Host": {
+                    "SourcePath": { "Ref": "VolumeHostPath" }
+                  }
+                }
+              ]
+            ]},
+            { "Fn::If": [ "DaemonCondition", 
+              [
+                {
+                  "Name": "dockercommand",
+                  "Host": {
+                    "SourcePath": "/usr/bin/docker"
+                  }
+                },
+                {
+                  "Name": "dockersocket",
+                  "Host": {
+                    "SourcePath": "/var/run/docker.sock"
+                  }
+                }
+              ],
+              { "Ref": "AWS::NoValue" }
+            ]}
+          ]}
+        ]}
+      }
+    },
+    "EcsService" : {
+      "Type": "AWS::ECS::Service",
+      "Properties" : {
+        "Cluster": {"Ref": "EcsCluster"},
+        "DesiredCount": { "Ref": "ECSServiceMinCapacity" },
+        "LoadBalancers": [
+          {
+            "ContainerName": { "Ref" : "ContainerName" },
+            "ContainerPort": { "Ref" : "ContainerPort" },
+            "TargetGroupArn" : { "Ref" : "TargetGroup" }
+          }
+        ],
+        "Role" : {"Ref":"EcsServiceRole"},
+        "TaskDefinition" : {"Ref":"TaskDefinition"}
+      }
+    },
+    "ECSServiceAutoScalingTarget": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Condition": "AutoScales",
+      "Properties": {
+        "MaxCapacity": { "Ref": "ECSServiceMaxCapacity" },
+        "MinCapacity": { "Ref": "ECSServiceMinCapacity" },
+        "ResourceId": { "Fn::Join": ["/", ["service", { "Ref": "EcsCluster" }, {"Fn::GetAtt": [ "EcsService", "Name" ] } ] ] },
+        "RoleARN": { "Fn::Join": ["", [ "arn:aws:iam::", { "Ref": "AWS::AccountId" } , ":role/", { "Ref": "EcsServiceRole" } ] ] },
+        "ScalableDimension": "ecs:service:DesiredCount",
+        "ServiceNamespace": "ecs"
+      }
+    },
+    "ECSServiceAutoScalingUpPolicy": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Condition": "AutoScales",
+      "Properties": {
+        "PolicyName": { "Fn::Join": ["-", [ { "Fn::GetAtt": [ "EcsService", "Name"] }, "ScaleUp"] ] },
+        "PolicyType": "StepScaling",
+        "ScalingTargetId": { "Ref": "ECSServiceAutoScalingTarget" },
+        "StepScalingPolicyConfiguration": {
+	  "AdjustmentType": "PercentChangeInCapacity",
+	  "Cooldown": 60,
+	  "MetricAggregationType": "Average",
+	  "StepAdjustments": [
+	    {
+	      "MetricIntervalLowerBound": 0,
+	      "ScalingAdjustment": 200
+	    }
+	  ]
+        }
+      }
+    },
+    "ECSServiceAutoScalingDownPolicy": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Condition": "AutoScales",
+      "Properties": {
+        "PolicyName": { "Fn::Join": ["-", [ { "Fn::GetAtt": [ "EcsService", "Name" ] }, "ScaleDown"] ] },
+        "PolicyType": "StepScaling",
+        "ScalingTargetId": { "Ref": "ECSServiceAutoScalingTarget" },
+        "StepScalingPolicyConfiguration": {
+          "AdjustmentType": "PercentChangeInCapacity",
+          "Cooldown": 60,
+          "MetricAggregationType": "Average",
+          "StepAdjustments": [
+            {
+              "MetricIntervalUpperBound": 0,
+              "ScalingAdjustment": -50
+            }
+          ]
+        }
+      }
+    },
+    "ECSCloudWatchAlarmCPUHigh": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Condition": "AutoScales",
+      "Properties": {
+        "ActionsEnabled": "true",
+        "AlarmActions": [ { "Ref": "ECSServiceAutoScalingUpPolicy" } ],
+        "AlarmDescription": "High CPU Utilization for ecs service",
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "Dimensions": [
+          {
+            "Name": "ServiceName",
+            "Value": { "Fn::GetAtt": [ "EcsService", "Name" ] }
+          },
+	  {
+	    "Name": "ClusterName",
+	    "Value": { "Ref": "EcsCluster" }
+	  }
+	],
+        "EvaluationPeriods": 2,
+        "MetricName": "CPUUtilization",
+        "Namespace": "AWS/ECS",
+        "Period": 300,
+        "Statistic": "Average",
+        "Threshold": "70",
+        "Unit": "Percent"
+      }
+    },
+    "ECSCloudWatchAlarmCPULow": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Condition": "AutoScales",
+      "Properties": {
+        "ActionsEnabled": "true",
+        "AlarmActions": [ { "Ref": "ECSServiceAutoScalingDownPolicy" } ],
+        "AlarmDescription": "Low CPU Utilization for ecs service",
+        "ComparisonOperator": "LessThanOrEqualToThreshold",
+        "Dimensions": [
+          {
+            "Name": "ServiceName",
+            "Value": { "Fn::GetAtt": [ "EcsService", "Name" ] }
+          },
+	  {
+	    "Name": "ClusterName",
+	    "Value": { "Ref": "EcsCluster" }
+	  }
+        ],
+        "EvaluationPeriods": 2,
+        "MetricName": "CPUUtilization",
+        "Namespace": "AWS/ECS",
+        "Period": 300,
+        "Statistic": "Average",
+        "Threshold": "40",
+        "Unit": "Percent"
+      }
+    }
+  },
+  "Outputs" : {
+    "EcsService" : {
+      "Value" : { "Ref" : "EcsService" }
+    },
+    "TaskDefinition" : {
+      "Value" : { "Ref" : "TaskDefinition" }
+    },
+    "TargetGroup" : {
+      "Value" : { "Ref" : "TargetGroup" }
+    },
+    "DNSName": {
+      "Description": "Route53 DNS address",
+      "Value": { "Fn::Join" : [ "", [ { "Ref": "ContainerName" }, ".", { "Ref": "Environment" }, ".", { "Ref": "AWS::Region"}, ".", { "Ref": "HostedZoneName" } ] ] }
+    }
+  }
+}

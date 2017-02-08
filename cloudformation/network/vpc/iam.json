@@ -1,0 +1,144 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Network IAM",
+  "Parameters": {
+    "CloudToolsBucket": {
+      "Description": "Name of the S3 bucket for cloud tools.",
+      "Type": "String"
+    }
+  },
+  "Mappings": {
+  },
+  "Conditions": {
+  },
+  "Resources": {
+    "LambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+             "Action": ["sts:AssumeRole"],
+             "Principal": { "Service": ["lambda.amazonaws.com","s3.amazonaws.com"] },
+             "Effect": "Allow",
+             "Sid": ""
+          }]
+        }
+      }
+    },
+    "LambdaRolePolicy": {
+      "Type": "AWS::IAM::Policy",
+       "Properties": {
+         "PolicyName" : "AllowLogsAndEc2",
+         "Roles": [ { "Ref": "LambdaRole" } ],
+         "PolicyDocument" : {
+           "Statement": [
+            {
+              "Sid": "AssociateDisassociateVPCFromHostedZone",
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeNetworkAcls",
+                "ec2:DescribeRouteTables",
+                "ec2:DescribeRegions",
+                "ec2:DescribeAvailabilityZones",
+                "route53:AssociateVPCWithHostedZone",
+                "route53:DisassociateVPCFromHostedZone"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "BastionInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [ { "Ref": "BastionRole" } ]
+      }
+    },
+    "CloudToolsPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName" : "AllowCloudToolsBucket",
+        "Roles": [ { "Ref": "BastionRole" } ],
+        "PolicyDocument" : {
+          "Statement": [
+            {
+              "Sid": "AllowS3ListAllBuckets",
+              "Action": [
+                "s3:ListAllMyBuckets"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Sid": "AllowS3CloudToolsBucket",
+              "Action": "s3:*",
+              "Effect": "Allow",
+              "Resource": [
+                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "CloudToolsBucket" } ] ] },
+                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "CloudToolsBucket" }, "/*" ] ] }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "SNSPublishPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName" : "SNSPublishPolicy",
+        "Roles": [ { "Ref": "BastionRole" } ],
+        "PolicyDocument" : {
+          "Statement": [
+            {
+              "Sid": "AllowSNSPublish",
+              "Action": [
+                "sns:Publish"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "BastionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        },
+        "Path": "/"
+      }
+    }
+  },
+  "Outputs": {
+    "LambdaRoleArn":{
+      "Description":"Lambda Role Arn",
+      "Value": { "Fn::GetAtt": [ "LambdaRole", "Arn"] }
+    },
+    "BastionInstanceProfile":{
+      "Description":"Bastion IAM Instance Profile",
+      "Value": { "Ref":"BastionInstanceProfile" }
+    }
+  }
+}
+
