@@ -127,6 +127,7 @@ Vibeio:
     CloudToolsBucket: rbn-ops-us-east-1
     MaxCapacity: "4"
     MinCapacity: "2"
+    DBSnapshotID: rds:vibeio-ecs-2017-02-09-15-41
   lookup_parameters:
     VPC: {Stack: Network, OutputKey: VPC}
     VPCCIDR: {Stack: Network, OutputKey: VPCCIDR}
@@ -136,5 +137,4 @@ Vibeio:
     ALBSubnetList: {Stack: Network, OutputKey: PublicSubnets}
     ECSCluster: {Stack: ECSCluster, OutputKey: ECSCluster}
     ECSClusterSecurityGroup: {Stack: ECSCluster, OutputKey: ECSClusterSecurityGroup}
-
 

@@ -1,0 +1,66 @@
+#!/bin/bash
+# Look for any service running a particular image and update it
+
+# Set variables
+function usage()
+{
+  echo "ERROR: Incorrect arguments provided."
+  echo "Usage: $0 {args}"
+  echo "Where valid args are: "
+  echo "  -p <profile>                -- Profile to use for AWS commands"
+  echo "  -i <image> (Required)       -- Image to update to, if not specified uses the same image tag"
+  echo "  -m <minHealth>              -- Minimum Health Host Percentage"
+  exit 1
+}
+
+# Parse args
+if [[ $# -lt 1 ]] ; then
+  usage
+fi
+
+PROFILE=default
+IMAGE=false
+MIN=100
+
+while getopts "p:i:m:" opt; do
+  case $opt in
+    p)
+      PROFILE=$OPTARG
+    ;;
+    i)
+      IMAGE=$OPTARG
+    ;;
+    m)
+      MIN=$OPTARG
+    ;;
+    \?)
+      echo "Invalid option: -$OPTARG"
+      usage
+    ;;
+  esac
+done
+
+if [ $IMAGE == false ]; then
+  echo "MUST Specify image"
+  usage
+fi
+
+DIR=$(dirname $(readlink -f $0))
+
+CLUSTERS=$(aws ecs list-clusters --query "clusterArns[]" --output text --profile ${PROFILE})
+for CLUSTER in $CLUSTERS; do
+  echo "Looking into $CLUSTER"
+  SERVICES=$(aws ecs list-services --cluster ${CLUSTER} --query 'serviceArns[]' --output text --profile ${PROFILE})
+  for SERVICE in $SERVICES; do
+    echo "Looking into $SERVICE"
+    TASKDEF=$(aws ecs describe-services --services ${SERVICE} --cluster ${CLUSTER} --query 'services[0].taskDefinition' --output text --profile ${PROFILE})
+    TASKIMAGES=$(aws ecs describe-task-definition --task-definition ${TASKDEF} --query 'taskDefinition.containerDefinitions[].image' --output text --profile ${PROFILE})
+    for TASKIMAGE in $TASKIMAGES; do
+      echo "Comparing $TASKIMAGE to $IMAGE"
+      if [ "$IMAGE" == "$TASKIMAGE" ]; then
+        echo "Redeploying $IMAGE to $SERVICE in the $CLUSTER cluster"
+        $DIR/ecs-deploy -n ${SERVICE} -c ${CLUSTER} -i ${IMAGE} -m ${MIN} -p ${PROFILE}
+      fi 
+    done
+  done
+done

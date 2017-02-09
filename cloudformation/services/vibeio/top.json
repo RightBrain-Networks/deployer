@@ -105,6 +105,11 @@
       "Description": "Sample database name",
       "Default": ""
     },
+    "DBHost": {
+      "Type": "String",
+      "Description": "Sample database host",
+      "Default": ""
+    },
     "DBUser": {
       "Type": "String",
       "Description": "Sample database username",
@@ -127,6 +132,11 @@
     },
     "ECSClusterSecurityGroup": {
       "Description": "ECS Cluster Security Group",
+      "Type": "String",
+      "Default": ""
+    },
+    "DBSnapshotID": {
+      "Description": "Database snapshot",
       "Type": "String",
       "Default": ""
     }
@@ -206,9 +216,9 @@
         "Matcher" : {
           "HttpCode" : "200"
         },
-        "HealthCheckPath": "/",
+        "HealthCheckPath": "/Home",
         "Name": { "Fn::Join": ["-", ["Vibeio", { "Ref": "Environment" }, { "Ref": "Role" }]]},
-        "Port": 5001,
+        "Port": 7666,
         "Protocol": "HTTP",
         "TargetGroupAttributes": [{
           "Key": "deregistration_delay.timeout_seconds",
@@ -241,6 +251,24 @@
         "Priority": 1
       }
     },
+    "Database": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": { "Fn::Join": [ "", [ "https://s3", { "Fn::If": [ "IsRegionUSStandard", "", { "Fn::Join": [ "", [ "-", { "Ref": "AWS::Region" } ] ] } ] }, ".amazonaws.com/", { "Ref" : "CloudToolsBucket" }, "/", { "Ref": "Release" }, "/cloudformation/common/mysqlmember.json" ] ] },
+        "Parameters": {
+	      "RDSSubnetGroup": { "Ref": "RDSSubnetGroup" },
+	      "Environment": { "Ref": "Environment" },
+	      "Project": { "Ref": "Project" },
+	      "Release": { "Ref": "Release" },
+          "DBUser": { "Ref": "DBUser" },
+	      "DBPassword": { "Ref": "DBPassword" },
+	      "Role": "db",
+	      "RDSSecurityGroup": { "Fn::GetAtt": [ "SecurityGroups","Outputs.RDSSecurityGroup" ] },
+          "DBSnapshotID": { "Ref": "DBSnapshotID" },
+          "HostedZoneName": { "Ref": "PrivateDomain" }
+        }
+      }
+   },
     "Vibeio": {
       "DependsOn" : "IAM",
       "Type": "AWS::CloudFormation::Stack",
@@ -258,7 +286,7 @@
           "Release": { "Ref": "Release" },
           "ContainerName": "Vibeio",
           "ContainerImage": "356438515751.dkr.ecr.us-east-1.amazonaws.com/vibeio:latest",
-          "ContainerPort": "5001",
+          "ContainerPort": "7666",
           "TargetGroup": { "Ref": "TargetGroup" },
           "ContainerMemory": { "Ref": "MemoryUnits" },
           "ContainerCpuUnits": { "Ref": "CpuUnits" },
@@ -273,17 +301,16 @@
 	      "ECSServiceMinCapacity": { "Ref": "MinCapacity" },
           "LogHost": { "Ref" : "LogHost" },
           "VolumeName": "user",
-          "VolumeContainerPath": "/var/vibeio",
-          "VolumeHostPath": "/mnt/efs/vibeio",
+          "VolumeContainerPath": "/var/www/vibeio",
+          "VolumeHostPath": "/mnt/efs/app/vibeio",
           "ExposeDockerDaemon": "False",
-          "DBHost": "localhost",
+          "DBHost": { "Fn::GetAtt": [ "Database", "Outputs.DNSName" ] },
           "DBName": { "Ref": "DBName" },
           "DBUser": { "Ref": "DBUser" },
           "DBPassword": { "Ref": "DBPassword" }
         }
       }
     },
-
     "ALBEndpoint" : {
       "Type" : "AWS::Route53::RecordSet",
       "Properties" : {
@@ -300,5 +327,6 @@
     }
   },
   "Outputs": {
+    
   }
 }

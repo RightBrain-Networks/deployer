@@ -36,7 +36,7 @@
         "GroupDescription": "Enable ELB.",
         "VpcId": { "Ref": "VPC" },
         "SecurityGroupIngress": [
-          { "IpProtocol": "tcp", "FromPort": "5001", "ToPort": "5010", "CidrIp": { "Ref": "VPCCIDR" }},
+          { "IpProtocol": "tcp", "FromPort": "7666", "ToPort": "7666", "CidrIp": { "Ref": "VPCCIDR" }},
           { "IpProtocol": "tcp", "FromPort": "80", "ToPort": "80", "CidrIp": "0.0.0.0/0" }
         ],
         "SecurityGroupEgress": [
@@ -48,12 +48,31 @@
           { "Key" : "Name", "Value": "ECS-ALB" }
         ]
       }
+    },
+    "RDSSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "RDS Cluster Security Group.",
+        "VpcId": { "Ref": "VPC" },
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": "5432", "ToPort": "5432", "CidrIp": { "Ref": "VPCCIDR" }}
+        ],
+        "SecurityGroupEgress": [
+        ],
+        "Tags" : [
+          { "Key" : "Name", "Value": "RDS-Cluster-Security-Group" }
+        ]
+      }
     }
   },
   "Outputs": {
     "ALBSecurityGroup": {
       "Description": "ALB Security Group ID",
       "Value": { "Ref": "ALBSecurityGroup" }
+    },
+    "RDSSecurityGroup": {
+      "Description": "RDS Security groups",
+      "Value": { "Ref": "RDSSecurityGroup" }
     }
   }
 }

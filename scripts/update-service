@@ -1,0 +1,63 @@
+#!/bin/bash
+# Update a Docker Service in ECS to a new image or an updated image.
+# Uses ecs-deploy script to create a new Task Definition and then update the service.
+
+# Set variables
+function usage()
+{
+  echo "ERROR: Incorrect arguments provided."
+  echo "Usage: $0 {args}"
+  echo "Where valid args are: "
+  echo "  -p <profile>                -- Profile to use for AWS commands"
+  echo "  -e <environment> (REQUIRED) -- Environment to update"
+  echo "  -s <service>  (REQUIRED)    -- Service to update, should match CloudFormation (e.g. UserMicroserviceECS)"
+  echo "  -i <image>                  -- Image to update to, if not specified uses the same image tag"
+  echo "  -m <minHealth>              -- Minimum Health Host Percentage"
+  exit 1
+}
+
+# Parse args
+if [[ "$#" -lt 2 ]] ; then
+  usage
+fi
+
+PROFILE=default
+IMAGE=false
+MIN=100
+
+while getopts "p:e:s:i:m:" opt; do
+  case $opt in
+    p)
+      PROFILE=$OPTARG
+    ;;
+    e)
+      ENVIRONMENT=$OPTARG
+    ;;
+    s)
+      SERVICENAME=$OPTARG
+    ;;
+    i)
+      IMAGE=$OPTARG
+    ;;
+    m)
+      MIN=$OPTARG
+    ;;
+    \?)
+      echo "Invalid option: -$OPTARG"
+      usage
+    ;;
+  esac
+done
+
+DIR=$(dirname $(readlink -f $0))
+
+CLUSTER=$(aws ecs list-clusters --query "clusterArns[]" --profile ${PROFILE} | grep $ENVIRONMENT | cut -d'"' -f2)
+SERVICE=$(aws ecs list-services --cluster ${CLUSTER} --query 'serviceArns[]' --profile ${PROFILE} | grep ${SERVICENAME} | cut -d'"' -f2)
+if [ $IMAGE == false ]; then
+  TASKDEF=$(aws ecs describe-services --services ${SERVICE} --cluster ${CLUSTER} --query 'services[0].taskDefinition' --output text --profile ${PROFILE})
+  IMAGE=$(aws ecs describe-task-definition --task-definition ${TASKDEF} --query 'taskDefinition.containerDefinitions[0].image' --output text --profile ${PROFILE})
+fi
+
+printf "Updating:\nCluster: $CLUSTER\nService: $SERVICE\nImage: $IMAGE\n"
+
+$DIR/ecs-deploy -n $SERVICE -c $CLUSTER -i $IMAGE -m $MIN -p $PROFILE

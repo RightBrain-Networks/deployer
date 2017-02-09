@@ -1,0 +1,125 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Postgres RDS Instance.",
+
+  "Parameters" : {
+    "RDSSubnetGroup":{
+         "Description":"Physical ID of DBSubnetGroup",
+         "Type":"String",
+         "Default":""
+    },
+    "RDSSecurityGroup": {
+	 "Description": "RDS Security Groups",
+	 "Type": "CommaDelimitedList",
+	 "Default": ""
+    },
+    "RDSType":{
+         "Description":"Instance Type of the RDS stage prod instances",
+         "Type":"String",
+         "Default":"db.t2.small",
+         "AllowedValues": [ "db.t2.micro", "db.t2.small", "db.t2.medium", "db.t2.large" ]
+    },
+    "DBEngine":{
+         "Description":"Database Engine",
+         "Type":"String",
+         "Default":"postgres",
+         "AllowedValues": [ "postgres" ]
+    },
+    "EngineVersion":{
+         "Description":"Database Engine version",
+         "Type":"String",
+         "Default":"9.5.2",
+         "AllowedValues": [ "9.5.2" ]
+    },
+    "Environment":{
+         "Description":"Name of Environment",
+         "Type": "String"
+    },
+    "Project":{
+         "Description":"Name of Project",
+         "Type": "String"
+    },
+    "DBParameterGroup":{
+         "Description":"Parameter Group name for RDS",
+         "Type": "String",
+         "Default": ""
+    },
+    "DBSnapshotID":{
+         "Description":"Snapshot ID for RDS",
+         "Type": "String",
+         "Default": ""
+    },
+    "DBUser":{
+         "Description":"Username for the Postgres RDS Instance",
+         "Type": "String",
+         "Default": "test"
+    },
+    "DBPassword":{
+         "Description":"Password for the Postgres RDS Instance",
+         "Type": "String",
+         "Default": "Test1234"
+    },
+    "Release" : {
+      "Description" : "Release Number",
+      "Type" : "String",
+      "Default" : "0.0.1"
+    },
+    "Role": {
+      "Description": "Name which will be applied to EC2 instances in the ASG (e.g. 'web' or 'app').",
+      "Type": "String",
+      "Default": "",
+      "ConstraintDescription": "Must be a string."
+    },
+    "HostedZoneName": {
+      "Description": "FQDN of the domain you want to add record to",
+      "Type": "String",
+      "Default": "nonprod.marketingplatform.internal"
+    }
+  },
+
+  "Mappings" : {
+  },
+  "Conditions": {
+    "ParameterGroupCondition": { "Fn::Equals": [ { "Ref": "DBParameterGroup" }, ""] },
+    "DBSnapshotIDCondition": { "Fn::Equals": [ { "Ref": "DBSnapshotID" }, ""] }
+  },
+  "Resources" : {
+    "PostgresMember" : {
+      "Type" : "AWS::RDS::DBInstance",
+      "Properties" : {
+	    "AllocatedStorage": "100",
+	    "MasterUsername": { "Ref": "DBUser" },
+	    "MasterUserPassword": { "Ref": "DBPassword" },
+        "AutoMinorVersionUpgrade" : "True",
+        "DBInstanceClass" : { "Ref" : "RDSType" },
+        "DBParameterGroupName" : { "Fn::If": [ "ParameterGroupCondition",  { "Ref": "AWS::NoValue" }, { "Ref": "DBParameterGroup" } ] },
+	    "DBSnapshotIdentifier": { "Fn::If": [ "DBSnapshotIDCondition", { "Ref": "AWS::NoValue" }, { "Ref": "DBSnapshotID" } ] },
+        "Engine": { "Ref": "DBEngine" },
+        "EngineVersion": { "Ref": "EngineVersion"},
+        "PreferredMaintenanceWindow" : "thu:06:47-thu:07:17",
+        "DBSubnetGroupName" :  { "Ref" : "RDSSubnetGroup" },
+	    "VPCSecurityGroups": { "Ref": "RDSSecurityGroup" },
+        "Tags" : [
+            { "Key" : "project", "Value" : { "Ref": "Project" } }
+        ]
+     }
+    },
+    "Route53Record" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [ { "Ref": "HostedZoneName" }, "." ]] },
+        "Comment" : { "Fn::Join" : [ "", [ "DNS name for ", { "Ref": "Role" }, " in ", { "Ref": "Environment" } ]]},
+        "Name" : { "Fn::Join" : [ "", [ { "Ref": "Role" }, ".", { "Ref": "Environment" }, ".", { "Ref": "AWS::Region"}, ".", { "Ref": "HostedZoneName" }, "." ] ] },
+        "Type" : "CNAME",
+        "TTL" : "300",
+        "ResourceRecords" : [ { "Fn::GetAtt": [ "PostgresMember", "Endpoint.Address" ] } ]
+      }
+    }
+  },
+  "Outputs" : {
+    "DNSName": { 
+      "Value": { "Fn::Join" : [ "", [ { "Ref": "Role" }, ".", { "Ref": "Environment" }, ".", { "Ref": "AWS::Region"}, ".", { "Ref": "HostedZoneName" } ] ] }
+    }
+  }
+}

@@ -340,7 +340,7 @@
                   "Options": { "syslog-address": { "Fn::Join" : [ "", [ "tcp://", {"Ref":"LogHost"},":8499" ] ] } }
                 },
                 { 
-                  "LogDriver": "json-file",
+                  "LogDriver": "awslogs",
                   "Options": { "awslogs-region": { "Ref": "AWS::Region" }, "awslogs-group": { "Ref": "LogGroup" } }
                 }
               ]
@@ -351,7 +351,7 @@
               {"Name": "RELEASE", "Value": {"Ref": "Release" } },
               {"Name": "PRIVATEDOMAIN", "Value": {"Ref": "PrivateDomain"} },
               {"Name": "PUBLICDOMAIN", "Value": {"Ref": "PublicDomain"} },
-              {"Name": "DB_HOST", "Value": {"Ref": "DBHost" } },
+              {"Name": "DB_ENDPOINT", "Value": {"Ref": "DBHost" } },
               {"Name": "DB_NAME", "Value": {"Ref": "DBName" } },
               {"Name": "DB_USER", "Value": {"Ref": "DBUser" } },
               {"Name": "DB_PASS", "Value": {"Ref": "DBPassword" } },
