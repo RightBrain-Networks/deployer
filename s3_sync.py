@@ -84,9 +84,12 @@ class s3_sync(object):
                         fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
                     count = 0
                     for fname in fileList:
-                        rv = Process(target=self.skip_or_send, args=(fname, thisdir))
-                        rv.deamon = True
-                        rv.start()
+                        if os.name != 'nt':
+                            rv = Process(target=self.skip_or_send, args=(fname, thisdir))
+                            rv.deamon = True
+                            rv.start()
+                        else:
+                            self.skip_or_send(fname,thisdir)
                         if count % 20 == 0:
                             rv.join()
                         count += 1
