@@ -4,12 +4,12 @@ from s3_sync import s3_sync
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 from lambda_prep import LambdaPrep
+from logger import logger
 
 import yaml
 
-
-
 def main():
+    logger.info('test')
     usage = "usage: %prog [options]"
     parser = OptionParser(usage=usage)
     parser.add_option("-c","--config", help="Path to config file.")

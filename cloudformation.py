@@ -10,6 +10,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 from time import sleep 
 from datetime import datetime 
 import pytz
+from logger import logger
 
 class AbstractCloudFormation(object):
     __metaclass__ = ABCMeta
@@ -28,13 +29,13 @@ class AbstractCloudFormation(object):
         pass 
 
     def cancel_create(self, signal, frame):
-        print('\nProcess Interupt')
-        print('Deleteing Stack: %s' % self.stack_name)
+        logger.critical('\nProcess Interupt')
+        logger.critical('Deleteing Stack: %s' % self.stack_name)
         self.delete_stack()
 
     def cancel_update(self, signal, frame):
-        print('\nProcess Interupt')
-        print('Cancelling Stack Update: %s' % self.stack_name)
+        logger.critical('\nProcess Interupt')
+        logger.critical('Cancelling Stack Update: %s' % self.stack_name)
         self.client.cancel_update_stack(StackName=self.stack_name)
      
     def get_outputs(self):
@@ -121,9 +122,9 @@ class AbstractCloudFormation(object):
                 'CAPABILITY_NAMED_IAM'
             ] 
         )
-        print "Creation Started"
+        logger.info("Creation Started")
         sleep(5)
-        print self.reload_stack_status()
+        logger.info(self.reload_stack_status())
         if self.print_events:
             self.output_events(start_time, 'create')
         else:
@@ -131,9 +132,9 @@ class AbstractCloudFormation(object):
                 waiter.wait(StackName=self.stack_name)
             except WaiterError as e:
                 status = self.reload_stack_status()
-                print status
+                logger.info(status)
                 self.output_events(start_time, 'create')
-        print self.reload_stack_status()
+        logger.info(self.reload_stack_status())
            
     
     def update_stack(self):
@@ -152,9 +153,9 @@ class AbstractCloudFormation(object):
                     'CAPABILITY_NAMED_IAM'
                 ] 
             )
-            print "Update Started"
+            logger.info("Update Started")
             sleep(5)
-            print self.reload_stack_status()
+            logger.info(self.reload_stack_status())
             if self.print_events:
                 self.output_events(start_time, 'update')
             else:
@@ -162,9 +163,9 @@ class AbstractCloudFormation(object):
                     waiter.wait(StackName=self.stack_name)
                 except WaiterError as e:
                     status = self.reload_stack_status()
-                    print status
+                    logger.info(status)
                     self.output_events(start_time, 'update')
-                print self.reload_stack_status()
+                logger.info(self.reload_stack_status())
         else:
             raise RuntimeError("Stack does not exist")
 
@@ -226,13 +227,13 @@ class AbstractCloudFormation(object):
                 ChangeSetName=change_set_name, 
                 Description=change_set_description
             )
-            print "Change Set Started: %s" % resp['Id']
+            logger.info("Change Set Started: %s" % resp['Id'])
             sleep(5)
             self.change_set_status = self.reload_change_set_status(change_set_name)
             while self.change_set_status != 'CREATE_COMPLETE':
                 sleep(5)
                 status = self.reload_change_set_status(change_set_name)
-                print status
+                logger.info(status)
                 if status == 'FAILED':
                     raise RuntimeError("Change set Failed")
             self.print_change_set(change_set_name, change_set_description)
@@ -303,7 +304,7 @@ class Stack(AbstractCloudFormation):
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:
                             params.append({ "ParameterKey": param_key, "ParameterValue": output['OutputValue'] })
-        print "Parameters Created"
+        logger.info("Parameters Created")
         return params
 
 

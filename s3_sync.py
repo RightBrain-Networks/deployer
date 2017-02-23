@@ -10,6 +10,7 @@ import hashlib
 from boto3.session import Session
 from multiprocessing import Process
 from time import sleep
+from logger import logger
 
 class s3_sync(object):
     def __init__(self, profile, config_file, environment):
@@ -86,7 +87,7 @@ class s3_sync(object):
 
     def validate_failed(self, fname, validate_url, message):
         try:
-            print "Failed to Validate: %s\n%s" % (fname, message)
+            logger.critical("Failed to Validate: %s\n%s" % (fname, message))
             self.client.delete_object(Bucket=self.dest_bucket, Key=validate_path)
             exit(1)
         except:
@@ -106,10 +107,10 @@ class s3_sync(object):
         try:
             etag = self.generate_etag(fname)
             s3_obj = self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
-            print "Skipped: %s" % (fname)
+            logger.info("Skipped: %s" % (fname))
         except Exception as e:
             self.client.upload_file(fname, self.dest_bucket, dest_key)
-            print "Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key)
+            logger.info("Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key))
 
     def upload(self):
         if self.sync_dirs:
@@ -133,7 +134,7 @@ class s3_sync(object):
                         rv.join()
 
     def test(self):
-        print "Validating Templates"
+        logger.info("Validating Templates")
         if self.sync_dirs:
             count = 0
             processes = []
@@ -157,7 +158,7 @@ class s3_sync(object):
                     process.join()
                 for process in processes: 
                     if process.exitcode:
-                        print "Failed to validate templates before upload"
+                        logger.critical("Failed to validate templates before upload")
                         exit(1)
 
     def sync(self):
