@@ -9,7 +9,6 @@ from logger import logger
 import yaml
 
 def main():
-    logger.info('test')
     usage = "usage: %prog [options]"
     parser = OptionParser(usage=usage)
     parser.add_option("-c","--config", help="Path to config file.")
