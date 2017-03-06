@@ -124,11 +124,14 @@ class s3_sync(object):
                     count = 0
                     for fname in fileList:
                         dest_key = self.generate_dest_key(fname, thisdir)
-                        rv = Process(target=self.skip_or_send, args=(fname, dest_key))
-                        rv.deamon = True
-                        rv.start()
-                        if count % 20 == 0:
-                            rv.join()
+                        if os.name != 'nt':
+                            rv = Process(target=self.skip_or_send, args=(fname, dest_key))
+                            rv.deamon = True
+                            rv.start()
+                            if count % 20 == 0:
+                                rv.join()
+                        else:
+                            self.skip_or_send(fname, dest_key)
                         count += 1
                     if 'rv' in vars():
                         rv.join()
@@ -147,11 +150,14 @@ class s3_sync(object):
                         fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
                     for fname in fileList:
                         dest_key = self.generate_dest_key(fname, thisdir)
-                        processes.append(Process(target=self.validate, args=(fname, dest_key)))
-                        processes[count].deamon = True
-                        processes[count].start()
-                        if count % 5 == 0:
-                            processes[count].join()
+                        if os.name != 'nt':
+                            processes.append(Process(target=self.validate, args=(fname, dest_key)))
+                            processes[count].deamon = True
+                            processes[count].start()
+                            if count % 5 == 0:
+                                processes[count].join()
+                        else:
+                            self.validate(fname,dest_key)
                         count += 1
             if len(processes) != 0:
                 for process in processes: 
