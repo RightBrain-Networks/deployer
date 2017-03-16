@@ -4,10 +4,9 @@ from s3_sync import s3_sync
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 from lambda_prep import LambdaPrep
+from logger import logger
 
 import yaml
-
-
 
 def main():
     usage = "usage: %prog [options]"
