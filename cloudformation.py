@@ -304,7 +304,14 @@ class Stack(AbstractCloudFormation):
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:
                             params.append({ "ParameterKey": param_key, "ParameterValue": output['OutputValue'] })
+
+        # Here we restrict the returned parameters to only the ones that the
+        # template accepts.
+        with open(self.config[env]['template'], 'r') as template_file:
+            parsed_template_file = json.load(template_file)
+            for item in params:
+                if item['ParameterKey'] not in parsed_template_file['Parameters']:
+                    params.remove(item)
+
         logger.info("Parameters Created")
         return params
-
-
