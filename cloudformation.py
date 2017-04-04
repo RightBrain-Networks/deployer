@@ -311,6 +311,7 @@ class Stack(AbstractCloudFormation):
             parsed_template_file = json.load(template_file)
             for item in params:
                 if item['ParameterKey'] not in parsed_template_file['Parameters']:
+                    logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], self.config[env]['template']))
                     params.remove(item)
 
         logger.info("Parameters Created")
