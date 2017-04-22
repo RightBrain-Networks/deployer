@@ -10,6 +10,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 from time import sleep 
 from datetime import datetime 
 import pytz
+import re
 from logger import logger
 
 class AbstractCloudFormation(object):
@@ -306,13 +307,14 @@ class Stack(AbstractCloudFormation):
                             params.append({ "ParameterKey": param_key, "ParameterValue": output['OutputValue'] })
 
         # Here we restrict the returned parameters to only the ones that the
-        # template accepts.
-        with open(self.config[env]['template'], 'r') as template_file:
-            parsed_template_file = json.load(template_file)
-            for item in params:
-                if item['ParameterKey'] not in parsed_template_file['Parameters']:
-                    logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], self.config[env]['template']))
-                    params.remove(item)
+        # template accepts. Updated to allow for Yaml as well
+        if re.match(".*\.json",self.config[env]['template']):
+            with open(self.config[env]['template'], 'r') as template_file:
+                parsed_template_file = json.load(template_file) 
+                for item in params:
+                    if item['ParameterKey'] not in parsed_template_file['Parameters']:
+                        logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], self.config[env]['template']))
+                        params.remove(item)
 
         logger.info("Parameters Created")
         return params
