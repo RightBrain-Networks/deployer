@@ -29,6 +29,22 @@ class AbstractCloudFormation(object):
     def delete_stack(self):
         pass 
 
+    def create(self):
+        if not self.transforms:
+            self.create_stack()
+        else:
+            change_set_name = "{0}-1".format(self.get_config_att('change_prefix'))
+            self.get_change_set(change_set_name, "Deployer Automated", 'CREATE')
+
+    def update(self):
+        if not self.transforms:
+            self.update_stack()
+        else:
+            latest_change = self.get_latest_change_set()
+            print latest_change
+            exit
+            self.get_change_set(opts.change_set_name, opts.change_set_description, 'UPDATE')
+
     def cancel_create(self, signal, frame):
         logger.critical('\nProcess Interupt')
         logger.critical('Deleteing Stack: %s' % self.stack_name)
@@ -214,7 +230,19 @@ class AbstractCloudFormation(object):
         resp = self.client.delete_stack(StackName=self.stack_name)
         return True
 
-    def get_change_set(self, change_set_name, change_set_description):
+    def get_latest_change_set(self):
+        resp = { 'NextToken': None }
+        latest = None
+        while resp['NextToken'] != None or latest != None:
+            resp = self.client.list_change_sets(StackName=self.stack_name,NextToken=resp['NextToken'] if not resp['NextToken'] else None)
+            for change in resp['Summaries']:
+                if not latest:
+                    latest = change
+                if change['CreationTime'] > latest['CreationTime']:
+                    latest = change
+        return latest
+
+    def get_change_set(self, change_set_name, change_set_description, change_set_type):
         # create the change set
         if self.stack_status: 
             resp = self.client.create_change_set(
@@ -226,7 +254,8 @@ class AbstractCloudFormation(object):
                     'CAPABILITY_NAMED_IAM'
                 ],
                 ChangeSetName=change_set_name, 
-                Description=change_set_description
+                Description=change_set_description,
+                ChangeSetType=change_set_type
             )
             logger.info("Change Set Started: %s" % resp['Id'])
             sleep(5)
@@ -273,6 +302,7 @@ class Stack(AbstractCloudFormation):
         self.stack_name = self.get_config_att('stack_name')
         self.release = self.get_config_att('release').replace('/','.')
         self.template_url = self.construct_template_url()
+        self.transforms = self.get_config_att('transforms')
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
         self.reload_stack_status()
