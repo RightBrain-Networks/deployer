@@ -287,6 +287,7 @@ class Stack(AbstractCloudFormation):
         # to ensure we dont already have one of that key.
         for env in ['global', self.stack]:
             if 'parameters' in self.config[env]:
+                logger.debug("env {0} has parameters: {1}".format(env, self.config[env]['parameters']))
                 for param_key, param_value in self.config[env]['parameters'].iteritems():
                     count = 0 
                     overwritten = False
@@ -296,7 +297,7 @@ class Stack(AbstractCloudFormation):
                             overwritten = True 
                         count += 1
                     if not overwritten:
-                        params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
+                        expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
             if 'lookup_parameters' in self.config[env]:
                 for param_key, lookup_struct in self.config[env]['lookup_parameters'].iteritems():
                     stack = Stack(self.profile, self.config_file, lookup_struct['Stack'])
@@ -307,12 +308,13 @@ class Stack(AbstractCloudFormation):
 
         # Here we restrict the returned parameters to only the ones that the
         # template accepts by copying expanded_params into return_params and removing
-        # the item in question from return_params (this avoids an off-by-one bug in
-        # iterating over a list that we're also removing items from.)
-        return_params = expanded_params
+        # the item in question from return_params
+        logger.debug("expanded_params: {0}".format(expanded_params))
+        return_params = list(expanded_params)
         with open(self.config[env]['template'], 'r') as template_file:
             parsed_template_file = json.load(template_file)
             for item in expanded_params:
+                logger.debug("item: {0}".format(item))
                 if item['ParameterKey'] not in parsed_template_file['Parameters']:
                     logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], self.config[env]['template']))
                     return_params.remove(item)
