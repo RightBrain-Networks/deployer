@@ -279,8 +279,8 @@ class Stack(AbstractCloudFormation):
     def build_params(self):
         # create parameters from the config.yml file
         self.parameter_file = "%s-params.json" % self.stack
-        params = []
-        params.append({ "ParameterKey": "Release", "ParameterValue": self.release })
+        expanded_params = []
+        expanded_params.append({ "ParameterKey": "Release", "ParameterValue": self.release })
         # Order of the stacks is priority on overwrites, authoritative is last
         # Here we loop through all of the params in the config file, we need to 
         # create a array of parameter objects, we have to loop through our array 
@@ -290,9 +290,9 @@ class Stack(AbstractCloudFormation):
                 for param_key, param_value in self.config[env]['parameters'].iteritems():
                     count = 0 
                     overwritten = False
-                    for param_item in params:
+                    for param_item in expanded_params:
                         if param_item['ParameterKey'] == param_key:
-                            params[count] = { "ParameterKey": param_key, "ParameterValue": param_value } 
+                            expanded_params[count] = { "ParameterKey": param_key, "ParameterValue": param_value } 
                             overwritten = True 
                         count += 1
                     if not overwritten:
@@ -303,16 +303,19 @@ class Stack(AbstractCloudFormation):
                     stack.get_outputs()
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:
-                            params.append({ "ParameterKey": param_key, "ParameterValue": output['OutputValue'] })
+                            expanded_params.append({ "ParameterKey": param_key, "ParameterValue": output['OutputValue'] })
 
         # Here we restrict the returned parameters to only the ones that the
-        # template accepts.
+        # template accepts by copying expanded_params into return_params and removing
+        # the item in question from return_params (this avoids an off-by-one bug in
+        # iterating over a list that we're also removing items from.)
+        return_params = expanded_params
         with open(self.config[env]['template'], 'r') as template_file:
             parsed_template_file = json.load(template_file)
-            for item in params:
+            for item in expanded_params:
                 if item['ParameterKey'] not in parsed_template_file['Parameters']:
                     logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], self.config[env]['template']))
-                    params.remove(item)
+                    return_params.remove(item)
 
         logger.info("Parameters Created")
-        return params
+        return return_params
