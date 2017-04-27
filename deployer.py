@@ -4,7 +4,7 @@ from s3_sync import s3_sync
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 from lambda_prep import LambdaPrep
-from logger import logger
+from logger import logging, logger, console_logger
 
 import yaml
 
@@ -22,6 +22,7 @@ def main():
     parser.add_option("-r","--disable-rollback", help="Disable rollback on failure.", action="store_true", dest="rollback", default=False)
     parser.add_option("-e","--events",help="Print events",action="store_true",dest="events",default=False)
     parser.add_option("-z","--zip-lambdas", help="Zip lambda functions move them to synced directory", action="store_true", dest="zip_lambdas", default=False)
+    parser.add_option("-D","--debug", help="Sets logging level to DEBUG", action="store_true", dest="debug", default=False)
 
     (opts, args) = parser.parse_args()
 
@@ -38,6 +39,9 @@ def main():
     if options_broken:
         parser.print_help()
         exit(1)
+
+    if opts.debug:
+        console_logger.setLevel(logging.DEBUG)
 
     if opts.zip_lambdas:
         LambdaPrep(opts.config, opts.stack).zip_lambdas()

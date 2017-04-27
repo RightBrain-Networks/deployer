@@ -10,6 +10,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 from time import sleep 
 from datetime import datetime 
 import pytz
+import re
 from logger import logger
 
 class AbstractCloudFormation(object):
@@ -311,13 +312,14 @@ class Stack(AbstractCloudFormation):
         # the item in question from return_params
         logger.debug("expanded_params: {0}".format(expanded_params))
         return_params = list(expanded_params)
-        with open(self.config[env]['template'], 'r') as template_file:
-            parsed_template_file = json.load(template_file)
-            for item in expanded_params:
-                logger.debug("item: {0}".format(item))
-                if item['ParameterKey'] not in parsed_template_file['Parameters']:
-                    logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], self.config[env]['template']))
-                    return_params.remove(item)
+        if re.match(".*\.json",self.config[env]['template']):
+	    with open(self.config[env]['template'], 'r') as template_file:
+                parsed_template_file = json.load(template_file)
+                for item in expanded_params:
+                    logger.debug("item: {0}".format(item))
+                    if item['ParameterKey'] not in parsed_template_file['Parameters']:
+                        logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], self.config[env]['template']))
+                        return_params.remove(item)
 
         logger.info("Parameters Created")
         return return_params
