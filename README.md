@@ -97,7 +97,7 @@ Network:
 If there are no `lambda_dirs` for the specified Stack when running `deployer`, any globally configured `lambda_dirs` will be the fallback for this operation. If a particular lambda directory does not exist, this operation will raise a `ValueError` with the specific directory that does not exist, which caused the error.
 
 ## Parameters
-These parameters correspond to parameters that need to be passed to the Top.json template.
+These parameters correspond to parameters that need to be passed to the Top.json template. `deployer` tolerates but logs parameters that exist within the configuration but do not exist within the template.
 
 These parameters provide identity to the Services like what AMI to use or what bootstrap file to pull even the size of the instance.
 ```
@@ -112,7 +112,7 @@ These parameters provide identity to the Services like what AMI to use or what b
 
 ## Lookup Parameters
 
-These are parameters that can be pulled from another stack's output. 
+These are parameters that can be pulled from another stack's output. `deployer` tolerates but logs parameters that exist within the configuration but do not exist within the template.
 * The key in this key value pair is the ParameterKey being passed to this Stack. 
 * The Value is a custom structure that requires a Stack and OutputKey. 
 * The stack is the Stack name and the OutputKey is the name of the output from the stack being targeted. The script will fetch the stack output and retrieve the output key, using it's value for the parameter value. 
