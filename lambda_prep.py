@@ -2,6 +2,7 @@ import os
 import pip
 import shutil
 import yaml
+from logger import logger
 
 
 class LambdaPrep:
@@ -48,3 +49,5 @@ class LambdaPrep:
 		    os.remove(file_name)
 		else:
 		    raise ValueError("Lambda path '%s' does not exist." % dir)
+        else:
+            logger.debug("No 'lambda_dirs' defined in stack; ignoring -z flag")
