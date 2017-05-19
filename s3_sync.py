@@ -8,6 +8,8 @@ import pip
 import yaml
 import hashlib
 from boto3.session import Session
+from botocore.exceptions import ClientError
+from decorators import retry
 from multiprocessing import Process
 from time import sleep
 from logger import logger
@@ -61,7 +63,8 @@ class s3_sync(object):
         else: 
             etag = '"%s"' % md5s[0].hexdigest()
         return etag
-  
+    
+    @retry(ClientError,logger=logger)
     def validate(self, fname, dest_key):
         if re.match(".*cloudformation.*\.(json|yml)$", fname):
             try:
