@@ -67,7 +67,7 @@ def main():
         if opts.execute == 'create':
             env_stack.create()
         elif opts.execute == 'update':
-            env_stack.update_stack()
+            env_stack.update()
         elif opts.execute == 'delete':
             env_stack.delete_stack()
         elif opts.execute == 'change':

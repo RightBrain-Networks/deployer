@@ -2,6 +2,7 @@ import os
 import pip
 import shutil
 import yaml
+from logger import logger
 
 
 class LambdaPrep:
@@ -31,6 +32,7 @@ class LambdaPrep:
     #  create a temp lambda directory, install necessary dependencies,
     #  zip it, move it, and cleanup all temp artifacts
     def zip_lambdas(self):
+        logger.info('Creating Lambda Archives')
         for dir in self.lambda_dirs:
             if os.path.exists(dir):
                 temp_dir = dir + "_temp"

@@ -137,6 +137,12 @@ Tags are key value pairs of tags to be applied to the Top level stack. This will
     Release : development
 ```
 
+## Transforms
+Denote that at tranform is used in a stack and deployer will automatically create change set and execute change set. 
+```
+  transforms: true
+```
+
 ## Updates
 When running updates to a stack you'll be running updates to the CloudFormation Stack specified by Stack. 
 

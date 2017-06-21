@@ -30,30 +30,44 @@ class AbstractCloudFormation(object):
         pass 
 
     def create(self):
+        signal.signal(signal.SIGINT, self.cancel_create)
         if not self.transforms:
             self.create_stack()
         else:
+            start_time = datetime.now(pytz.utc)
             change_set_name = "{0}-1".format(self.get_config_att('change_prefix'))
             self.get_change_set(change_set_name, "Deployer Automated", 'CREATE')
+            self.execute_change_set(change_set_name)
+            self.create_waiter(start_time)
 
     def update(self):
+        signal.signal(signal.SIGINT, self.cancel_update)
         if not self.transforms:
             self.update_stack()
         else:
-            latest_change = self.get_latest_change_set()
-            print latest_change
-            exit
-            self.get_change_set(opts.change_set_name, opts.change_set_description, 'UPDATE')
+            latest_change = self.get_latest_change_set_name()
+            if latest_change:
+                change_number = int(latest_change.strip(self.get_config_att('change_prefix') + '-'))
+                change_number += 1
+            else:
+                change_number = 1
+            start_time = datetime.now(pytz.utc)
+            change_set_name = "{0}-{1}".format(self.get_config_att('change_prefix'),change_number)
+            self.get_change_set(change_set_name, "Deployer Automated", 'UPDATE')
+            self.execute_change_set(change_set_name)
+            self.update_waiter(start_time)
 
     def cancel_create(self, signal, frame):
-        logger.critical('\nProcess Interupt')
+        logger.critical('Process Interupt')
         logger.critical('Deleteing Stack: %s' % self.stack_name)
         self.delete_stack()
+        exit(1)
 
     def cancel_update(self, signal, frame):
-        logger.critical('\nProcess Interupt')
+        logger.critical('Process Interupt')
         logger.critical('Cancelling Stack Update: %s' % self.stack_name)
         self.client.cancel_update_stack(StackName=self.stack_name)
+        exit(1)
      
     def get_outputs(self):
         resp = self.client.describe_stacks(
@@ -125,8 +139,6 @@ class AbstractCloudFormation(object):
 
     def create_stack(self):
         # create the stack 
-        signal.signal(signal.SIGINT, self.cancel_create)
-        waiter = self.client.get_waiter('stack_create_complete')
         start_time = datetime.now(pytz.utc) 
         resp = self.client.create_stack(
             StackName=self.stack_name,
@@ -139,6 +151,10 @@ class AbstractCloudFormation(object):
                 'CAPABILITY_NAMED_IAM'
             ] 
         )
+        self.create_waiter(start_time)
+
+    def create_waiter(self, start_time):
+        waiter = self.client.get_waiter('stack_create_complete')
         logger.info("Creation Started")
         sleep(5)
         logger.info(self.reload_stack_status())
@@ -156,7 +172,6 @@ class AbstractCloudFormation(object):
     
     def update_stack(self):
         # update the stack 
-        signal.signal(signal.SIGINT, self.cancel_update)
         waiter = self.client.get_waiter('stack_update_complete')
         start_time = datetime.now(pytz.utc) 
         if self.stack_status: 
@@ -170,21 +185,25 @@ class AbstractCloudFormation(object):
                     'CAPABILITY_NAMED_IAM'
                 ] 
             )
-            logger.info("Update Started")
-            sleep(5)
-            logger.info(self.reload_stack_status())
-            if self.print_events:
-                self.output_events(start_time, 'update')
-            else:
-                try:
-                    waiter.wait(StackName=self.stack_name)
-                except WaiterError as e:
-                    status = self.reload_stack_status()
-                    logger.info(status)
-                    self.output_events(start_time, 'update')
-                logger.info(self.reload_stack_status())
+            self.update_waiter(start_time)
         else:
             raise RuntimeError("Stack does not exist")
+
+    def update_waiter(self, start_time):
+        waiter = self.client.get_waiter('stack_update_complete')
+        logger.info("Update Started")
+        sleep(5)
+        logger.info(self.reload_stack_status())
+        if self.print_events:
+            self.output_events(start_time, 'update')
+        else:
+            try:
+                waiter.wait(StackName=self.stack_name)
+            except WaiterError as e:
+                status = self.reload_stack_status()
+                logger.info(status)
+                self.output_events(start_time, 'update')
+            logger.info(self.reload_stack_status())
 
     def output_events(self, start_time, action):
         update_time = start_time
@@ -230,17 +249,27 @@ class AbstractCloudFormation(object):
         resp = self.client.delete_stack(StackName=self.stack_name)
         return True
 
-    def get_latest_change_set(self):
-        resp = { 'NextToken': None }
+    def get_latest_change_set_name(self):
+        resp = {}
         latest = None
-        while resp['NextToken'] != None or latest != None:
-            resp = self.client.list_change_sets(StackName=self.stack_name,NextToken=resp['NextToken'] if not resp['NextToken'] else None)
+        while 'NextToken' in resp or latest == None:
+            if 'NextToken' in resp:
+                resp = self.client.list_change_sets(
+                    StackName=self.stack_name,
+                    NextToken=resp['NextToken']
+                )
+            else:
+                resp = self.client.list_change_sets(
+                    StackName=self.stack_name
+                )
             for change in resp['Summaries']:
                 if not latest:
                     latest = change
                 if change['CreationTime'] > latest['CreationTime']:
                     latest = change
-        return latest
+            if resp['Summaries'] == []:
+                return None
+        return latest['ChangeSetName']
 
     def get_change_set(self, change_set_name, change_set_description, change_set_type):
         # create the change set
@@ -261,7 +290,7 @@ class AbstractCloudFormation(object):
             sleep(5)
             self.change_set_status = self.reload_change_set_status(change_set_name)
             while self.change_set_status != 'CREATE_COMPLETE':
-                sleep(5)
+                sleep(10)
                 status = self.reload_change_set_status(change_set_name)
                 logger.info(status)
                 if status == 'FAILED':
@@ -270,6 +299,11 @@ class AbstractCloudFormation(object):
         else:
             raise RuntimeError("Stack does not exist")
 
+    def execute_change_set(self, change_set_name):
+        resp = self.client.execute_change_set(
+            ChangeSetName=change_set_name,
+            StackName=self.stack_name
+        )
     
     def print_change_set(self, change_set_name, change_set_description):    
         resp = self.client.describe_change_set(
@@ -281,12 +315,15 @@ class AbstractCloudFormation(object):
         headers = ["Action","LogicalId","ResourceType","Replacement"]
         table = []
         for change in self.changes:
-            table.append([
-                change['ResourceChange']['Action'],
-                change['ResourceChange']['LogicalResourceId'],
-                change['ResourceChange']['ResourceType'],
-                change['ResourceChange']['Replacement']
-            ])
+            row = []
+            row.append(change['ResourceChange']['Action'])
+            row.append(change['ResourceChange']['LogicalResourceId'])
+            row.append(change['ResourceChange']['ResourceType'])
+            if 'Replacement' in change['ResourceChange']:
+                row.append(change['ResourceChange']['Replacement'])
+            else:
+                row.append('')
+            table.append(row)
         print tabulate(table, headers, tablefmt='simple')
             
 
