@@ -390,3 +390,5 @@ class Stack(AbstractCloudFormation):
 
         logger.info("Parameters Created")
         return return_params
+        logger.debug("Paramers passed '{0}'".format(params))
+        return params
