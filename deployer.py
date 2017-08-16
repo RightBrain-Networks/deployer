@@ -69,13 +69,13 @@ def main():
     else:
         env_stack = Stack(opts.profile, opts.config, opts.stack, opts.rollback, opts.events)
         if opts.execute == 'create':
-            env_stack.create_stack()
+            env_stack.create()
         elif opts.execute == 'update':
-            env_stack.update_stack()
+            env_stack.update()
         elif opts.execute == 'delete':
             env_stack.delete_stack()
         elif opts.execute == 'change':
-            env_stack.get_change_set(opts.change_set_name, opts.change_set_description)
+            env_stack.get_change_set(opts.change_set_name, opts.change_set_description, 'UPDATE')
         elif opts.sync or opts.execute == 'sync':
             syncer = s3_sync(opts.profile, opts.config, opts.stack)
 
