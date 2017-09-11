@@ -10,6 +10,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 from time import sleep 
 from datetime import datetime 
 import pytz
+from parse import parse
 import re
 from logger import logger
 
@@ -126,6 +127,14 @@ class AbstractCloudFormation(object):
                 self.release,
                 self.template)
         return self.template_url
+
+    def get_template_file(self):
+        if 'template' in self.config[self.stack]:
+            return self.config[self.stack]['template']
+        else:
+            format_string = "http://{sub}.amazonaws.com/{bucket}/{release}/{template}"
+            template_url = self.construct_template_url()
+            return parse(format_string,template_url)['template']
 
     def construct_tags(self): 
         tags = self.get_config_att('tags')
@@ -339,6 +348,7 @@ class Stack(AbstractCloudFormation):
         self.stack_name = self.get_config_att('stack_name')
         self.release = self.get_config_att('release').replace('/','.')
         self.template_url = self.construct_template_url()
+        self.template_file = self.get_template_file()
         self.transforms = self.get_config_att('transforms')
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
@@ -379,13 +389,13 @@ class Stack(AbstractCloudFormation):
         # the item in question from return_params
         logger.debug("expanded_params: {0}".format(expanded_params))
         return_params = list(expanded_params)
-        if re.match(".*\.json",self.config[env]['template']):
-	    with open(self.config[env]['template'], 'r') as template_file:
+        if re.match(".*\.json",self.template_file):
+	    with open(self.template_file, 'r') as template_file:
                 parsed_template_file = json.load(template_file)
                 for item in expanded_params:
                     logger.debug("item: {0}".format(item))
                     if item['ParameterKey'] not in parsed_template_file['Parameters']:
-                        logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], self.config[env]['template']))
+                        logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], template_file))
                         return_params.remove(item)
 
         logger.info("Parameters Created")

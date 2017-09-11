@@ -3,3 +3,4 @@ pyyaml
 tabulate>=0.7.5
 pytz
 ruamel.yaml
+parse==1.8.2
