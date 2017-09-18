@@ -62,7 +62,7 @@ Command line takes a optional -y to copy files to s3. The code will walk {sync_b
 * sync_dest_bucket: S3 bucket to sync to.
 * sync_exclude: A list of expressions to exclude from the copy, example might be .swp or .git.
 
-### Sync Notes
+## Zipping Lambda Functions
 * Sync skips files to upload to S3 based on their etag and MD5 hash sums.
 * Sync will automatically validate all templates before it sends them to S3. To preserve time and not abuse the CFN API (it's rate limited) sync will only validate if the MD5 hash and etag do not match.
 
@@ -154,16 +154,6 @@ Updates to CloudFormation will change the living Infrastructure based on your cu
 
 ## Deletes
 When using this script to delete it simply looks up the stack variable you've provied to the command in the configuration file and issues a delete to that CloudFormation Stack name.
-
-To issue a delete command follow the following structure:
-```
-./deployer.py -c sandbox-us-east-1.yml -p profileName -s <Environment Name> -x delete
-```
-
-## Starting From Scratch
-
-1. Build a configuration file
-2. Create a Stack in the configuration
   * Environments require stack_name, full_template_url or release, stack_name, template, and optionally parameters
   * release corresponds to a tag or branch which is a prefix to the S3 object keys stored in s3.
   * To sync with S3 add sync_base, sync_dirs, sync_dest_bucket, and optionally sync_exclude and use the -y flag when running deployer.

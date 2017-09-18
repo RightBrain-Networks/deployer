@@ -132,8 +132,8 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-            'deployer = ngx_swag:main',
-            'config_updater = ngx_swag:config_updater:main',
+            'deployer = deployer:main',
+            'config_updater = deployer.config_updater:main',
         ],
     },
 )

@@ -7,6 +7,9 @@ from logger import logging, logger, console_logger
 
 import ruamel.yaml
 
+
+__version__ = 'v0.3.5'
+
 def main():
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
     parser.add_argument("-c","--config", help="Path to config file.")
