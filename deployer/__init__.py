@@ -5,7 +5,7 @@ from s3_sync import s3_sync
 from lambda_prep import LambdaPrep
 from logger import logging, logger, console_logger
 
-import yaml
+import ruamel.yaml
 
 def main():
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
@@ -50,7 +50,7 @@ def main():
     if args.all:
         # Read Environment Config
         with open(args.config) as f:
-            config = yaml.load(f)
+            config = ruamel.yaml.load(f)
 
         # Create or update all Environments
         for stack, obj in config.iteritems():
