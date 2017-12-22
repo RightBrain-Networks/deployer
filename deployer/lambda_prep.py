@@ -2,7 +2,7 @@ import os
 import pip
 import shutil
 import yaml
-from logger import logger
+from deployer.logger import logger
 
 
 class LambdaPrep:

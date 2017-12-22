@@ -1,18 +1,18 @@
 #!/usr/bin/env python
-import signal
 import boto3
+import json
+import pytz
+import re
+import signal
+import yaml
 from boto3.session import Session
 from botocore.exceptions import WaiterError
 from tabulate import tabulate
-import yaml
-import json
 from abc import ABCMeta, abstractmethod, abstractproperty
 from time import sleep 
 from datetime import datetime 
-import pytz
 from parse import parse
-import re
-from logger import logger
+from deployer.logger import logger
 
 class AbstractCloudFormation(object):
     __metaclass__ = ABCMeta
@@ -243,9 +243,9 @@ class AbstractCloudFormation(object):
             update_time = datetime.now(pytz.utc) 
             if len(table) > 0:
                 if count == 0:
-                    print tabulate(table,headers,tablefmt='simple')
+                    print(tabulate(table,headers,tablefmt='simple'))
                 else:
-                    print tabulate(table,[],tablefmt='plain')
+                    print(tabulate(table,[],tablefmt='plain'))
             if action == 'create':
                 if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED' ]:
                     raise RuntimeError("Create stack Failed")
@@ -320,7 +320,7 @@ class AbstractCloudFormation(object):
             StackName=self.stack_name
         )
         self.changes = resp['Changes']
-        print "==================================== Change ===================================" 
+        print("==================================== Change ===================================")
         headers = ["Action","LogicalId","ResourceType","Replacement"]
         table = []
         for change in self.changes:
@@ -333,7 +333,7 @@ class AbstractCloudFormation(object):
             else:
                 row.append('')
             table.append(row)
-        print tabulate(table, headers, tablefmt='simple')
+        print(tabulate(table, headers, tablefmt='simple'))
             
 
 class Stack(AbstractCloudFormation):
@@ -390,7 +390,7 @@ class Stack(AbstractCloudFormation):
         logger.debug("expanded_params: {0}".format(expanded_params))
         return_params = list(expanded_params)
         if re.match(".*\.json",self.template_file):
-	    with open(self.template_file, 'r') as template_file:
+            with open(self.template_file, 'r') as template_file:
                 parsed_template_file = json.load(template_file)
                 for item in expanded_params:
                     logger.debug("item: {0}".format(item))

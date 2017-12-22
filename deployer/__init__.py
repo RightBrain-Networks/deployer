@@ -1,9 +1,9 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python
 import argparse
-from cloudformation import Stack
-from s3_sync import s3_sync
-from lambda_prep import LambdaPrep
-from logger import logging, logger, console_logger
+from deployer.cloudformation import Stack
+from deployer.s3_sync import s3_sync
+from deployer.lambda_prep import LambdaPrep
+from deployer.logger import logging, logger, console_logger
 
 import ruamel.yaml
 
@@ -32,10 +32,10 @@ def main():
         args.config = 'config.yml'
     if not args.all:
         if not args.execute:
-            print "Must Specify execute flag!"
+            print("Must Specify execute flag!")
             options_broken = True
         if not args.stack:
-            print "Must Specify stack flag!"
+            print("Must Specify stack flag!")
             options_broken = True
     if options_broken:
         parser.print_help()
@@ -58,14 +58,14 @@ def main():
         # Create or update all Environments
         for stack, obj in config.iteritems():
             if stack != 'global':
-                print stack
+                print(stack)
                 env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events)
                 env_stack = Stack(args.profile, args.config, stack, args.events)
                 if env_stack.stack_status:
-                    print "Update %s" % stack
+                    print("Update %s" % stack)
                     env_stack.update_stack()
                 else:
-                    print "Create %s" % stack
+                    print("Create %s" % stack)
                     env_stack.create_stack()
     else:
         env_stack = Stack(args.profile, args.config, args.stack, args.rollback, args.events)
