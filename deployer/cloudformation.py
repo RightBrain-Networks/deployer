@@ -139,7 +139,7 @@ class AbstractCloudFormation(object):
     def construct_tags(self): 
         tags = self.get_config_att('tags')
         if tags:
-            tags = [ { 'Key': key, 'Value': value } for key, value in tags.iteritems() ] 
+            tags = [ { 'Key': key, 'Value': value } for key, value in tags.items() ] 
             if len(tags) > 9:
                 raise ValueError('Resources tag limit is 10, you have provided more than 9 tags. Please limit your tagging, safe room for name tag.') 
         else:
@@ -366,7 +366,7 @@ class Stack(AbstractCloudFormation):
         for env in ['global', self.stack]:
             if 'parameters' in self.config[env]:
                 logger.debug("env {0} has parameters: {1}".format(env, self.config[env]['parameters']))
-                for param_key, param_value in self.config[env]['parameters'].iteritems():
+                for param_key, param_value in self.config[env]['parameters'].items():
                     count = 0 
                     overwritten = False
                     for param_item in expanded_params:
@@ -377,7 +377,7 @@ class Stack(AbstractCloudFormation):
                     if not overwritten:
                         expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
             if 'lookup_parameters' in self.config[env]:
-                for param_key, lookup_struct in self.config[env]['lookup_parameters'].iteritems():
+                for param_key, lookup_struct in self.config[env]['lookup_parameters'].items():
                     stack = Stack(self.profile, self.config_file, lookup_struct['Stack'])
                     stack.get_outputs()
                     for output in stack.outputs:

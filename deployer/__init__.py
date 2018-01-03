@@ -56,7 +56,7 @@ def main():
             config = ruamel.yaml.load(f)
 
         # Create or update all Environments
-        for stack, obj in config.iteritems():
+        for stack, obj in config.items():
             if stack != 'global':
                 print(stack)
                 env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events)
