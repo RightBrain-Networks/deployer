@@ -8,7 +8,7 @@ from deployer.logger import logging, logger, console_logger
 import ruamel.yaml
 
 
-__version__ = 'v0.3.5'
+__version__ = 'v0.3.6'
 
 def main():
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
@@ -21,7 +21,7 @@ def main():
     parser.add_argument("-y","--copy",help="copy directory structure", action="store_true", dest="sync", default=False)
     parser.add_argument("-A","--all", help="Create or Update all environments in a config", action="store_true", dest="all", default=False)
     parser.add_argument("-r","--disable-rollback", help="Disable rollback on failure.", action="store_true", dest="rollback", default=False)
-    parser.add_argument("-e","--events",help="Print events",action="store_true",dest="events",default=False)
+    parser.add_argument("-e","--events",help="Print events",action="store_false",dest="events",default=True)
     parser.add_argument("-z","--zip-lambdas", help="Zip lambda functions move them to synced directory", action="store_true", dest="zip_lambdas", default=False)
     parser.add_argument("-D","--debug", help="Sets logging level to DEBUG", action="store_true", dest="debug", default=False)
 
