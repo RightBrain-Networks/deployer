@@ -23,6 +23,7 @@ def main():
     parser.add_argument("-r","--disable-rollback", help="Disable rollback on failure.", action="store_true", dest="rollback", default=False)
     parser.add_argument("-e","--events",help="Print events",action="store_false",dest="events",default=True)
     parser.add_argument("-z","--zip-lambdas", help="Zip lambda functions move them to synced directory", action="store_true", dest="zip_lambdas", default=False)
+    parser.add_argument("-j","--assume-valid", help="Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)", action="store_true", dest="assume_valid", default=False)
     parser.add_argument("-D","--debug", help="Sets logging level to DEBUG", action="store_true", dest="debug", default=False)
 
     args = parser.parse_args()
@@ -48,7 +49,7 @@ def main():
         LambdaPrep(args.config, args.stack).zip_lambdas()
 
     if args.sync:
-        syncer = s3_sync(args.profile, args.config, args.stack)
+        syncer = s3_sync(args.profile, args.config, args.stack, args.assume_valid)
 
     if args.all:
         # Read Environment Config
@@ -78,7 +79,7 @@ def main():
         elif args.execute == 'change':
             env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
         elif args.sync or args.execute == 'sync':
-            syncer = s3_sync(args.profile, args.config, args.stack)
+            syncer = s3_sync(args.profile, args.config, args.stack, args.assume_valid)
 
 
 if __name__ == '__main__':
