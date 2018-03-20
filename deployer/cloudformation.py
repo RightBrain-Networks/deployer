@@ -4,7 +4,7 @@ import json
 import pytz
 import re
 import signal
-import yaml
+import ruamel.yaml
 from boto3.session import Session
 from botocore.exceptions import WaiterError
 from tabulate import tabulate
@@ -13,6 +13,13 @@ from time import sleep
 from datetime import datetime 
 from parse import parse
 from deployer.logger import logger
+
+# Used to enable parsing of yaml templates using shorthand notation
+def general_constructor(loader, tag_suffix, node):
+    return node.value
+
+ruamel.yaml.SafeLoader.add_multi_constructor(u'!',general_constructor)
+
 
 class AbstractCloudFormation(object):
     __metaclass__ = ABCMeta
@@ -98,7 +105,7 @@ class AbstractCloudFormation(object):
 
     def get_config(self): 
         with open(self.config_file) as f:
-            data = yaml.load(f)
+            data = ruamel.yaml.safe_load(f)
         return data
 
     def get_config_att(self, key):
@@ -389,14 +396,18 @@ class Stack(AbstractCloudFormation):
         # the item in question from return_params
         logger.debug("expanded_params: {0}".format(expanded_params))
         return_params = list(expanded_params)
-        if re.match(".*\.json",self.template_file):
-            with open(self.template_file, 'r') as template_file:
+        with open(self.template_file, 'r') as template_file:
+            if re.match(".*\.json",self.template_file):
                 parsed_template_file = json.load(template_file)
-                for item in expanded_params:
-                    logger.debug("item: {0}".format(item))
-                    if item['ParameterKey'] not in parsed_template_file['Parameters']:
-                        logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], template_file))
-                        return_params.remove(item)
-
+            elif re.match(".*\.yml",self.template_file):
+                parsed_template_file = ruamel.yaml.safe_load(template_file)
+            else:
+                logger.info("Filename does not end in json or yml")
+                return return_params
+            for item in expanded_params:
+                logger.debug("item: {0}".format(item))
+                if item['ParameterKey'] not in parsed_template_file['Parameters']:
+                    logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], template_file))
+                    return_params.remove(item)
         logger.info("Parameters Created")
         return return_params

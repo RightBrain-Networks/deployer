@@ -8,7 +8,7 @@ from deployer.logger import logging, logger, console_logger
 import ruamel.yaml
 
 
-__version__ = 'v0.3.6'
+__version__ = 'v0.3.7'
 
 def main():
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
