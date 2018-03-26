@@ -1,17 +1,25 @@
 #!/usr/bin/env python
-import signal
 import boto3
+import json
+import pytz
+import re
+import signal
+import ruamel.yaml
 from boto3.session import Session
 from botocore.exceptions import WaiterError
 from tabulate import tabulate
-import yaml
-import json
 from abc import ABCMeta, abstractmethod, abstractproperty
 from time import sleep 
 from datetime import datetime 
-import pytz
-import re
-from logger import logger
+from parse import parse
+from deployer.logger import logger
+
+# Used to enable parsing of yaml templates using shorthand notation
+def general_constructor(loader, tag_suffix, node):
+    return node.value
+
+ruamel.yaml.SafeLoader.add_multi_constructor(u'!',general_constructor)
+
 
 class AbstractCloudFormation(object):
     __metaclass__ = ABCMeta
@@ -97,7 +105,7 @@ class AbstractCloudFormation(object):
 
     def get_config(self): 
         with open(self.config_file) as f:
-            data = yaml.load(f)
+            data = ruamel.yaml.safe_load(f)
         return data
 
     def get_config_att(self, key):
@@ -127,10 +135,18 @@ class AbstractCloudFormation(object):
                 self.template)
         return self.template_url
 
+    def get_template_file(self):
+        if 'template' in self.config[self.stack]:
+            return self.config[self.stack]['template']
+        else:
+            format_string = "http://{sub}.amazonaws.com/{bucket}/{release}/{template}"
+            template_url = self.construct_template_url()
+            return parse(format_string,template_url)['template']
+
     def construct_tags(self): 
         tags = self.get_config_att('tags')
         if tags:
-            tags = [ { 'Key': key, 'Value': value } for key, value in tags.iteritems() ] 
+            tags = [ { 'Key': key, 'Value': value } for key, value in tags.items() ] 
             if len(tags) > 9:
                 raise ValueError('Resources tag limit is 10, you have provided more than 9 tags. Please limit your tagging, safe room for name tag.') 
         else:
@@ -234,9 +250,9 @@ class AbstractCloudFormation(object):
             update_time = datetime.now(pytz.utc) 
             if len(table) > 0:
                 if count == 0:
-                    print tabulate(table,headers,tablefmt='simple')
+                    print(tabulate(table,headers,tablefmt='simple'))
                 else:
-                    print tabulate(table,[],tablefmt='plain')
+                    print(tabulate(table,[],tablefmt='plain'))
             if action == 'create':
                 if status in [ 'CREATE_FAILED', 'ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETE', 'ROLLBACK_FAILED' ]:
                     raise RuntimeError("Create stack Failed")
@@ -311,7 +327,7 @@ class AbstractCloudFormation(object):
             StackName=self.stack_name
         )
         self.changes = resp['Changes']
-        print "==================================== Change ===================================" 
+        print("==================================== Change ===================================")
         headers = ["Action","LogicalId","ResourceType","Replacement"]
         table = []
         for change in self.changes:
@@ -324,7 +340,7 @@ class AbstractCloudFormation(object):
             else:
                 row.append('')
             table.append(row)
-        print tabulate(table, headers, tablefmt='simple')
+        print(tabulate(table, headers, tablefmt='simple'))
             
 
 class Stack(AbstractCloudFormation):
@@ -339,6 +355,7 @@ class Stack(AbstractCloudFormation):
         self.stack_name = self.get_config_att('stack_name')
         self.release = self.get_config_att('release').replace('/','.')
         self.template_url = self.construct_template_url()
+        self.template_file = self.get_template_file()
         self.transforms = self.get_config_att('transforms')
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
@@ -356,7 +373,7 @@ class Stack(AbstractCloudFormation):
         for env in ['global', self.stack]:
             if 'parameters' in self.config[env]:
                 logger.debug("env {0} has parameters: {1}".format(env, self.config[env]['parameters']))
-                for param_key, param_value in self.config[env]['parameters'].iteritems():
+                for param_key, param_value in self.config[env]['parameters'].items():
                     count = 0 
                     overwritten = False
                     for param_item in expanded_params:
@@ -367,7 +384,7 @@ class Stack(AbstractCloudFormation):
                     if not overwritten:
                         expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
             if 'lookup_parameters' in self.config[env]:
-                for param_key, lookup_struct in self.config[env]['lookup_parameters'].iteritems():
+                for param_key, lookup_struct in self.config[env]['lookup_parameters'].items():
                     stack = Stack(self.profile, self.config_file, lookup_struct['Stack'])
                     stack.get_outputs()
                     for output in stack.outputs:
@@ -379,14 +396,18 @@ class Stack(AbstractCloudFormation):
         # the item in question from return_params
         logger.debug("expanded_params: {0}".format(expanded_params))
         return_params = list(expanded_params)
-        if re.match(".*\.json",self.config[env]['template']):
-	    with open(self.config[env]['template'], 'r') as template_file:
+        with open(self.template_file, 'r') as template_file:
+            if re.match(".*\.json",self.template_file):
                 parsed_template_file = json.load(template_file)
-                for item in expanded_params:
-                    logger.debug("item: {0}".format(item))
-                    if item['ParameterKey'] not in parsed_template_file['Parameters']:
-                        logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], self.config[env]['template']))
-                        return_params.remove(item)
-
+            elif re.match(".*\.yml",self.template_file):
+                parsed_template_file = ruamel.yaml.safe_load(template_file)
+            else:
+                logger.info("Filename does not end in json or yml")
+                return return_params
+            for item in expanded_params:
+                logger.debug("item: {0}".format(item))
+                if item['ParameterKey'] not in parsed_template_file['Parameters']:
+                    logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], template_file))
+                    return_params.remove(item)
         logger.info("Parameters Created")
         return return_params

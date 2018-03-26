@@ -9,13 +9,13 @@ import yaml
 import hashlib
 from boto3.session import Session
 from botocore.exceptions import ClientError
-from decorators import retry
 from multiprocessing import Process
 from time import sleep
-from logger import logger
+from deployer.decorators import retry
+from deployer.logger import logger
 
 class s3_sync(object):
-    def __init__(self, profile, config_file, environment):
+    def __init__(self, profile, config_file, environment, valid=False):
         self.profile = profile
         self.environment = environment
         self.config = self.get_config(config_file)
@@ -28,7 +28,7 @@ class s3_sync(object):
         self.client = self.session.client('s3')
         self.cfn = self.session.client('cloudformation')
         self.excludes = self.construct_excludes()
-        self.valid = True
+        self.valid = valid
         self.sync()
 
     def get_config(self, config):
@@ -171,5 +171,8 @@ class s3_sync(object):
                         exit(1)
 
     def sync(self):
-        self.test()
+        if self.valid:
+            logger.debug("Assuming templates are valid and continuing to sync.")
+        else:
+            self.test()
         self.upload()

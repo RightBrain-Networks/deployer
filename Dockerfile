@@ -5,9 +5,9 @@ RUN apt-get update && \
 
 # Setup Deployer
 ADD / /deployer
-RUN pip install -r /deployer/requirements.txt && \
-    ln -s /deployer/deployer.py /usr/local/bin/deployer && \
-    ln -s /deployer/config_updater.py /usr/local/bin/config_updater 
+WORKDIR /deployer
+RUN python setup.py sdist
+RUN pip install -r dist/deployer-0.3.5.tar.gz
 
 # Prep workspace
 RUN mkdir /workspace

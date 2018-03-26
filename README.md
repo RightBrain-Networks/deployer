@@ -2,11 +2,15 @@
 
 Deployer is used to create | update | delete CloudFormation Stacks
 
-## Clone and use
-Clone Deployer into a directory of your choice. Edit your ~/.bashrc and add an alias like this `alias deployer='/my/path/to/deployer.py'`
+# Install
+Deployer is now a pip installable package and comes with two command line entry scripts, `deployer` and `config_updater`
+To install, simply:
+```
+pip install path/to/deployer-<version>.tar.gz
+```
 
-## Client Use
-When you use Deployer in a project we should give it to the client. Clone or copy a particular release of deployer into the aws-tools repo for the client to use. 
+# Use
+Deployer is free for use by RightBrain Networks Clients however comes as is with out any guarantees.
 
 ##### Flags
 * -c <config file> (REQUIRED) -- Yaml configuration file to run against.
@@ -24,22 +28,22 @@ When you use Deployer in a project we should give it to the client. Clone or cop
 
 ##### Examples
 Create a stack and copy specified directories to S3.
-`./deployer.py -c config.yml -s MyStack -x create -p profileName -y`
+`./deployer -c config.yml -s MyStack -x create -p profileName -y`
 
 Update a stack and display the events. 
-`./deployer.py -c config.yml -s DevDerek -x update -p profileName -e`
+`./deployer -c config.yml -s DevDerek -x update -p profileName -e`
 
 Copy to S3, and create a change set and display what will change during an update.
-`./deployer.py -c config.yml -s MyStack -x change -t MyChangeSetName -d 'This is a description of my change' -y -p profileName`
+`./deployer -c config.yml -s MyStack -x change -t MyChangeSetName -d 'This is a description of my change' -y -p profileName`
 
 Copy to S3, and create a new stack and disable CloudFormation from rolling back so you can debug.
-`./deployer.py -c config.yml -s MyStack -x create -p profileName -y -r`
+`./deployer -c config.yml -s MyStack -x create -p profileName -y -r`
 
 Just copy to s3.
-`./deployer.py -c config.yml -s MyStack -x sync -p profileName`
+`./deployer -c config.yml -s MyStack -x sync -p profileName`
 
 Zip up lambdas, copy to s3, and update.
-`./deployer.py -c config.yml -s MyStack -x update -p profileName -y -z`
+`./deployer -c config.yml -s MyStack -x update -p profileName -y -z`
 
 # The Config
 
@@ -62,7 +66,7 @@ Command line takes a optional -y to copy files to s3. The code will walk {sync_b
 * sync_dest_bucket: S3 bucket to sync to.
 * sync_exclude: A list of expressions to exclude from the copy, example might be .swp or .git.
 
-### Sync Notes
+## Zipping Lambda Functions
 * Sync skips files to upload to S3 based on their etag and MD5 hash sums.
 * Sync will automatically validate all templates before it sends them to S3. To preserve time and not abuse the CFN API (it's rate limited) sync will only validate if the MD5 hash and etag do not match.
 
@@ -148,22 +152,12 @@ When running updates to a stack you'll be running updates to the CloudFormation 
 
 Updates to CloudFormation will change the living Infrastructure based on your current configuration. 
 ```
-./deployer.py -c sandbox-us-east-1.yml -p profileName -s <Environment Name> -x update
+./deployer -c sandbox-us-east-1.yml -p profileName -s <Environment Name> -x update
 ```
 
 
 ## Deletes
 When using this script to delete it simply looks up the stack variable you've provied to the command in the configuration file and issues a delete to that CloudFormation Stack name.
-
-To issue a delete command follow the following structure:
-```
-./deployer.py -c sandbox-us-east-1.yml -p profileName -s <Environment Name> -x delete
-```
-
-## Starting From Scratch
-
-1. Build a configuration file
-2. Create a Stack in the configuration
   * Environments require stack_name, full_template_url or release, stack_name, template, and optionally parameters
   * release corresponds to a tag or branch which is a prefix to the S3 object keys stored in s3.
   * To sync with S3 add sync_base, sync_dirs, sync_dest_bucket, and optionally sync_exclude and use the -y flag when running deployer.
@@ -172,12 +166,12 @@ To issue a delete command follow the following structure:
   * Parameters are used to pass values to the template parameters. See Parameters section above.
   * Stack also allows for lookup_parameters. See Lookup Parameters section above.
 3. Boot the Environment
-  * `./deployer.py -c prototype-us-east-1.yml -p profileName -s Dev -x create`
+  * `./deployer -c prototype-us-east-1.yml -p profileName -s Dev -x create`
 4. Follow up by watching the CloudFormation console. 
 
 
 ## Code
-deployer.py is the main script. This contains the arguments and options for the scirpt and a main method. This file imports cloudformation.py and s3_sync.py.
+__init__.py is the main script. This contains the arguments and options for the scirpt and a main method. This file imports cloudformation.py and s3_sync.py.
 
 ### cloudformation.py
 Abstract class for wrapping the CloudFormation Stack.
@@ -192,7 +186,7 @@ Network Class has been removed, it's irrelivant now. It was in place because of 
 
 # Config Updater
 
-The config_updater.py command is meant to help with updating config files in the CI/CD process to allow for automated deploys via deployer. Specify the config file you need to update then a JSON string representing the changes that need to take place. You can update multiple environments or attributes at once. 
+The `config_updater` command is meant to help with updating config files in the CI/CD process to allow for automated deploys via deployer. Specify the config file you need to update then a JSON string representing the changes that need to take place. You can update multiple environments or attributes at once. 
 
 ## Usage
 
@@ -201,5 +195,5 @@ The config_updater.py command is meant to help with updating config files in the
 
 ## Example
 
-`./config_updater.py -c example_configs/dummy.yml -u "{ \"Network\": { \"release\": \"$RELEASE\", \"parameters\":{ \"VirtualPrivateGateway\":\"someotherthing\"} } }"`
-`./config_updater.py -c example_configs/dummy.yml -u '{ "Network": { "release": "1.0.2" }, "Dev-Env": { "release": "1.0.2" } }'`
+`./config_updater -c example_configs/dummy.yml -u "{ \"Network\": { \"release\": \"$RELEASE\", \"parameters\":{ \"VirtualPrivateGateway\":\"someotherthing\"} } }"`
+`./config_updater -c example_configs/dummy.yml -u '{ "Network": { "release": "1.0.2" }, "Dev-Env": { "release": "1.0.2" } }'`
