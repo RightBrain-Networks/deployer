@@ -376,13 +376,14 @@ class Stack(AbstractCloudFormation):
                 for param_key, param_value in self.config[env]['parameters'].items():
                     count = 0 
                     overwritten = False
+                    param_xform = ','.join(param_value) if isinstance(param_value, list) else param_value
                     for param_item in expanded_params:
                         if param_item['ParameterKey'] == param_key:
-                            expanded_params[count] = { "ParameterKey": param_key, "ParameterValue": param_value } 
+                            expanded_params[count] = { "ParameterKey": param_key, "ParameterValue": param_xform } 
                             overwritten = True 
                         count += 1
                     if not overwritten:
-                        expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
+                        expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_xform })
             if 'lookup_parameters' in self.config[env]:
                 for param_key, lookup_struct in self.config[env]['lookup_parameters'].items():
                     stack = Stack(self.profile, self.config_file, lookup_struct['Stack'])
