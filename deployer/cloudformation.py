@@ -146,8 +146,8 @@ class AbstractCloudFormation(object):
             return parse(format_string,template_url)['template']
 
     def get_template_body(self):
-        if not self.get_config_att('template_bucket'):
-            logger.info("Using local template due to null template bucket")
+        bucket = self.config[self.stack]['template_bucket'] if 'template_bucket' in self.config[self.stack] else self.get_config_att('template_bucket')
+        if not bucket:
             template = self.config[self.stack]['template'] if 'template' in self.config[self.stack] else self.get_config_att('template')
             try:
                 with open(template, 'r') as f:
@@ -182,6 +182,8 @@ class AbstractCloudFormation(object):
             ]
         }
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
+        if self.template_body:
+            logger.info("Using local template due to null template bucket")
         resp = self.client.create_stack(**args)
         self.create_waiter(start_time)
 
@@ -216,7 +218,9 @@ class AbstractCloudFormation(object):
             ]
         }
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
-        if self.stack_status: 
+        if self.template_body:
+            logger.info("Using local template due to null template bucket")
+        if self.stack_status:
             resp = self.client.update_stack(**args)
             self.update_waiter(start_time)
         else:
