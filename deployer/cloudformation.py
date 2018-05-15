@@ -400,10 +400,10 @@ class Stack(AbstractCloudFormation):
         with open(self.template_file, 'r') as template_file:
             if re.match(".*\.json",self.template_file):
                 parsed_template_file = json.load(template_file)
-            elif re.match(".*\.yml",self.template_file):
+            elif re.match(".*\.ya?ml",self.template_file):
                 parsed_template_file = ruamel.yaml.safe_load(template_file)
             else:
-                logger.info("Filename does not end in json or yml")
+                logger.info("Filename does not end in json/yml/yaml")
                 return return_params
             for item in expanded_params:
                 logger.debug("item: {0}".format(item))
