@@ -98,12 +98,12 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'boto3>=1.3.1',
+        'boto3>=1.7.0',
         'pyyaml>=3.12',
         'tabulate>=0.7.5',
         'pytz==2017.2',
         'ruamel.yaml>=0.15.33',
-		'parse==1.8.2',
+        'parse==1.8.2',
         'jinja2==2.8'
     ],
 

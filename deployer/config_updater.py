@@ -4,7 +4,7 @@ import ruamel.yaml
 import json
 
 def config_update(config,item):
-    for thing in item.iteritems():
+    for thing in item.items():
         if isinstance(thing[1],dict):
             config[thing[0]] = config_update(config[thing[0]],thing[1])
         else:
