@@ -120,6 +120,8 @@ class AbstractCloudFormation(object):
         alt = 'full_template_url'
         if alt in self.config[self.stack]:
             self.template_url = self.config[self.stack][alt]
+        elif not self.get_config_att('template_bucket'):
+            return None
         else:
             url_string = "https://{}.amazonaws.com/{}/{}/{}"
             self.template_bucket = self.get_config_att('template_bucket')
@@ -143,6 +145,19 @@ class AbstractCloudFormation(object):
             template_url = self.construct_template_url()
             return parse(format_string,template_url)['template']
 
+    def get_template_body(self):
+        bucket = self.config[self.stack]['template_bucket'] if 'template_bucket' in self.config[self.stack] else self.get_config_att('template_bucket')
+        if not bucket:
+            template = self.config[self.stack]['template'] if 'template' in self.config[self.stack] else self.get_config_att('template')
+            try:
+                with open(template, 'r') as f:
+                    return f.read()
+            except Exception as e:
+                logger.warning("Failed to read template file")
+                return None
+        else:
+            return None
+
     def construct_tags(self): 
         tags = self.get_config_att('tags')
         if tags:
@@ -155,18 +170,21 @@ class AbstractCloudFormation(object):
 
     def create_stack(self):
         # create the stack 
-        start_time = datetime.now(pytz.utc) 
-        resp = self.client.create_stack(
-            StackName=self.stack_name,
-            TemplateURL=self.template_url,
-            Parameters=self.build_params(),
-            DisableRollback=self.disable_rollback,
-            Tags=self.construct_tags(),
-            Capabilities=[
+        start_time = datetime.now(pytz.utc)
+        args = {
+            "StackName": self.stack_name,
+            "Parameters": self.build_params(),
+            "DisableRollback": self.disable_rollback,
+            "Tags": self.construct_tags(),
+            "Capabilities": [
                 'CAPABILITY_IAM',
                 'CAPABILITY_NAMED_IAM'
-            ] 
-        )
+            ]
+        }
+        args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
+        if self.template_body:
+            logger.info("Using local template due to null template bucket")
+        resp = self.client.create_stack(**args)
         self.create_waiter(start_time)
 
     def create_waiter(self, start_time):
@@ -189,18 +207,21 @@ class AbstractCloudFormation(object):
     def update_stack(self):
         # update the stack 
         waiter = self.client.get_waiter('stack_update_complete')
-        start_time = datetime.now(pytz.utc) 
-        if self.stack_status: 
-            resp = self.client.update_stack(
-                StackName=self.stack_name,
-                TemplateURL=self.template_url,
-                Parameters=self.build_params(),
-                Tags=self.construct_tags(),
-                Capabilities=[
-                    'CAPABILITY_IAM',
-                    'CAPABILITY_NAMED_IAM'
-                ] 
-            )
+        start_time = datetime.now(pytz.utc)
+        args = {
+            "StackName": self.stack_name,
+            "Parameters": self.build_params(),
+            "Tags": self.construct_tags(),
+            "Capabilities": [
+                'CAPABILITY_IAM',
+                'CAPABILITY_NAMED_IAM'
+            ]
+        }
+        args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
+        if self.template_body:
+            logger.info("Using local template due to null template bucket")
+        if self.stack_status:
+            resp = self.client.update_stack(**args)
             self.update_waiter(start_time)
         else:
             raise RuntimeError("Stack does not exist")
@@ -356,6 +377,7 @@ class Stack(AbstractCloudFormation):
         self.release = self.get_config_att('release').replace('/','.')
         self.template_url = self.construct_template_url()
         self.template_file = self.get_template_file()
+        self.template_body = self.get_template_body()
         self.transforms = self.get_config_att('transforms')
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
