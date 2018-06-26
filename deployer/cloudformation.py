@@ -12,6 +12,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 from time import sleep 
 from datetime import datetime 
 from parse import parse
+from deployer.decorators import retry
 from deployer.logger import logger
 
 # Used to enable parsing of yaml templates using shorthand notation
@@ -76,13 +77,15 @@ class AbstractCloudFormation(object):
         logger.critical('Cancelling Stack Update: %s' % self.stack_name)
         self.client.cancel_update_stack(StackName=self.stack_name)
         exit(1)
-     
+
+    @retry(ClientError,tries=6,logger=logger)
     def get_outputs(self):
         resp = self.client.describe_stacks(
                    StackName=self.stack_name)
         self.outputs = resp['Stacks'][0]['Outputs']
         return self.outputs
 
+    @retry(ClientError,tries=6,logger=logger)
     def reload_stack_status(self): 
         try:
             resp = self.client.describe_stacks(
