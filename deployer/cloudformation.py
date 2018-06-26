@@ -78,7 +78,7 @@ class AbstractCloudFormation(object):
         self.client.cancel_update_stack(StackName=self.stack_name)
         exit(1)
 
-    @retry(ClientError,tries=6,logger=logger)
+    @retry(ClientError,logger=logger)
     def get_outputs(self):
         resp = self.client.describe_stacks(
                    StackName=self.stack_name)
