@@ -4,7 +4,7 @@ USER root
 RUN pip install --upgrade pip
 
 # Setup Deployer
-ADD deployer LICENSE README.md README.rst setup.py /deployer
+ADD deployer LICENSE README.md README.rst setup.py /deployer/
 WORKDIR /deployer
 RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
