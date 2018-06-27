@@ -6,9 +6,9 @@ import re
 import signal
 import ruamel.yaml
 from boto3.session import Session
-from botocore.exceptions import WaiterError
+from botocore.exceptions import ClientError, WaiterError
 from tabulate import tabulate
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from time import sleep 
 from datetime import datetime 
 from parse import parse
@@ -224,8 +224,14 @@ class AbstractCloudFormation(object):
         if self.template_body:
             logger.info("Using local template due to null template bucket")
         if self.stack_status:
-            resp = self.client.update_stack(**args)
-            self.update_waiter(start_time)
+            try:
+                self.client.update_stack(**args)
+                self.update_waiter(start_time)
+            except ClientError as e:
+                if 'No updates are to be performed' in e.response['Error']['Message']:
+                    logger.warning('No updates are to be performed')
+                else:
+                    raise e
         else:
             raise RuntimeError("Stack does not exist")
 
