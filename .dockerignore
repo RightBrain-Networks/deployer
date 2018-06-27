@@ -1,0 +1,7 @@
+.git/
+.idea/
+deployer.egg-info/
+dist/
+.gitignore
+.dockerignore
+Dockerfile
