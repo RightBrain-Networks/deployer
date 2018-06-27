@@ -7,7 +7,7 @@ RUN pip install --upgrade pip
 ADD / /deployer
 WORKDIR /deployer
 RUN python setup.py sdist
-RUN pip install dist/deployer-0.3.7.tar.gz
+RUN pip install dist/deployer-0.3.11.tar.gz
 
 # Prep workspace
 RUN mkdir /workspace
