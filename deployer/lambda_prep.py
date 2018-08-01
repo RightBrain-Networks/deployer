@@ -1,7 +1,8 @@
 import os
-import pip
 import shutil
+import subprocess
 import yaml
+
 from deployer.logger import logger
 
 
@@ -40,7 +41,12 @@ class LambdaPrep:
                     shutil.copytree(dir, temp_dir)
                     if os.path.exists("/".join([temp_dir, "requirements.txt"])):
                         req_txt = "/".join([temp_dir, "requirements.txt"])
-                        pip.main(["install", "-q", "-r", req_txt, "-t", temp_dir])
+                        try:
+                            # Python 3
+                            subprocess.run(["pip", "install", "-q", "-r", req_txt, "-t", temp_dir])
+                        except AttributeError:
+                            # Python 2
+                            subprocess.call(["pip", "install", "-q", "-r", req_txt, "-t", temp_dir])
                     shutil.make_archive(dir.split('/')[-1], "zip", temp_dir)
                     shutil.rmtree(temp_dir)
                     file_name = "{}.zip".format(dir.split('/')[-1])
