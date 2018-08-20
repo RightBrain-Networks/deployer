@@ -1,6 +1,7 @@
 import os
 import pip
 import shutil
+import subprocess
 import yaml
 from deployer.logger import logger
 
@@ -40,7 +41,12 @@ class LambdaPrep:
                     shutil.copytree(dir, temp_dir)
                     if os.path.exists("/".join([temp_dir, "requirements.txt"])):
                         req_txt = "/".join([temp_dir, "requirements.txt"])
-                        pip.main(["install", "-q", "-r", req_txt, "-t", temp_dir])
+                        p = subprocess.Popen(
+                            ["pip", "install", "-q", "-r", req_txt, "-t", temp_dir], 
+                            stdout=subprocess.PIPE,
+                            cwd='.',
+                            shell=True
+                        )
                     shutil.make_archive(dir.split('/')[-1], "zip", temp_dir)
                     shutil.rmtree(temp_dir)
                     file_name = "{}.zip".format(dir.split('/')[-1])
