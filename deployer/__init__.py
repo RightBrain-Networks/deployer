@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import json
 from deployer.cloudformation import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
@@ -8,7 +9,8 @@ from deployer.logger import logging, logger, console_logger
 import ruamel.yaml
 
 
-__version__ = 'v0.3.13'
+__version__ = 'v0.3.14'
+
 
 def main():
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
@@ -61,6 +63,9 @@ def main():
     if args.debug:
         console_logger.setLevel(logging.DEBUG)
 
+    if args.execute == 'describe':
+        console_logger.setLevel(logging.ERROR)
+
     if args.zip_lambdas:
         LambdaPrep(args.config, args.stack).zip_lambdas()
 
@@ -94,6 +99,12 @@ def main():
             env_stack.delete_stack()
         elif args.execute == 'upsert':
             env_stack.update() if env_stack.check_stack_exists() else env_stack.create()
+        elif args.execute == 'describe':
+            print(json.dumps(env_stack.describe(),
+                             sort_keys=True,
+                             indent=4,
+                             separators=(',', ': '),
+                             default=lambda x: x.isoformat()))
         elif args.execute == 'change':
             env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
         elif args.sync or args.execute == 'sync':

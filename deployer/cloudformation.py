@@ -374,10 +374,16 @@ class AbstractCloudFormation(object):
 
     def check_stack_exists(self):
         try:
-            self.client.describe_stacks(StackName=self.stack_name)
+            self.client.describe_stacks(StackName=self.stack_name)['Stacks'][0]
             return True
         except ClientError:
             return False
+
+    def describe(self):
+        try:
+            return self.client.describe_stacks(StackName=self.stack_name)
+        except ClientError:
+            return {}
             
 
 class Stack(AbstractCloudFormation):
