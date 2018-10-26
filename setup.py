@@ -135,10 +135,7 @@ setup(
     entry_points={
         'console_scripts': [
             'deployer = deployer:main',
-            'config_updater = deployer.config_updater:main',
-            'get_parameter = deployer.get_parameter:main',
-            'get_stack_name = deployer.get_stack_name:main',
-            'stack_exists = deployer.stack_exists:main'
+            'config_updater = deployer.config_updater:main'
         ],
     },
 )

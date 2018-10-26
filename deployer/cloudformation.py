@@ -371,10 +371,17 @@ class AbstractCloudFormation(object):
                 row.append('')
             table.append(row)
         print(tabulate(table, headers, tablefmt='simple'))
+
+    def check_stack_exists(self):
+        try:
+            self.client.describe_stacks(StackName=self.stack_name)
+            return True
+        except ClientError:
+            return False
             
 
 class Stack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False):
+    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, params=None):
         self.profile = profile
         self.stack = stack
         self.config_file = config_file
@@ -391,6 +398,7 @@ class Stack(AbstractCloudFormation):
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
         self.reload_stack_status()
+        self.params = params or {}
 
     def build_params(self):
         # create parameters from the config.yml file
@@ -422,6 +430,14 @@ class Stack(AbstractCloudFormation):
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:
                             expanded_params.append({ "ParameterKey": param_key, "ParameterValue": output['OutputValue'] })
+
+        # Remove overridden parameters and set them based on the override
+        # provided. Explicit overrides take priority over anything in the
+        # configuration files.
+        expanded_params = [x for x in expanded_params if x['ParameterKey'] not in self.params.keys()]
+        expanded_params += [{"ParameterKey": x, "ParameterValue": self.params[x]} for x in self.params.keys()]
+
+        print(expanded_params)
 
         # Here we restrict the returned parameters to only the ones that the
         # template accepts by copying expanded_params into return_params and removing
