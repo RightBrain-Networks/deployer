@@ -26,8 +26,13 @@ def main():
     parser.add_argument("-z", "--zip-lambdas", help="Zip lambda functions move them to synced directory", action="store_true", dest="zip_lambdas", default=False)
     parser.add_argument("-j", "--assume-valid", help="Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)", action="store_true", dest="assume_valid", default=False)
     parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG", action="store_true", dest="debug", default=False)
+    parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
 
     args = parser.parse_args()
+
+    if args.version:
+        print(__version__)
+        exit(0)
 
     options_broken = False
     params = {}

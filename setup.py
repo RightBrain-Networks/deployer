@@ -5,7 +5,7 @@ https://github.com/pypa/sampleproject
 """
 
 
-import re 
+import re
 
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
@@ -105,7 +105,7 @@ setup(
         'ruamel.yaml>=0.15.33',
         'parse==1.8.2',
         'jinja2==2.8',
-        'pip==9.0.1'
+        'pip'
     ],
 
     # List additional groups of dependencies here (e.g. development
