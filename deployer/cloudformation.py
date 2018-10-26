@@ -437,8 +437,6 @@ class Stack(AbstractCloudFormation):
         expanded_params = [x for x in expanded_params if x['ParameterKey'] not in self.params.keys()]
         expanded_params += [{"ParameterKey": x, "ParameterValue": self.params[x]} for x in self.params.keys()]
 
-        print(expanded_params)
-
         # Here we restrict the returned parameters to only the ones that the
         # template accepts by copying expanded_params into return_params and removing
         # the item in question from return_params
