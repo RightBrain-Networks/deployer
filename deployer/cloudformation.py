@@ -166,7 +166,7 @@ class AbstractCloudFormation(object):
         if tags:
             tags = [ { 'Key': key, 'Value': value } for key, value in tags.items() ] 
             if len(tags) > 47:
-                raise ValueError('Resources tag limit is 50, you have provided more than 47 tags. Please limit your tagging, safe room for name tag.')
+                raise ValueError('Resources tag limit is 50, you have provided more than 47 tags. Please limit your tagging, save room for name and deployer tags.')
         else:
             tags = []
         tags.append({'Key': 'deployer:stack', 'Value': self.stack})
