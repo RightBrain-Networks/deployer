@@ -9,7 +9,7 @@ from deployer.logger import logging, logger, console_logger
 import ruamel.yaml
 
 
-__version__ = 'v0.3.14'
+__version__ = 'v0.3.15'
 
 
 def main():

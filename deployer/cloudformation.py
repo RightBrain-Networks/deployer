@@ -165,10 +165,12 @@ class AbstractCloudFormation(object):
         tags = self.get_config_att('tags')
         if tags:
             tags = [ { 'Key': key, 'Value': value } for key, value in tags.items() ] 
-            if len(tags) > 9:
+            if len(tags) > 47:
                 raise ValueError('Resources tag limit is 10, you have provided more than 9 tags. Please limit your tagging, safe room for name tag.') 
         else:
             tags = []
+        tags.append({'Key': 'deployer:stack', 'Value': self.stack})
+        tags.append({'Key': 'deployer:config', 'Value': self.config_file})
         return tags
 
     def create_stack(self):
