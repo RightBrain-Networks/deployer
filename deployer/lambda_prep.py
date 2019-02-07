@@ -56,7 +56,6 @@ class LambdaPrep:
                     shutil.rmtree(temp_dir)
                     file_name = "{}.zip".format(dir.split('/')[-1])
                     final_path = dir.split('/')[:-1]
-#                    dest = '/'.join([self.sync_base, dir.split('/')[:-1][-1]]).replace('//', '/')
                     dest = '/'.join([self.sync_base] + final_path).replace('//', '/')
                     if not os.path.exists(dest): os.mkdir(dest)
                     logger.debug('Moving archive to ' + dest)
