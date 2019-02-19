@@ -101,10 +101,10 @@ setup(
         'boto3>=1.7.0',
         'pyyaml>=3.12',
         'tabulate>=0.7.5',
-        'pytz==2017.2',
+        'pytz>=2017.2',
         'ruamel.yaml>=0.15.33',
-        'parse==1.8.2',
-        'jinja2==2.8',
+        'parse>=1.8.2',
+        'jinja2>=2.8',
         'pip'
     ],
 
