@@ -98,7 +98,7 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'boto3>=1.7.0',
+        'boto3>=1.9.0',
         'pyyaml>=3.12',
         'tabulate>=0.7.5',
         'pytz>=2017.2',
