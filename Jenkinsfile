@@ -1,4 +1,4 @@
-@Library('pipeline-library')
+library('pipeline-library')
 
 pipeline {
   options { timestamps() }
