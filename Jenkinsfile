@@ -17,12 +17,11 @@ pipeline {
       }
     }
     stage('Build') {
+      agent {
+        docker { image 'python:3.6' }
+      }
       steps {
-        docker.image('python:3.6').inside() {
-          sh """
-          python setup.py sdist
-          """
-        } 
+        sh "python setup.py sdist"
       }
       post{
         // Update Git with status of build stage.
