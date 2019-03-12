@@ -28,7 +28,7 @@ pipeline {
         // Docker build flags are set via the getDockerBuildFlags() shared library.
         sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')} ."
 
-        sh "tar -czvf ${env.SERVICE}-${getVersion('-d')}.tar.gz ./"
+        //sh "tar -czvf ${env.SERVICE}-${getVersion('-d')}.tar.gz ./"
       }
       post{
         // Update Git with status of build stage.
@@ -47,7 +47,7 @@ pipeline {
         sh "docker push ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')}"
         
         //Copy tar.gz file to s3 bucket
-        sh "aws s3 cp ${env.SERVICE}-${getVersion('-d')}.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${getVersion('-d')}.tar.gz"
+        //sh "aws s3 cp ${env.SERVICE}-${getVersion('-d')}.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${getVersion('-d')}.tar.gz"
       }
     }
   }
