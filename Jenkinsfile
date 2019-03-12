@@ -17,23 +17,18 @@ pipeline {
       }
     }
     stage('Build') {
-      agent {
-        docker { image 'python:3.6' }
-      }
       steps {
-        withEnv(["HOME=${env.WORKSPACE}"]) {
-          sh "python setup.py sdist"
-          
-          sh "pip install awscli --user"
-          
-          // aws ecr get-login returns a docker command you run in bash.
-          sh 'aws ecr get-login --no-include-email --region us-east-1 | bash'
-          echo "Building ${env.SERVICE} docker image"
-          // Docker build flags are set via the getDockerBuildFlags() shared library.
-          sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE} ."
+        
+        sh "python setup.py sdist"
+        
 
-          sh "tar -czvf ${env.SERVICE}.tar.gz ./"
-        }
+        // aws ecr get-login returns a docker command you run in bash.
+        sh 'aws ecr get-login --no-include-email --region us-east-1 | bash'
+        echo "Building ${env.SERVICE} docker image"
+        // Docker build flags are set via the getDockerBuildFlags() shared library.
+        sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')} ."
+
+        sh "tar -czvf ${env.SERVICE}-${getVersion('-d')}.tar.gz ./"
       }
       post{
         // Update Git with status of build stage.
@@ -52,7 +47,7 @@ pipeline {
         sh "docker push ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')}"
         
         //Copy tar.gz file to s3 bucket
-        sh "aws s3 cp ${env.SERVICE}.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}.tar.gz"
+        sh "aws s3 cp ${env.SERVICE}-${getVersion('-d')}.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${getVersion('-d')}.tar.gz"
       }
     }
   }
