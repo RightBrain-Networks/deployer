@@ -22,8 +22,9 @@ pipeline {
       }
       steps {
         sh "python setup.py sdist"
+        withEnv(["HOME=${env.WORKSPACE}"]) {
         sh "sudo pip install awscli --upgrade --user"
-
+        }
         // aws ecr get-login returns a docker command you run in bash.
         sh 'aws ecr get-login --no-include-email --region us-east-1 | bash'
         echo "Building ${env.SERVICE} docker image"
