@@ -21,17 +21,19 @@ pipeline {
         docker { image 'python:3.6' }
       }
       steps {
-        sh "python setup.py sdist"
         withEnv(["HOME=${env.WORKSPACE}"]) {
-        sh "pip install awscli --user"
-        }
-        // aws ecr get-login returns a docker command you run in bash.
-        sh 'aws ecr get-login --no-include-email --region us-east-1 | bash'
-        echo "Building ${env.SERVICE} docker image"
-        // Docker build flags are set via the getDockerBuildFlags() shared library.
-        sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')} ."
+          sh "python setup.py sdist"
+          
+          sh "pip install awscli --user"
+          
+          // aws ecr get-login returns a docker command you run in bash.
+          sh 'aws ecr get-login --no-include-email --region us-east-1 | bash'
+          echo "Building ${env.SERVICE} docker image"
+          // Docker build flags are set via the getDockerBuildFlags() shared library.
+          sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')} ."
 
-        sh "tar -czvf ${env.SERVICE}-${getVersion('-d')}.tar.gz ./"
+          sh "tar -czvf ${env.SERVICE}-${getVersion('-d')}.tar.gz ./"
+        }
       }
       post{
         // Update Git with status of build stage.
