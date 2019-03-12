@@ -22,8 +22,7 @@ pipeline {
         sh "python setup.py sdist"
         
 
-        // aws ecr get-login returns a docker command you run in bash.
-        sh 'aws ecr get-login --no-include-email --region us-east-1 | bash'
+
         echo "Building ${env.SERVICE} docker image"
         // Docker build flags are set via the getDockerBuildFlags() shared library.
         sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')} ."
@@ -43,6 +42,8 @@ pipeline {
     stage('Push')
     {
       steps {
+        // aws ecr get-login returns a docker command you run in bash.
+        sh 'aws ecr get-login --no-include-email --region us-east-1 | bash'
         //Push docker image to registry
         sh "docker push ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')}"
         
