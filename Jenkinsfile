@@ -17,11 +17,15 @@ pipeline {
       }
     }
     stage('Build') {
+      agent {
+        docker { image 'python:3.6'}
+      }
       steps {
+        sh 'pip install -r requirements.txt --user'
+        sh 'pip install awscli --user'
+        
         
         sh "python setup.py sdist"
-        
-
 
         echo "Building ${env.SERVICE} docker image"
         // Docker build flags are set via the getDockerBuildFlags() shared library.
