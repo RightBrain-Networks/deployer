@@ -24,8 +24,8 @@ pipeline {
         }
       }
       steps {
-        sh 'pip install -r requirements.txt --user'
-        sh 'pip install awscli --user'
+        sh 'pip install -r requirements.txt'
+        sh 'pip install awscli'
         
         
         sh "python setup.py sdist"
