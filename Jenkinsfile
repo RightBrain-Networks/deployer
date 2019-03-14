@@ -18,7 +18,10 @@ pipeline {
     }
     stage('Build') {
       agent {
-        docker { image 'python:3.6'}
+        docker {
+          image 'python:3.6'
+          privileged true
+        }
       }
       steps {
         sh 'pip install -r requirements.txt --user'
