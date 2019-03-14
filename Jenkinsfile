@@ -13,7 +13,9 @@ pipeline {
     stage('Version') {
       steps {
         // runs the automatic semver tool which will version, & tag,
+        withEnv(["HOME=${env.WORKSPACE}"]) {
         runAutoSemver()
+        }
       }
     }
     stage('Build') {
