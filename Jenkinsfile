@@ -13,18 +13,10 @@ pipeline {
     stage('Version') {
       steps {
         // runs the automatic semver tool which will version, & tag,
-        withEnv(["HOME=${env.WORKSPACE}"]) {
         runAutoSemver()
-        }
       }
     }
     stage('Build') {
-      agent {
-        docker {
-          image 'python:3.6'
-          args '--privileged'
-        }
-      }
       steps {
         withEnv(["HOME=${env.WORKSPACE}"]) {
         sh 'pip install -r requirements.txt --user'
