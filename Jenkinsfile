@@ -25,8 +25,8 @@ pipeline {
       }
       steps {
         withEnv(["HOME=${env.WORKSPACE}"]) {
-        sh 'pip install -r requirements.txt'
-        sh 'pip install awscli'
+        sh 'pip install -r requirements.txt --user'
+        sh 'pip install awscli --user'
         
         
         sh "python setup.py sdist"
