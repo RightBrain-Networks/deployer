@@ -24,6 +24,7 @@ pipeline {
         }
       }
       steps {
+        withEnv(["HOME=${env.WORKSPACE}"]) {
         sh 'pip install -r requirements.txt'
         sh 'pip install awscli'
         
@@ -35,6 +36,7 @@ pipeline {
         sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')} ."
 
         //sh "tar -czvf ${env.SERVICE}-${getVersion('-d')}.tar.gz ./"
+        }
       }
       post{
         // Update Git with status of build stage.
@@ -49,6 +51,7 @@ pipeline {
     stage('Push')
     {
       steps {
+        withEnv(["HOME=${env.WORKSPACE}"]) {
         // aws ecr get-login returns a docker command you run in bash.
         sh 'aws ecr get-login --no-include-email --region us-east-1 | bash'
         //Push docker image to registry
@@ -56,6 +59,7 @@ pipeline {
         
         //Copy tar.gz file to s3 bucket
         //sh "aws s3 cp ${env.SERVICE}-${getVersion('-d')}.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${getVersion('-d')}.tar.gz"
+        }
       }
     }
   }
