@@ -46,7 +46,8 @@ pipeline {
       steps {
         withEnv(["HOME=${env.WORKSPACE}"]) {
         // aws ecr get-login returns a docker command you run in bash.
-        sh "aws ecr get-login --no-include-email --region us-east-1"
+        //sh "aws ecr get-login --no-include-email --region us-east-1"
+        sh "eval $(aws ecr get-login --no-include-email --region us-east-1 | sed 's|https://||')"
         sh "docker push ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')}"
         //Push docker image to registry
         
