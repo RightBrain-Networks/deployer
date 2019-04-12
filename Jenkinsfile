@@ -49,10 +49,20 @@ pipeline {
         //}
       }
     }
+    post{
+        // Update Git with status of push stage.
+        success {
+          updateGithubCommitStatus(GITHUB_URL, 'Passed push stage', 'SUCCESS', 'Push')
+        }
+        failure {
+          updateGithubCommitStatus(GITHUB_URL, 'Failed push stage', 'FAILURE', 'Push')
+        }
+      }
   }
   post {
     always {
       removeDockerImages()
+      cleanWs()
     }
   }
 }
