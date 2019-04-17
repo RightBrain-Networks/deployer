@@ -36,22 +36,28 @@ class LambdaPrep:
         logger.info('Creating Lambda Archives')
         if self.lambda_dirs:
             for dir in self.lambda_dirs:
+                logger.info('Archiving ' + dir)
                 if os.path.exists(dir):
                     temp_dir = dir + "_temp"
+                    logger.debug('Creating ' + temp_dir)
                     shutil.copytree(dir, temp_dir)
                     if os.path.exists("/".join([temp_dir, "requirements.txt"])):
                         req_txt = "/".join([temp_dir, "requirements.txt"])
+                        logger.debug('Found ' + req_txt)
                         try:
                             # Python 3
                             subprocess.run(["pip", "install", "-q", "-r", req_txt, "-t", temp_dir])
                         except AttributeError:
                             # Python 2
                             subprocess.call(["pip", "install", "-q", "-r", req_txt, "-t", temp_dir])
+                    logger.debug('Archiving ' + dir.split('/')[-1])
                     shutil.make_archive(dir.split('/')[-1], "zip", temp_dir)
+                    logger.debug('Removing ' + temp_dir)
                     shutil.rmtree(temp_dir)
                     file_name = "{}.zip".format(dir.split('/')[-1])
                     dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
                     if not os.path.exists(dest): os.mkdir(dest)
+                    logger.debug('Moving archive to ' + dest)
                     shutil.copy(file_name, dest)
                     os.remove(file_name)
                 else:

@@ -13,3 +13,5 @@ RUN pip install dist/deployer-*.tar.gz
 RUN mkdir /workspace
 WORKDIR /workspace
 VOLUME /workspace
+
+CMD /opt/app-root/bin/deployer
