@@ -105,6 +105,7 @@ setup(
         'ruamel.yaml>=0.15.33',
         'parse==1.8.2',
         'jinja2==2.8',
+        'GitPython>=2.1.11',
         'pip'
     ],
 

@@ -1,16 +1,12 @@
-import signal
-import shutil
-import boto3
 import fnmatch
-import re
-import os
-import pip
-import yaml
+import git
 import hashlib
+import os
+import re
+import yaml
 from boto3.session import Session
 from botocore.exceptions import ClientError
 from multiprocessing import Process
-from time import sleep
 from deployer.decorators import retry
 from deployer.logger import logger
 
@@ -20,10 +16,12 @@ class s3_sync(object):
         self.environment = environment
         self.config = self.get_config(config_file)
         self.region = self.get_config_att('region')
-        self.release = self.get_config_att('release').replace('/', '.')
         self.base = self.get_config_att('sync_base')
         self.sync_dirs = self.get_config_att('sync_dirs')
         self.dest_bucket = self.get_config_att('sync_dest_bucket')
+        self.repository = self.get_repository()
+        self.commit = self.repository.head.object.hexsha if self.repository else 'null'
+        self.release = self.get_config_att('release', self.commit).replace('/', '.')
         self.session = Session(profile_name=profile, region_name=self.region)
         self.client = self.session.client('s3')
         self.cfn = self.session.client('cloudformation')
@@ -31,18 +29,24 @@ class s3_sync(object):
         self.valid = valid
         self.sync()
 
+    def get_repository(self):
+        try:
+            return git.Repo(self.base or '.', search_parent_directories=True)
+        except git.exc.InvalidGitRepositoryError:
+            return None
+
     def get_config(self, config):
         with open(config) as f:
             data = yaml.load(f)
         return data
 
-    def get_config_att(self, key):
+    def get_config_att(self, key, default=None):
         base = None
         if key in self.config['global']:
             base = self.config['global'][key]
         if key in self.config[self.environment]:
             base = self.config[self.environment][key]
-        return base
+        return base if base is not None else default
 
     def construct_excludes(self):
         excludes = self.get_config_att('sync_exclude')

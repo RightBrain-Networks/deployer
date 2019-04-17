@@ -50,7 +50,7 @@ class LambdaPrep:
                     shutil.make_archive(dir.split('/')[-1], "zip", temp_dir)
                     shutil.rmtree(temp_dir)
                     file_name = "{}.zip".format(dir.split('/')[-1])
-                    dest = '/'.join([self.sync_base, dir.split('/')[:-1][-1]]).replace('//', '/')
+                    dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
                     if not os.path.exists(dest): os.mkdir(dest)
                     shutil.copy(file_name, dest)
                     os.remove(file_name)

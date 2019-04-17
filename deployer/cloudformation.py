@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-import boto3
+import git
 import json
 import pytz
 import re
-import signal
 import ruamel.yaml
+import signal
 from boto3.session import Session
 from botocore.exceptions import ClientError, WaiterError
 from tabulate import tabulate
@@ -36,7 +36,23 @@ class AbstractCloudFormation(object):
 
     @abstractmethod
     def delete_stack(self):
-        pass 
+        pass
+
+    def get_repository(self):
+        try:
+            return git.Repo(self.base or '.', search_parent_directories=True)
+        except git.exc.InvalidGitRepositoryError:
+            return None
+
+    def get_repository_origin(self):
+        if self.repository:
+            try:
+                origin = next(self.repository.remote().urls)
+                return origin.split('@', 1)[-1] if origin else None
+            except (StopIteration, ValueError):
+                return None
+        else:
+            return None
 
     def create(self):
         signal.signal(signal.SIGINT, self.cancel_create)
@@ -111,13 +127,13 @@ class AbstractCloudFormation(object):
             data = ruamel.yaml.safe_load(f)
         return data
 
-    def get_config_att(self, key):
+    def get_config_att(self, key, default=None):
         base = None
         if key in self.config['global']:
             base = self.config['global'][key]
         if key in self.config[self.stack]:
             base = self.config[self.stack][key]
-        return base
+        return base if base is not None else default
 
     def construct_template_url(self):
         alt = 'full_template_url'
@@ -170,6 +186,9 @@ class AbstractCloudFormation(object):
         else:
             tags = []
         tags.append({'Key': 'deployer:stack', 'Value': self.stack})
+        tags.append({'Key': 'deployer:caller', 'Value': self.identity_arn})
+        tags.append({'Key': 'deployer:git:commit', 'Value': self.commit})
+        tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
         tags.append({'Key': 'deployer:config', 'Value': self.config_file})
         return tags
 
@@ -183,7 +202,8 @@ class AbstractCloudFormation(object):
             "Tags": self.construct_tags(),
             "Capabilities": [
                 'CAPABILITY_IAM',
-                'CAPABILITY_NAMED_IAM'
+                'CAPABILITY_NAMED_IAM',
+                'CAPABILITY_AUTO_EXPAND'
             ]
         }
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
@@ -219,7 +239,8 @@ class AbstractCloudFormation(object):
             "Tags": self.construct_tags(),
             "Capabilities": [
                 'CAPABILITY_IAM',
-                'CAPABILITY_NAMED_IAM'
+                'CAPABILITY_NAMED_IAM',
+                'CAPABILITY_AUTO_EXPAND'
             ]
         }
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
@@ -328,7 +349,8 @@ class AbstractCloudFormation(object):
                 Parameters=self.build_params(),
                 Capabilities=[
                     'CAPABILITY_IAM',
-                    'CAPABILITY_NAMED_IAM'
+                    'CAPABILITY_NAMED_IAM',
+                    'CAPABILITY_AUTO_EXPAND'
                 ],
                 ChangeSetName=change_set_name, 
                 Description=change_set_description,
@@ -398,13 +420,19 @@ class Stack(AbstractCloudFormation):
         self.config = self.get_config()
         self.region = self.get_config_att('region')
         self.stack_name = self.get_config_att('stack_name')
-        self.release = self.get_config_att('release').replace('/','.')
+        self.base = self.get_config_att('sync_base')
+        self.repository = self.get_repository()
+        self.commit = self.repository.head.object.hexsha if self.repository else 'null'
+        self.origin = self.get_repository_origin() if self.repository else 'null'
+        self.release = self.get_config_att('release', self.commit).replace('/','.')
         self.template_url = self.construct_template_url()
         self.template_file = self.get_template_file()
         self.template_body = self.get_template_body()
         self.transforms = self.get_config_att('transforms')
         self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
+        self.sts = self.session.client('sts')
+        self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
         self.reload_stack_status()
         self.params = params or {}
 
