@@ -488,9 +488,8 @@ class Stack(AbstractCloudFormation):
                 return return_params
             for item in expanded_params:
                 logger.debug("item: {0}".format(item))
-                if "Parameters" in parsed_template_file:
-                    if item['ParameterKey'] not in parsed_template_file['Parameters']:
-                        logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], template_file))
-                        return_params.remove(item)
+                if item['ParameterKey'] not in parsed_template_file.get('Parameters', {}):
+                    logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], template_file))
+                    return_params.remove(item)
         logger.info("Parameters Created")
         return return_params
