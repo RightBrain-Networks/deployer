@@ -14,7 +14,7 @@ __version__ = '0.3.18'
 
 def main():
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
-    parser.add_argument("-c", "--config", help="Path to config file..")
+    parser.add_argument("-c", "--config", help="Path to config file.")
     parser.add_argument("-s", "--stack", help="Stack Name.")
     parser.add_argument("-x", "--execute", help="Execute ( create | update | delete | upsert | sync | change ) of stack.")
     parser.add_argument("-P", "--param", action='append', help='An override for a parameter')
