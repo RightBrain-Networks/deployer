@@ -9,6 +9,9 @@ WORKDIR /deployer
 RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
+RUN yum install epel-release -y
+RUN yum install nodejs -y
+
 # Prep workspace
 RUN mkdir /workspace
 WORKDIR /workspace
