@@ -75,7 +75,7 @@ def main():
     if args.all:
         # Read Environment Config
         with open(args.config) as f:
-            config = ruamel.yaml.load(f)
+            config = ruamel.yaml.safe_load(f)
 
         # Create or update all Environments
         for stack, obj in config.items():

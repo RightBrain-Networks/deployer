@@ -209,8 +209,17 @@ class AbstractCloudFormation(object):
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
         if self.template_body:
             logger.info("Using local template due to null template bucket")
-        resp = self.client.create_stack(**args)
-        self.create_waiter(start_time)
+        try:
+            try:
+                resp = self.client.create_stack(**args)
+                self.create_waiter(start_time)
+            except ClientError as handledError:
+                logger.error(handledError)
+                return -1
+        except RuntimeError as handledError:
+            logger.error(handledError)
+            return -1
+        
 
     def create_waiter(self, start_time):
         waiter = self.client.get_waiter('stack_create_complete')
