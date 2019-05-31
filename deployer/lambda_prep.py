@@ -18,7 +18,7 @@ class LambdaPrep:
 
     def get_config(self, config):
         with open(config) as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
         return data
 
     def get_config_att(self, key):

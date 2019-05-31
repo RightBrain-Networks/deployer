@@ -5,8 +5,10 @@ from deployer.cloudformation import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
+from botocore.exceptions import ClientError, WaiterError
 
 import ruamel.yaml
+import sys, traceback
 
 
 __version__ = '0.3.18'
@@ -27,7 +29,7 @@ def main():
     parser.add_argument("-e", "--events",help="Print events",action="store_false",dest="events",default=True)
     parser.add_argument("-z", "--zip-lambdas", help="Zip lambda functions move them to synced directory", action="store_true", dest="zip_lambdas", default=False)
     parser.add_argument("-j", "--assume-valid", help="Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)", action="store_true", dest="assume_valid", default=False)
-    parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG", action="store_true", dest="debug", default=False)
+    parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG & enables traceback", action="store_true", dest="debug", default=False)
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
 
     args = parser.parse_args()
@@ -72,43 +74,53 @@ def main():
     if args.sync:
         s3_sync(args.profile, args.config, args.stack, args.assume_valid)
 
-    if args.all:
-        # Read Environment Config
-        with open(args.config) as f:
-            config = ruamel.yaml.load(f)
+    try:
+        if args.all:
+            # Read Environment Config
+            with open(args.config) as f:
+                config = ruamel.yaml.safe_load(f)
 
-        # Create or update all Environments
-        for stack, obj in config.items():
-            if stack != 'global':
-                print(stack)
-                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events)
-                env_stack = Stack(args.profile, args.config, stack, args.events)
-                if env_stack.stack_status:
-                    print("Update %s" % stack)
-                    env_stack.update_stack()
-                else:
-                    print("Create %s" % stack)
-                    env_stack.create_stack()
-    else:
-        env_stack = Stack(args.profile, args.config, args.stack, args.rollback, args.events, params)
-        if args.execute == 'create':
-            env_stack.create()
-        elif args.execute == 'update':
-            env_stack.update()
-        elif args.execute == 'delete':
-            env_stack.delete_stack()
-        elif args.execute == 'upsert':
-            env_stack.update() if env_stack.check_stack_exists() else env_stack.create()
-        elif args.execute == 'describe':
-            print(json.dumps(env_stack.describe(),
-                             sort_keys=True,
-                             indent=4,
-                             separators=(',', ': '),
-                             default=lambda x: x.isoformat()))
-        elif args.execute == 'change':
-            env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
-        elif args.sync or args.execute == 'sync':
-            s3_sync(args.profile, args.config, args.stack, args.assume_valid)
+            # Create or update all Environments
+            for stack, obj in config.items():
+                if stack != 'global':
+                    print(stack)
+                    env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events)
+                    env_stack = Stack(args.profile, args.config, stack, args.events)
+                    if env_stack.stack_status:
+                        print("Update %s" % stack)
+                        env_stack.update_stack()
+                    else:
+                        print("Create %s" % stack)
+                        env_stack.create_stack()
+        else:
+
+                env_stack = Stack(args.profile, args.config, args.stack, args.rollback, args.events, params)
+                if args.execute == 'create':
+                    env_stack.create()
+                elif args.execute == 'update':
+                    env_stack.update()
+                elif args.execute == 'delete':
+                    env_stack.delete_stack()
+                elif args.execute == 'upsert':
+                    env_stack.update() if env_stack.check_stack_exists() else env_stack.create()
+                elif args.execute == 'describe':
+                    print(json.dumps(env_stack.describe(),
+                                    sort_keys=True,
+                                    indent=4,
+                                    separators=(',', ': '),
+                                    default=lambda x: x.isoformat()))
+                elif args.execute == 'change':
+                    env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
+                elif args.sync or args.execute == 'sync':
+                    s3_sync(args.profile, args.config, args.stack, args.assume_valid)
+    except (Exception) as e:
+        logger.error(e)
+        if args.debug:
+            ex_type, ex, tb = sys.exc_info()
+            traceback.print_tb(tb)
+    finally:
+        if args.debug:
+            del tb
 
 
 if __name__ == '__main__':

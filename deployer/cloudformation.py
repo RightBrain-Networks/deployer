@@ -211,6 +211,7 @@ class AbstractCloudFormation(object):
             logger.info("Using local template due to null template bucket")
         resp = self.client.create_stack(**args)
         self.create_waiter(start_time)
+        
 
     def create_waiter(self, start_time):
         waiter = self.client.get_waiter('stack_create_complete')
@@ -315,6 +316,7 @@ class AbstractCloudFormation(object):
             count += 1
 
     def delete_stack(self):
+        logger.info("Sent delete request to stack")
         resp = self.client.delete_stack(StackName=self.stack_name)
         return True
 
