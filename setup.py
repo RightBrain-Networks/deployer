@@ -16,10 +16,6 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
-with open(fname) as f:
-    install_requires = f.readlines()
-install_requires = [x.strip() for x in install_requires] 
-
 # Get the long description from the README file
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
