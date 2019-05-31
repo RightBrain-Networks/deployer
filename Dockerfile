@@ -5,9 +5,8 @@ RUN pip install --upgrade pip
 
 # Setup Deployer
 ADD / /deployer
-RUN ls
-RUN cp requirements.txt /deployer/requirements.txt
 WORKDIR /deployer
+RUN ls
 RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
