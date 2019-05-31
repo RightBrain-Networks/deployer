@@ -4,6 +4,7 @@ USER root
 RUN pip install --upgrade pip
 
 # Setup Deployer
+RUN cp requirements.txt /deployer/requirements.txt
 ADD / /deployer
 WORKDIR /deployer
 RUN python setup.py sdist
