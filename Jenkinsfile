@@ -25,7 +25,7 @@ pipeline {
         // Docker build flags are set via the getDockerBuildFlags() shared library.
         sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')} ."
 
-        sh "tar -czvf ${env.SERVICE}-${getVersion('-d')}.tar.gz ."
+        sh "tar --exclude='./.git' -czvf ${env.SERVICE}-${getVersion('-d')}.tar.gz ."
       }
       post{
         // Update Git with status of build stage.
