@@ -209,16 +209,8 @@ class AbstractCloudFormation(object):
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
         if self.template_body:
             logger.info("Using local template due to null template bucket")
-        try:
-            try:
-                resp = self.client.create_stack(**args)
-                self.create_waiter(start_time)
-            except ClientError as handledError:
-                logger.error(handledError)
-                return -1
-        except RuntimeError as handledError:
-            logger.error(handledError)
-            return -1
+        resp = self.client.create_stack(**args)
+        self.create_waiter(start_time)
         
 
     def create_waiter(self, start_time):
@@ -324,7 +316,7 @@ class AbstractCloudFormation(object):
             count += 1
 
     def delete_stack(self):
-        logger.info("Sending delete request to stack...")
+        logger.info("Sent delete request to stack")
         resp = self.client.delete_stack(StackName=self.stack_name)
         return True
 
