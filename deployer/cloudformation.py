@@ -324,6 +324,7 @@ class AbstractCloudFormation(object):
             count += 1
 
     def delete_stack(self):
+        logger.info("Sending delete request to stack...")
         resp = self.client.delete_stack(StackName=self.stack_name)
         return True
 
