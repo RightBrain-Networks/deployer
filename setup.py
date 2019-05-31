@@ -16,7 +16,7 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
-with open("requirements.txt") as f:
+with open("./requirements.txt") as f:
     install_requires = f.readlines()
 install_requires = [x.strip() for x in install_requires] 
 
