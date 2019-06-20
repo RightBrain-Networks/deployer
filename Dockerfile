@@ -17,8 +17,8 @@ RUN tar --strip-components 1 -xzvf node-v* -C /usr/local
 RUN npm install -g npm
 
 
-RUN chmod 777 ~/.npm
-RUN chown root:root ~/.npm
+RUN chmod -R 777 ~/.npm
+RUN chown -R root:root ~/.npm
 
 # Prep workspace
 RUN mkdir /workspace
