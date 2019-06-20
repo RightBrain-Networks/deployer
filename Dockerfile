@@ -13,7 +13,9 @@ RUN yum install epel-release -y
 RUN yum install nodejs -y
 
 RUN mkdir ~/.npm-global
-RUN NPM_CONFIG_PREFIX=~/.npm-global
+RUN npm config set prefix '~/.npm-global'
+RUN export PATH=~/.npm-global/bin:$PATH
+RUN source ~/.profile
 
 # Prep workspace
 RUN mkdir /workspace
