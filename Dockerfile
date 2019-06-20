@@ -22,10 +22,12 @@ RUN mkdir /workspace
 WORKDIR /workspace
 VOLUME /workspace
 
+
+RUN mkdir /deployerUser
 # Permissions
 RUN useradd -d /deployerUser deployerUser
-RUN chown -R deployerUser:deployerUser /workspace
-
+RUN chown -R deployerUser:deployerUser /deployerUser
+RUN chown -R deployerUser:deployerUser /deployerUser
 
 CMD /opt/app-root/bin/deployer
 
