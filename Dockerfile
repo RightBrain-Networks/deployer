@@ -12,6 +12,11 @@ WORKDIR /deployer
 RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
+# Install node
+RUN wget https://nodejs.org/download/release/latest-v12.x/node-v12.4.0-linux-x64.tar.gz
+RUN tar --strip-components 1 -xzvf node-v* -C /usr/local
+RUN npm install -g npm
+
 # Prep workspace
 RUN mkdir /workspace
 
@@ -20,6 +25,7 @@ VOLUME /workspace
 # Permissions
 RUN useradd -d /deployerUser deployerUser
 RUN chown -R deployerUser:deployerUser /workspace
+RUN chmod -R ~/.npm 777
 CMD /opt/app-root/bin/deployer
 
 USER deployerUser
@@ -29,10 +35,7 @@ RUN pwd
 RUN touch test.txt
 
 
-# Install node
-RUN wget -O ./node-v12.4.0-linux-x64.tar.gz https://nodejs.org/download/release/latest-v12.x/node-v12.4.0-linux-x64.tar.gz
-RUN tar --strip-components 1 -xzvf node-v* -C /usr/local
-RUN npm install -g npm
+
 
 
 WORKDIR /workspace
