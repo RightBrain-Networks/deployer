@@ -14,16 +14,16 @@ RUN pip install dist/deployer-*.tar.gz
 
 # Prep workspace
 RUN mkdir /workspace
-WORKDIR /workspace
+
 VOLUME /workspace
 
 # Permissions
 RUN useradd -d /deployerUser deployerUser
 RUN chown -R deployerUser:deployerUser /workspace
-
 CMD /opt/app-root/bin/deployer
 
 USER deployerUser
+WORKDIR /deployerUser
 RUN whoami
 RUN pwd
 RUN touch test.txt
@@ -34,4 +34,6 @@ RUN wget https://nodejs.org/download/release/latest-v12.x/node-v12.4.0-linux-x64
 RUN tar --strip-components 1 -xzvf node-v* -C /usr/local
 RUN npm install -g npm
 
+
+WORKDIR /workspace
 RUN whoami
