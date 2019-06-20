@@ -12,6 +12,9 @@ RUN pip install dist/deployer-*.tar.gz
 RUN yum install epel-release -y
 RUN yum install nodejs -y
 
+RUN mkdir ~/.npm-global
+RUN NPM_CONFIG_PREFIX=~/.npm-global
+
 # Prep workspace
 RUN mkdir /workspace
 WORKDIR /workspace
