@@ -24,6 +24,9 @@ RUN chown -R deployerUser:deployerUser /workspace
 CMD /opt/app-root/bin/deployer
 
 USER deployerUser
+RUN whoami
+RUN pwd
+
 
 # Install node
 RUN wget https://nodejs.org/download/release/latest-v12.x/node-v12.4.0-linux-x64.tar.gz -o ./node-v12.4.0-linux-x64.tar.gz
