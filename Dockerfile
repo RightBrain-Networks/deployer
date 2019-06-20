@@ -15,6 +15,7 @@ RUN yum install nodejs -y
 
 RUN yum update -y
 
+RUN npm install -g npm
 RUN npm -v
 RUN node -v
 
