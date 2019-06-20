@@ -15,8 +15,9 @@ RUN yum update -y
 
 
 
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
-RUN /opt/app-root/src/.nvm install node
+RUN wget https://nodejs.org/download/release/latest-v12.x/node-v12.4.0-linux-x64.tar.gz
+RUN tar --strip-components 1 -xzvf node-v* -C /usr/local
+
 RUN npm install -g npm
 
 RUN npm -v
