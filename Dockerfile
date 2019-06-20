@@ -16,7 +16,7 @@ RUN yum update -y
 
 
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
-RUN nvm install node
+RUN /opt/app-root/src/.nvm install node
 RUN npm install -g npm
 
 RUN npm -v
