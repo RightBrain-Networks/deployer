@@ -13,6 +13,8 @@ RUN pip install dist/deployer-*.tar.gz
 RUN yum install epel-release -y
 RUN yum install nodejs -y
 
+RUN yum update -y
+
 RUN mkdir ~/.npm
 RUN chmod 777 ~/.npm
 
