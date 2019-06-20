@@ -15,6 +15,9 @@ RUN yum install nodejs -y
 
 RUN yum update -y
 
+RUN npm -v
+RUN node -v
+
 RUN mkdir ~/.npm
 RUN chmod 777 ~/.npm
 
