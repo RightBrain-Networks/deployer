@@ -12,13 +12,10 @@ WORKDIR /deployer
 RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
-
-
 # Install node
 RUN wget https://nodejs.org/download/release/latest-v12.x/node-v12.4.0-linux-x64.tar.gz
 RUN tar --strip-components 1 -xzvf node-v* -C /usr/local
 RUN npm install -g npm
-
 
 # Prep workspace
 RUN mkdir /workspace
@@ -34,5 +31,3 @@ RUN chmod -R 757 ~/.npm
 CMD /opt/app-root/bin/deployer
 
 USER deployerUser
-
-RUN whoami
