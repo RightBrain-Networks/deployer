@@ -23,7 +23,6 @@ RUN npm install -g npm
 RUN npm -v
 RUN node -v
 
-RUN mkdir ~/.npm
 RUN chmod 777 ~/.npm
 
 # Prep workspace
