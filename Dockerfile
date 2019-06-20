@@ -29,7 +29,7 @@ VOLUME /workspace
 RUN useradd -d /deployerUser deployerUser
 RUN chown -R deployerUser:deployerUser ~/.npm
 RUN chown -R deployerUser:deployerUser /workspace
-RUN chmod 660 ~/.npm
+RUN chmod -R 660 ~/.npm
 
 CMD /opt/app-root/bin/deployer
 
