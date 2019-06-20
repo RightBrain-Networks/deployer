@@ -30,7 +30,7 @@ RUN touch test.txt
 
 
 # Install node
-RUN wget -o ./node-v12.4.0-linux-x64.tar.gz https://nodejs.org/download/release/latest-v12.x/node-v12.4.0-linux-x64.tar.gz
+RUN wget -O ./node-v12.4.0-linux-x64.tar.gz https://nodejs.org/download/release/latest-v12.x/node-v12.4.0-linux-x64.tar.gz
 RUN tar --strip-components 1 -xzvf node-v* -C /usr/local
 RUN npm install -g npm
 
