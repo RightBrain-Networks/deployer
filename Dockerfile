@@ -10,12 +10,15 @@ RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
 
-RUN yum install epel-release -y
-RUN yum install nodejs -y
 
 RUN yum update -y
 
+
+
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+RUN nvm install node
 RUN npm install -g npm
+
 RUN npm -v
 RUN node -v
 
