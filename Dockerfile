@@ -26,6 +26,7 @@ CMD /opt/app-root/bin/deployer
 USER deployerUser
 RUN whoami
 RUN pwd
+RUN touch test.txt
 
 
 # Install node
