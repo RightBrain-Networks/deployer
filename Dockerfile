@@ -1,6 +1,6 @@
 FROM centos/python-36-centos7
 
-#USER root
+USER root
 RUN pip install --upgrade pip
 
 # Setup Deployer
