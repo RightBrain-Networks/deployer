@@ -126,8 +126,9 @@ class s3_sync(object):
                 for dirName, subdirList, fileList in os.walk("%s%s" %(self.base,sync_dir)):
                     thisdir = "".join(dirName.rsplit(self.base)).strip("/")
                     fileList = [os.path.join(dirName,filename) for filename in fileList]
-                    for ignore in self.excludes:
-                        fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
+                    if self.excludes:
+                        for ignore in self.excludes:
+                            fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
                     count = 0
                     for fname in fileList:
                         dest_key = self.generate_dest_key(fname, thisdir)
@@ -153,8 +154,9 @@ class s3_sync(object):
                 for dirName, subdirList, fileList in os.walk("%s%s" %(self.base,sync_dir)):
                     thisdir = "".join(dirName.rsplit(self.base)).strip("/")
                     fileList = [os.path.join(dirName,filename) for filename in fileList]
-                    for ignore in self.excludes:
-                        fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
+                    if self.excludes:
+                        for ignore in self.excludes:
+                            fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
                     for fname in fileList:
                         dest_key = self.generate_dest_key(fname, thisdir)
                         if os.name != 'nt':
