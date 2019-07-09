@@ -21,6 +21,7 @@ RUN npm -v
 RUN mkdir /workspace
 WORKDIR /workspace
 VOLUME /workspace
+RUN mkdir ~/.npm
 
 # Permissions
 RUN useradd -d /deployerUser deployerUser
