@@ -69,7 +69,7 @@ pipeline {
           sh "git tag -a v${getVersion('-d')} -m 'Jenkins release'"
 
           //Needs to releaseToken from Secrets Manager
-          releaseToken = sh "aws secretsmanager --secret-id deployer/gitHub/releaseKey"
+          releaseToken = sh "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey"
 
           release = sh("""
           curl -XPOST -H "Authorization:token $releaseToken" --data "{\"tag_name\": \"v${getVersion('-d')}\", \"target_commitish\": \"${env.BRANCH_NAME}\", \"name\": \"Release: v${getVersion('-d')}\", \"body\": \"Release from Jenkins\", \"draft\": false, \"prerelease\": true}" 
