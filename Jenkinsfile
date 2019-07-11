@@ -6,7 +6,7 @@ pipeline {
   environment {
     SERVICE = 'deployer'
     GITHUB_KEY = 'Deployer'
-    GITHUB_URL = 'https://github.com/RightBrain-Networks/deployer'
+    GITHUB_URL = 'git@github.com:RightBrain-Networks/deployer.git'
     DOCKER_REGISTRY = '356438515751.dkr.ecr.us-east-1.amazonaws.com'
     CURRENT_VERSION = ""
   }
@@ -58,12 +58,33 @@ pipeline {
     {
       when {
           expression {
-              env.CURRENT_VERSION  != getVersion('-d')
+              env.CURRENT_VERSION  != getVersion('-d') || env.BRANCH_NAME == 'feature/jenkinsRelease'
           }
       }
       steps
       {
         echo "New version deteced!"
+        script
+        {
+          sh "git tag -a v${getVersion('-d')} -m 'Jenkins release'"
+
+          //Needs to releaseToken from Secrets Manager
+          releaseToken = sh "aws secretsmanager --secret-id deployer/gitHub/releaseKey"
+
+          release = sh("""
+          curl -XPOST -H "Authorization:token $releaseToken" --data "{\"tag_name\": \"v${getVersion('-d')}\", \"target_commitish\": \"${env.BRANCH_NAME}\", \"name\": \"Release: v${getVersion('-d')}\", \"body\": \"Release from Jenkins\", \"draft\": false, \"prerelease\": true}" 
+            https://api.github.com/repos/RightBrain-Networks/deployer/releases
+          """)
+          releaseId = sh("echo \"${release}\" | sed -n -e 's/\"id\":\ \([0-9]\+\),/\1/p' | head -n 1 | sed 's/[[:blank:]]//g")
+          sh """
+          echo "Uploading artifacts..."
+          for entry in "dist"/*
+          do
+            curl -XPOST -H "Authorization:token $releaseToken" -H "Content-Type:application/octet-stream" --data-binary
+          ${entry} https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=${entry}
+          done
+            """
+        }
       }
     }
     stage('Push Version and Tag') {
