@@ -13,7 +13,7 @@ pipeline {
   stages {
     stage('Version') {
       steps {
-        env.CURRENT_VERSION = getVersion('-d')
+        CURRENT_VERSION = getVersion('-d')
         // runs the automatic semver tool which will version, & tag,
         runAutoSemver()
       }
