@@ -8,10 +8,12 @@ pipeline {
     GITHUB_KEY = 'Deployer'
     GITHUB_URL = 'https://github.com/RightBrain-Networks/deployer'
     DOCKER_REGISTRY = '356438515751.dkr.ecr.us-east-1.amazonaws.com'
+    CURRENT_VERSION = ""
   }
   stages {
     stage('Version') {
       steps {
+        env.CURRENT_VERSION = getVersion('-d')
         // runs the automatic semver tool which will version, & tag,
         runAutoSemver()
       }
@@ -47,6 +49,18 @@ pipeline {
         //Copy tar.gz file to s3 bucket
         sh "aws s3 cp dist/${env.SERVICE}-*.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${getVersion('-d')}.tar.gz"
         //}
+      }
+    }
+    stage('Release Version')
+    {
+      when {
+          expression {
+              env.CURRENT_VERSION  != getVersion('-d')
+          }
+      }
+      steps
+      {
+        echo "New version deteced!"
       }
     }
     stage('Push Version and Tag') {
