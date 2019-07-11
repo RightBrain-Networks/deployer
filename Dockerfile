@@ -13,14 +13,14 @@ RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
 # Install node
-RUN wget https://nodejs.org/download/release/latest-v12.x/node-v12.4.0-linux-x64.tar.gz
-RUN tar --strip-components 1 -xzvf node-v* -C /usr/local
-RUN npm install -g npm
+RUN curl -sL https://rpm.nodesource.com/setup_10.x | bash -
+RUN yum install nodejs -y
 
 # Prep workspace
 RUN mkdir /workspace
 WORKDIR /workspace
 VOLUME /workspace
+RUN mkdir ~/.npm
 
 # Permissions
 RUN useradd -d /deployerUser deployerUser
