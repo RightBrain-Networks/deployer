@@ -50,12 +50,6 @@ pipeline {
         //}
       }
     }
-    stage('Push Version and Tag') {
-        steps {
-            echo "The current branch is ${env.BRANCH_NAME}."
-            gitPush(env.GITHUB_KEY, env.BRANCH_NAME, true)
-        }
-    }
     stage('GitHub Release')
     {
       when {
@@ -68,7 +62,7 @@ pipeline {
         echo "New version deteced!"
         script
         {
-          
+
           //Needs to releaseToken from Secrets Manager
           releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString").trim()
 
@@ -83,6 +77,12 @@ pipeline {
         """)
         }
       }
+    }
+    stage('Push Version and Tag') {
+        steps {
+            echo "The current branch is ${env.BRANCH_NAME}."
+            gitPush(env.GITHUB_KEY, env.BRANCH_NAME, true)
+        }
     }
   }
   post {
