@@ -58,7 +58,7 @@ pipeline {
     {
       when {
           expression {
-              env.CURRENT_VERSION  != getVersion('-d') || env.BRANCH_NAME == 'feature/jenkinsRelease'
+              (env.CURRENT_VERSION  != getVersion('-d') || env.BRANCH_NAME == 'feature/jenkinsRelease') && false
           }
       }
       steps
