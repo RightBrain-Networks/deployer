@@ -80,10 +80,7 @@ pipeline {
 
           echo("Uploading artifacts...")
           sh("""
-            for f in \$(dist/deployer-*.tar.gz)
-            do
-              echo "Uploading \$f ..."
-            done
+            echo "Uploading \$(dist/deployer-*.tar.gz) ..."
             """)
         }
       }
