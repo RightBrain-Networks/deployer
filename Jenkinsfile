@@ -68,6 +68,9 @@ pipeline {
         echo "New version deteced!"
         script
         {
+          echo("${env.SEMVER_NEW_VERSION}")
+          echo("${env.SEMVER_RESOLVED_VERSION}")
+
 
           //Needs to releaseToken from Secrets Manager
           releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString").trim()
