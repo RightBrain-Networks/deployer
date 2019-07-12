@@ -54,7 +54,7 @@ pipeline {
     {
       when {
           expression {
-              sh(script: "semver -n", returnStatus: true) == 0
+              sh(script: "semver", returnStatus: true) == 0
           }
       }
       steps
