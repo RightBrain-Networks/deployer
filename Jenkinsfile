@@ -13,10 +13,6 @@ pipeline {
   stages {
     stage('Version') {
       steps {
-        script
-        {
-        envCURRENT_VERSION = getVersion('-d')
-        }
         // runs the automatic semver tool which will version, & tag,
         runAutoSemver()
       }
@@ -54,11 +50,17 @@ pipeline {
         //}
       }
     }
-    stage('Release Version')
+    stage('Push Version and Tag') {
+        steps {
+            echo "The current branch is ${env.BRANCH_NAME}."
+            gitPush(env.GITHUB_KEY, env.BRANCH_NAME, true)
+        }
+    }
+    stage('GitHub Release')
     {
       when {
           expression {
-              (env.CURRENT_VERSION  != getVersion('-d') || env.BRANCH_NAME == 'feature/jenkinsRelease')// && false
+              (sh(returnStdout : true, script : "semver; echo $?").trim() == "0" && env.BRANCH_NAME == 'feature/jenkinsRelease')
           }
       }
       steps
@@ -71,12 +73,8 @@ pipeline {
           releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString").trim()
 
           releaseId = sh(returnStdout : true, script : """
-          curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "0.4.0", "target_commitish": "development", "name": "v0.4.0", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases |  jq -r ."id"
+          curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "${getVersion('-d')}", "target_commitish": "development", "name": "v${getVersion('-d')}", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases |  jq -r ."id"
           """).trim()
-
-
-
-          echo("${releaseId}")
 
           echo("Uploading artifacts...")
           sh("""
@@ -85,12 +83,6 @@ pipeline {
         """)
         }
       }
-    }
-    stage('Push Version and Tag') {
-        steps {
-            echo "The current branch is ${env.BRANCH_NAME}."
-            gitPush(env.GITHUB_KEY, env.BRANCH_NAME, true)
-        }
     }
   }
   post {
