@@ -77,7 +77,7 @@ pipeline {
           echo("${release}") 
 
           releaseId = sh(returnStdout : true, script : """
-          echo "${release}" | jq "id"
+          echo "${release}" | jq -R -r ."id"
           """)
 
           echo("${releaseId}")
