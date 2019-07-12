@@ -70,8 +70,10 @@ pipeline {
           //Needs to releaseToken from Secrets Manager
           releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString")
 
+          echo("${releaseToken}")
+
           sh("""
-          curl -XPOST -H 'Authorization:token 5df620540398afa198c65fcae719ec36f66fd58a' --data '{"tag_name": "0.4.0", "target_commitish": "development", "name": "v0.4.0", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases
+          curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "0.4.0", "target_commitish": "development", "name": "v0.4.0", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases
           """)
 
 
