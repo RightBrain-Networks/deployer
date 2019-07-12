@@ -79,11 +79,10 @@ pipeline {
           echo("${releaseId}")
 
           echo("Uploading artifacts...")
-  
-        }
           sh("""
-            echo "Uploading ${sh("dist/deployer-*.tar.gz")} ..."
-            """)
+              curl -XPOST -H "Authorization:token ${releaseToken}" -H "Content-Type:application/octet-stream" --data-binary dist/${env.SERVICE}-*.tar.gz https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=deployer.tar.gz
+        """
+        }
       }
     }
     stage('Push Version and Tag') {
