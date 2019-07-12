@@ -68,7 +68,7 @@ pipeline {
         {
 
           //Needs to releaseToken from Secrets Manager
-          releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString")
+          releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString").trim()
 
           echo("${releaseToken}")
 
