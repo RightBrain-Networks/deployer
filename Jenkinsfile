@@ -72,7 +72,9 @@ pipeline {
 
           release = sh(returnStdout : true, script : """
           curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "0.4.0", "target_commitish": "development", "name": "v0.4.0", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases
-          """).trim()
+          """)
+
+          echo("${release}") 
 
           releaseId = sh(returnStdout : true, script : """
           echo "${release}" | jq "id"
