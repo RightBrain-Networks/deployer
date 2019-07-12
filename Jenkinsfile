@@ -58,7 +58,7 @@ pipeline {
     {
       when {
           expression {
-              (env.CURRENT_VERSION  != getVersion('-d') || env.BRANCH_NAME == 'feature/jenkinsRelease') && false
+              (env.CURRENT_VERSION  != getVersion('-d') || env.BRANCH_NAME == 'feature/jenkinsRelease')// && false
           }
       }
       steps
@@ -66,13 +66,12 @@ pipeline {
         echo "New version deteced!"
         script
         {
-          sh "git tag -a v${getVersion('-d')} -m 'Jenkins release'"
 
           //Needs to releaseToken from Secrets Manager
           releaseToken = sh "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1"
 
           release = sh("""
-          curl -XPOST -H "Authorization:token $releaseToken" --data "{\"tag_name\": \"v${getVersion('-d')}\", \"target_commitish\": \"${env.BRANCH_NAME}\", \"name\": \"Release: v${getVersion('-d')}\", \"body\": \"Release from Jenkins\", \"draft\": false, \"prerelease\": true}" https://api.github.com/repos/RightBrain-Networks/deployer/releases
+          curl -XPOST -H "Authorization:token $releaseToken" --data "{\"tag_name\": \"${getVersion('-d')}\", \"target_commitish\": \"${env.BRANCH_NAME}\", \"name\": \"Release: v${getVersion('-d')}\", \"body\": \"Release from Jenkins\", \"draft\": false, \"prerelease\": true}" https://api.github.com/repos/RightBrain-Networks/deployer/releases
           """)
           echo("${release}")
           error "we done"
