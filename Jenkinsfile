@@ -80,10 +80,7 @@ pipeline {
 
           echo("Uploading artifacts...")
           sh("""
-          for entry in "dist"/*
-          do
-            curl -XPOST -H "Authorization:token ${releaseToken}" -H "Content-Type:application/octet-stream" --data-binary ${entry} https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=${entry}
-          done
+            curl -XPOST -H "Authorization:token ${releaseToken}" -H "Content-Type:application/octet-stream" --data-binarydist/${env.SERVICE}-*.tar.gz https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=dist/${env.SERVICE}-*.tar.gz
             """)
         }
       }
