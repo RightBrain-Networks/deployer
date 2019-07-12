@@ -80,7 +80,7 @@ pipeline {
 
           echo("Uploading artifacts...")
           sh("""
-            for f in $(dist/deployer-*.tar.gz)
+            for f in \$(dist/deployer-*.tar.gz)
             do
               echo "Uploadindg \$f ..."
               curl -XPOST -H "Authorization:token ${releaseToken}" -H "Content-Type:application/octet-stream" --data-binary \$f https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=deployer.tar.gz
