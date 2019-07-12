@@ -60,7 +60,7 @@ pipeline {
     {
       when {
           expression {
-              env.SEMVER_NEW_VERSION != env.SEMVER_RESOLVED_VERSION
+              sh(script: "semver -n", returnStatus: true) == 0
           }
       }
       steps
@@ -68,8 +68,6 @@ pipeline {
         echo "New version deteced!"
         script
         {
-          echo("${env.SEMVER_NEW_VERSION}")
-          echo("${env.SEMVER_RESOLVED_VERSION}")
 
 
           //Needs to releaseToken from Secrets Manager
