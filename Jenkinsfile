@@ -54,7 +54,7 @@ pipeline {
     {
       when {
           expression {
-              "${env.SEMVER_STATUS}" == "0"
+              "${env.SEMVER_STATUS}" == "0" && "${env.BRANCH_NAME}"  == "development"
           }
       }
       steps
