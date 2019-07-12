@@ -60,7 +60,7 @@ pipeline {
     {
       when {
           expression {
-              sh(returnStdout : true, script : "semver; echo \$?;").trim() == "0" && env.BRANCH_NAME == 'feature/jenkinsRelease'
+              sh(returnStdout : true, script : "semver > empty; echo \$?;").trim() == "0" && env.BRANCH_NAME == 'feature/jenkinsRelease'
           }
       }
       steps
