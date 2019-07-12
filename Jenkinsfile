@@ -54,7 +54,7 @@ pipeline {
     {
       when {
           expression {
-              sh(script: "semver", returnStatus: true) == 0
+              "${env.SEMVER_STATUS}" == "0"
           }
       }
       steps
