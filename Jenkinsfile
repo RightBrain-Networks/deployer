@@ -69,14 +69,11 @@ pipeline {
 
           //Needs to releaseToken from Secrets Manager
           releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString")
-          echo("${releaseToken}")
-
 
           release = sh(returnStdout : true, script : """
-          curl -XPOST -H "Authorization:token $releaseToken" --data "{\"tag_name\": \"${getVersion('-d')}\", \"target_commitish\": \"${env.BRANCH_NAME}\", \"name\": \"Release\" : \"${getVersion('-d')}\", \"body\": \"Release from Jenkins\", \"draft\": false, \"prerelease\": true}" https://api.github.com/repos/RightBrain-Networks/deployer/releases
+          curl -XPOST -H "Authorization:token ${releaseToken}" --data '{"tag_name": "${getVersion('-d')}", "target_commitish": "${env.BRANCH_NAME}", "name": "${getVersion('-d')}", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases
           """)
-          echo("${release}")
-          error "we done"
+
           releaseId = sh(returnStdout : true, script : """
           echo \"${release}\" | sed -n -e 's/\"id\":\\ \\([0-9]\\+\\),/\\1/p' | head -n 1 | sed 's/[[:blank:]]//g'
           """)
