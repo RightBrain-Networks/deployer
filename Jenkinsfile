@@ -79,10 +79,11 @@ pipeline {
           echo("${releaseId}")
 
           echo("Uploading artifacts...")
+  
+        }
           sh("""
             echo "Uploading ${sh("dist/deployer-*.tar.gz")} ..."
             """)
-        }
       }
     }
     stage('Push Version and Tag') {
