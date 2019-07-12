@@ -80,7 +80,7 @@ pipeline {
 
           echo("Uploading artifacts...")
           sh("""
-            echo "Uploading \$(dist/deployer-*.tar.gz) ..."
+            echo "Uploading ${sh("dist/deployer-*.tar.gz")} ..."
             """)
         }
       }
