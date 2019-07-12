@@ -75,7 +75,7 @@ pipeline {
           curl -XPOST -H "Authorization:token $releaseToken" --data "{\"tag_name\": \"v${getVersion('-d')}\", \"target_commitish\": \"${env.BRANCH_NAME}\", \"name\": \"Release: v${getVersion('-d')}\", \"body\": \"Release from Jenkins\", \"draft\": false, \"prerelease\": true}" https://api.github.com/repos/RightBrain-Networks/deployer/releases
           """)
           releaseId = sh("""
-          echo "${release}" | sed -n -e 's/"id":\ \([0-9]\+\),/\1/p' | head -n 1 | sed 's/[[:blank:]]//g'
+          echo \"${release}\" | sed -n -e 's/\"id\":\\ \\([0-9]\\+\\),/\\1/p' | head -n 1 | sed 's/[[:blank:]]//g'
           """)
           sh """
           echo "Uploading artifacts..."
