@@ -70,20 +70,19 @@ pipeline {
           //Needs to releaseToken from Secrets Manager
           releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString")
 
-          release = sh(returnStdout : true, script : """
-          curl -XPOST -H "Authorization:token ${releaseToken}" --data '{"tag_name": "${getVersion('-d')}", "target_commitish": "${env.BRANCH_NAME}", "name": "${getVersion('-d')}", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases
+          sh("""
+          curl -XPOST -H "Authorization:token ${releaseToken}" --data '{"tag_name": "0.4.0", "target_commitish": "development", "name": "v0.4.0", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases
           """)
 
-          releaseId = sh(returnStdout : true, script : """
-          echo \"${release}\" | sed -n -e 's/\"id\":\\ \\([0-9]\\+\\),/\\1/p' | head -n 1 | sed 's/[[:blank:]]//g'
-          """)
-          sh """
-          echo "Uploading artifacts..."
-          for entry in "dist"/*
-          do
-            curl -XPOST -H "Authorization:token $releaseToken" -H "Content-Type:application/octet-stream" --data-binary ${entry} https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=${entry}
-          done
-            """
+
+
+          // sh """
+          // echo "Uploading artifacts..."
+          // for entry in "dist"/*
+          // do
+          //   curl -XPOST -H "Authorization:token $releaseToken" -H "Content-Type:application/octet-stream" --data-binary ${entry} https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=${entry}
+          // done
+          //   """
         }
       }
     }
