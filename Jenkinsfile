@@ -42,7 +42,7 @@ pipeline {
         }
       }
     }
-    stage('Push')
+    stage('Ship')
     {
       steps {     
         withEcr {
@@ -73,7 +73,7 @@ pipeline {
 
 
           release = sh(returnStdout : true, script : """
-          curl -XPOST -H "Authorization:token $releaseToken" --data "{\"tag_name\": \"${getVersion('-d')}\", \"target_commitish\": \"${env.BRANCH_NAME}\", \"name\": \"Release: v${getVersion('-d')}\", \"body\": \"Release from Jenkins\", \"draft\": false, \"prerelease\": true}" https://api.github.com/repos/RightBrain-Networks/deployer/releases
+          curl -XPOST -H "Authorization:token $releaseToken" --data "{\"tag_name\": \"${getVersion('-d')}\", \"target_commitish\": \"${env.BRANCH_NAME}\", \"name\": \"Release\" : \"${getVersion('-d')}\", \"body\": \"Release from Jenkins\", \"draft\": false, \"prerelease\": true}" https://api.github.com/repos/RightBrain-Networks/deployer/releases
           """)
           echo("${release}")
           error "we done"
