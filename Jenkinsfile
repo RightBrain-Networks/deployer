@@ -67,7 +67,7 @@ pipeline {
           releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString").trim()
 
           releaseId = sh(returnStdout : true, script : """
-          curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "${getVersion('-d')}", "target_commitish": "development", "name": "v${getVersion('-d')}", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases |  jq -r ."id"
+          curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "${getVersion('-d')}", "target_commitish": "development", "name": "v${getVersion('-d')}", "draft": false, "prerelease": false}' https://api.github.com/repos/RightBrain-Networks/deployer/releases |  jq -r ."id"
           """).trim()
 
           echo("Uploading artifacts...")
