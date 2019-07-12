@@ -8,7 +8,7 @@ pipeline {
     GITHUB_KEY = 'Deployer'
     GITHUB_URL = 'git@github.com:RightBrain-Networks/deployer.git'
     DOCKER_REGISTRY = '356438515751.dkr.ecr.us-east-1.amazonaws.com'
-    CURRENT_VERSION = ""
+    SEMVER_EXIT = ""
   }
   stages {
     stage('Version') {
@@ -55,12 +55,19 @@ pipeline {
             echo "The current branch is ${env.BRANCH_NAME}."
             gitPush(env.GITHUB_KEY, env.BRANCH_NAME, true)
         }
+        post
+        {
+          success
+          {
+            
+          }
+        }
     }
     stage('GitHub Release')
     {
       when {
           expression {
-              sh(returnStdout : true, script : "semver > empty; echo \$?;").trim() == "0" && env.BRANCH_NAME == 'feature/jenkinsRelease'
+              env.SEMVER_NEW_VERSION != env.SEMVER_RESOLVED_VERSION
           }
       }
       steps
