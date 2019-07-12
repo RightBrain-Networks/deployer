@@ -74,22 +74,17 @@ pipeline {
           curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "0.4.0", "target_commitish": "development", "name": "v0.4.0", "draft": true, "prerelease": true}' https://api.github.com/repos/RightBrain-Networks/deployer/releases |  jq -r ."id"
           """).trim()
 
-          // echo("${release}") 
 
-          // releaseId = sh(returnStdout : true, script : """
-          // echo "${release}" |
-          // """)
 
           echo("${releaseId}")
 
-
-          sh """
-          echo "Uploading artifacts..."
+          echo("Uploading artifacts...")
+          sh("""
           for entry in "dist"/*
           do
             curl -XPOST -H "Authorization:token ${releaseToken}" -H "Content-Type:application/octet-stream" --data-binary ${entry} https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=${entry}
           done
-            """
+            """)
         }
       }
     }
