@@ -6,8 +6,9 @@ pipeline {
   environment {
     SERVICE = 'deployer'
     GITHUB_KEY = 'Deployer'
-    GITHUB_URL = 'https://github.com/RightBrain-Networks/deployer'
+    GITHUB_URL = 'git@github.com:RightBrain-Networks/deployer.git'
     DOCKER_REGISTRY = '356438515751.dkr.ecr.us-east-1.amazonaws.com'
+    SEMVER_EXIT = ""
   }
   stages {
     stage('Version') {
@@ -37,7 +38,7 @@ pipeline {
         }
       }
     }
-    stage('Push')
+    stage('Ship')
     {
       steps {     
         withEcr {
@@ -47,6 +48,34 @@ pipeline {
         //Copy tar.gz file to s3 bucket
         sh "aws s3 cp dist/${env.SERVICE}-*.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${getVersion('-d')}.tar.gz"
         //}
+      }
+    }
+    stage('GitHub Release')
+    {
+      when {
+          expression {
+              "${env.SEMVER_STATUS}" == "0" && "${env.BRANCH_NAME}"  == "development"
+          }
+      }
+      steps
+      {
+        echo "New version deteced!"
+        script
+        {
+
+          //Needs to releaseToken from Secrets Manager
+          releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString").trim()
+
+          releaseId = sh(returnStdout : true, script : """
+          curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "${getVersion('-d')}", "target_commitish": "development", "name": "v${getVersion('-d')}", "draft": false, "prerelease": false}' https://api.github.com/repos/RightBrain-Networks/deployer/releases |  jq -r ."id"
+          """).trim()
+
+          echo("Uploading artifacts...")
+          sh("""
+              chmod 777 dist/${env.SERVICE}-*.tar.gz
+              curl -XPOST -H "Authorization:token ${releaseToken}" -H "Content-Type:application/octet-stream" --data-binary @\$(echo dist/${env.SERVICE}-*.tar.gz) https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=deployer.tar.gz
+        """)
+        }
       }
     }
     stage('Push Version and Tag') {
