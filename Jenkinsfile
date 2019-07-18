@@ -15,14 +15,14 @@ pipeline {
         steps
         {
           withEcr {
-            sh "docker pull ${DOCKER_REGISTRY}/auto-semver:null"
+            sh "docker pull ${DOCKER_REGISTRY}/auto-semver"
           }
         }
     }
     stage('Version') {
         agent {
             docker {
-                image "${DOCKER_REGISTRY}/auto-semver:null"
+                image "${DOCKER_REGISTRY}/auto-semver"
             }
         }
       steps {
