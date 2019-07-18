@@ -8,13 +8,41 @@ pipeline {
     GITHUB_KEY = 'Deployer'
     GITHUB_URL = 'git@github.com:RightBrain-Networks/deployer.git'
     DOCKER_REGISTRY = '356438515751.dkr.ecr.us-east-1.amazonaws.com'
-    SEMVER_EXIT = ""
   }
   stages {
+    stage("Pull Versioning Image")
+    {
+        steps
+        {
+          withEcr {
+            sh "docker pull ${DOCKER_REGISTRY}/auto-semver"
+          }
+        }
+    }
     stage('Version') {
+        agent {
+            docker {
+                image "${DOCKER_REGISTRY}/auto-semver"
+            }
+        }
       steps {
         // runs the automatic semver tool which will version, & tag,
         runAutoSemver()
+
+        //Grabs current version
+        script
+        {
+            env.VERSION = getVersion('-d')
+        }
+      }
+      post{
+        // Update Git with status of version stage.
+        success {
+          updateGithubCommitStatus(GITHUB_URL, 'Passed version stage', 'SUCCESS', 'Version')
+        }
+        failure {
+          updateGithubCommitStatus(GITHUB_URL, 'Failed version stage', 'FAILURE', 'Version')
+        }
       }
     }
     stage('Build') {
@@ -24,7 +52,7 @@ pipeline {
         echo "Building ${env.SERVICE} docker image"
 
         // Docker build flags are set via the getDockerBuildFlags() shared library.
-        sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')} ."
+        sh "docker build ${getDockerBuildFlags()} -t ${env.DOCKER_REGISTRY}/${env.SERVICE}:${env.VERSION} ."
 
         sh "python setup.py sdist"
       }
@@ -42,11 +70,11 @@ pipeline {
     {
       steps {     
         withEcr {
-            sh "docker push ${env.DOCKER_REGISTRY}/${env.SERVICE}:${getVersion('-d')}"
+            sh "docker push ${env.DOCKER_REGISTRY}/${env.SERVICE}:${env.VERSION}"
         }
         
         //Copy tar.gz file to s3 bucket
-        sh "aws s3 cp dist/${env.SERVICE}-*.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${getVersion('-d')}.tar.gz"
+        sh "aws s3 cp dist/${env.SERVICE}-*.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${env.VERSION}.tar.gz"
         //}
       }
     }
@@ -67,7 +95,7 @@ pipeline {
           releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString").trim()
 
           releaseId = sh(returnStdout : true, script : """
-          curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "${getVersion('-d')}", "target_commitish": "development", "name": "v${getVersion('-d')}", "draft": false, "prerelease": false}' https://api.github.com/repos/RightBrain-Networks/deployer/releases |  jq -r ."id"
+          curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "${env.VERSION}", "target_commitish": "development", "name": "v${env.VERSION}", "draft": false, "prerelease": false}' https://api.github.com/repos/RightBrain-Networks/deployer/releases |  jq -r ."id"
           """).trim()
 
           echo("Uploading artifacts...")
