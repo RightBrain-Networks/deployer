@@ -14,7 +14,7 @@ pipeline {
     stage('Version') {
 
       steps {
-        autoSemVer()
+        autoSemVer(GITHUB_KEY)
         script
         {
             env.VERSION = getVersion('-d')
