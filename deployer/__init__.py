@@ -75,26 +75,15 @@ def main():
         s3_sync(args.profile, args.config, args.stack, args.assume_valid)
 
     try:
-        if args.all:
-            # Read Environment Config
-            with open(args.config) as f:
-                config = ruamel.yaml.safe_load(f)
+        # Read Environment Config
+        with open(args.config) as f:
+            config = ruamel.yaml.safe_load(f)
 
-            # Create or update all Environments
-            for stack, obj in config.items():
-                if stack != 'global':
-                    print(stack)
-                    env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events)
-                    env_stack = Stack(args.profile, args.config, stack, args.events)
-                    if env_stack.stack_status:
-                        print("Update %s" % stack)
-                        env_stack.update_stack()
-                    else:
-                        print("Create %s" % stack)
-                        env_stack.create_stack()
-        else:
-
-                env_stack = Stack(args.profile, args.config, args.stack, args.rollback, args.events, params)
+        # Create or update all Environments
+        for stack, obj in config.items():
+            if stack != 'global' and (args.all or stack == args.stack):
+                logger.info("Running " + str(args.execute) + " on stack: " + stack)
+                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, params)
                 if args.execute == 'create':
                     env_stack.create()
                 elif args.execute == 'update':
@@ -113,6 +102,7 @@ def main():
                     env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
                 elif args.sync or args.execute == 'sync':
                     s3_sync(args.profile, args.config, args.stack, args.assume_valid)
+
     except (Exception) as e:
         logger.error(e)
         if args.debug:
