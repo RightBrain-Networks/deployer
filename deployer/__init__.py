@@ -1,20 +1,26 @@
 #!/usr/bin/env python
 import argparse
 import json
+import os
 from deployer.cloudformation import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
-from botocore.exceptions import ClientError, WaiterError
+from distutils.dir_util import copy_tree
 
 import ruamel.yaml
 import sys, traceback
-
 
 __version__ = '0.3.18'
 
 
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == 'init':
+        script_dir = os.path.dirname(__file__)
+        skel_dir = os.path.join(script_dir, 'skel')
+        copy_tree(skel_dir, sys.argv[2])
+        exit(0)
+
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
     parser.add_argument("-c", "--config", help="Path to config file.")
     parser.add_argument("-s", "--stack", help="Stack Name.")
@@ -118,7 +124,6 @@ def main():
         if args.debug:
             ex_type, ex, tb = sys.exc_info()
             traceback.print_tb(tb)
-    finally:
         if args.debug:
             del tb
 

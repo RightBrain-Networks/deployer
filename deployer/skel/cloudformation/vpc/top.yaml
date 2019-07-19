@@ -1,0 +1,439 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures transit gateway operations for the account
+Parameters:
+  BucketCloudTools:
+    Default: /global/buckets/cloudtools/name
+    Description: S3 bucket holding CloudFormation templates
+    Type: AWS::SSM::Parameter::Value<String>
+  CreatePublicSubnet:
+    AllowedValues:
+      - 'false'
+      - 'true'
+    ConstraintDescription: Must be either 'true' or 'false'
+    Default: 'true'
+    Description: Boolean indicating whether a public subnet should be created or not
+    Type: String
+  Cidr:
+    Default: 10.38.0.0/16
+    Description: CIDR network to use for the VPC
+    Type: String
+  DomainOwner:
+    AllowedValues:
+      - 'false'
+      - 'true'
+    ConstraintDescription: Must be either 'true' or 'false'
+    Default: 'false'
+    Description: Boolean indicating this VPC is the owner of the domain
+    Type: String
+  DomainPrivate:
+    Default: 'null'
+    Description: Domain name for internal communication
+    Type: String
+  EnableFlowLogs:
+    AllowedValues:
+      - 'false'
+      - 'true'
+    ConstraintDescription: Must be either 'true' or 'false'
+    Default: 'false'
+    Description: Boolean indicating whether to enable VPC wide flow logs
+    Type: String
+  Environment:
+    AllowedPattern: ^[a-z0-9]+$
+    ConstraintDescription: Must only contain lowercase letters and numbers
+    Default: shared
+    Description: Name of the environment deployed
+    Type: String
+  HostedZoneManagement:
+    AllowedValues:
+      - 'false'
+      - 'true'
+    ConstraintDescription: Must be either 'true' or 'false'
+    Default: 'false'
+    Description: Boolean indicating whether tag based hosted zone management is enabled
+    Type: String
+  NetworkName:
+    Default: 'null'
+    Description: Friendly name that can be used for referencing the network
+    Type: String
+  Project:
+    AllowedPattern: ^[a-z0-9]+$
+    ConstraintDescription: Must only contain lowercase letters and numbers
+    Default: global
+    Description: Name of current project
+    Type: String
+  Release:
+    Description: Release name
+    Type: String
+  SupernetNames:
+    Default: public,private
+    Description: Friendly names for collection of subnets
+    Type: CommaDelimitedList
+  TotalAzs:
+    ConstraintDescription: Must be a number between 1 and 8
+    Default: '2'
+    Description: The total number of Azs for the VPC
+    MaxValue: '8'
+    MinValue: '1'
+    Type: Number
+  TransitGatewayEnvironment:
+    Default: 'null'
+    Description: Friendly name of the transit gateway environment of 'default' for a global transit gateway
+    Type: String
+  TransitGatewaySupernet:
+    Default: private
+    Description: Friendly name of the transit gateway supernet to connect or 'all' for all supernets
+    Type: String
+Conditions:
+  ParamCreatePublicSubnetIsTrue: !Equals [!Ref 'CreatePublicSubnet', 'true']
+  ParamDomainOwnerIsTrue: !Equals [!Ref 'DomainOwner', 'true']
+  ParamDomainPrivateIsNotNull: !Not [!Equals [!Ref 'DomainPrivate', 'null']]
+  ParamEnableFlowLogsIsTrue: !Equals [!Ref 'EnableFlowLogs', 'true']
+  ParamHostedZoneManagementIsTrue: !Equals [!Ref 'HostedZoneManagement', 'true']
+  ParamNetworkNameIsNull: !Equals [!Ref 'NetworkName', 'null']
+  ParamTransitGatewayEnvironmentIsNotNull: !Not [!Equals [!Ref 'TransitGatewayEnvironment', 'null']]
+  ParamTransitGatewayEnvironmentIsDefault: !Equals [!Ref 'TransitGatewayEnvironment', default]
+  ParamTransitGatewaySupernetEqualsSupernet0: !Equals [!Ref 'TransitGatewaySupernet', !Select ['0', !Ref 'SupernetNames']]
+  ParamTransitGatewaySupernetIsAll: !Equals [!Ref 'TransitGatewaySupernet', all]
+  ResourceRoute53: !And [!Condition 'ParamDomainOwnerIsTrue', !Condition 'ParamDomainPrivateIsNotNull']
+  TransitGatewayRouteTableIsPublic: !And [!Condition 'ParamTransitGatewaySupernetEqualsSupernet0', !Condition 'ParamCreatePublicSubnetIsTrue']
+  TotalAzs1: !Or [!Equals [!Ref 'TotalAzs', '1'], !Condition 'TotalAzs2']
+  TotalAzs2: !Or [!Equals [!Ref 'TotalAzs', '2'], !Condition 'TotalAzs3']
+  TotalAzs3: !Or [!Equals [!Ref 'TotalAzs', '3'], !Condition 'TotalAzs4']
+  TotalAzs4: !Or [!Equals [!Ref 'TotalAzs', '4'], !Condition 'TotalAzs5']
+  TotalAzs5: !Or [!Equals [!Ref 'TotalAzs', '5'], !Condition 'TotalAzs6']
+  TotalAzs6: !Or [!Equals [!Ref 'TotalAzs', '6'], !Condition 'TotalAzs7']
+  TotalAzs7: !Or [!Equals [!Ref 'TotalAzs', '7'], !Condition 'TotalAzs8']
+  TotalAzs8: !Equals [!Ref 'TotalAzs', '8']
+  TotalSupernets2: !Not [!Equals [!Select ['1', !Split [',', !Sub ['${x},,,', {x: !Join [',', !Ref 'SupernetNames']}]]], '']]
+  TotalSupernets3: !And [!Condition 'TotalSupernets2', !Not [!Equals [!Select ['2', !Split [',', !Sub ['${x},,,', {x: !Join [',', !Ref 'SupernetNames']}]]], '']]]
+  TotalSupernets4: !And [!Condition 'TotalSupernets3', !Not [!Equals [!Select ['3', !Split [',', !Sub ['${x},,,', {x: !Join [',', !Ref 'SupernetNames']}]]], '']]]
+  VpcHostedZoneManagement: !And [!Not [!Condition 'ResourceRoute53'], !Condition 'ParamHostedZoneManagementIsTrue']
+Resources:
+  Az1:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/az.yaml'
+      Parameters:
+        AzIndex: '0'
+        Environment: !Ref 'Environment'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        RouteTablePublic: !GetAtt 'Vpc.Outputs.RouteTablePublic'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        Supernet1Cidrs: !GetAtt 'Subnets.Outputs.Supernet1Cidrs'
+        Supernet2Cidrs: !If [TotalSupernets2, !GetAtt 'Subnets.Outputs.Supernet2Cidrs', !Ref 'AWS::NoValue']
+        Supernet3Cidrs: !If [TotalSupernets3, !GetAtt 'Subnets.Outputs.Supernet3Cidrs', !Ref 'AWS::NoValue']
+        Supernet4Cidrs: !If [TotalSupernets4, !GetAtt 'Subnets.Outputs.Supernet4Cidrs', !Ref 'AWS::NoValue']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  Az2:
+    Type: AWS::CloudFormation::Stack
+    Condition: TotalAzs2
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/az.yaml'
+      Parameters:
+        AzIndex: '1'
+        Environment: !Ref 'Environment'
+        Project: !Ref 'Project'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        RouteTablePublic: !GetAtt 'Vpc.Outputs.RouteTablePublic'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        Supernet1Cidrs: !GetAtt 'Subnets.Outputs.Supernet1Cidrs'
+        Supernet2Cidrs: !If [TotalSupernets2, !GetAtt 'Subnets.Outputs.Supernet2Cidrs', !Ref 'AWS::NoValue']
+        Supernet3Cidrs: !If [TotalSupernets3, !GetAtt 'Subnets.Outputs.Supernet3Cidrs', !Ref 'AWS::NoValue']
+        Supernet4Cidrs: !If [TotalSupernets4, !GetAtt 'Subnets.Outputs.Supernet4Cidrs', !Ref 'AWS::NoValue']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  Az3:
+    Type: AWS::CloudFormation::Stack
+    Condition: TotalAzs3
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/az.yaml'
+      Parameters:
+        AzIndex: '2'
+        Environment: !Ref 'Environment'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        RouteTablePublic: !GetAtt 'Vpc.Outputs.RouteTablePublic'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        Supernet1Cidrs: !GetAtt 'Subnets.Outputs.Supernet1Cidrs'
+        Supernet2Cidrs: !If [TotalSupernets2, !GetAtt 'Subnets.Outputs.Supernet2Cidrs', !Ref 'AWS::NoValue']
+        Supernet3Cidrs: !If [TotalSupernets3, !GetAtt 'Subnets.Outputs.Supernet3Cidrs', !Ref 'AWS::NoValue']
+        Supernet4Cidrs: !If [TotalSupernets4, !GetAtt 'Subnets.Outputs.Supernet4Cidrs', !Ref 'AWS::NoValue']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  Az4:
+    Type: AWS::CloudFormation::Stack
+    Condition: TotalAzs4
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/az.yaml'
+      Parameters:
+        AzIndex: '3'
+        Environment: !Ref 'Environment'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        RouteTablePublic: !GetAtt 'Vpc.Outputs.RouteTablePublic'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        Supernet1Cidrs: !GetAtt 'Subnets.Outputs.Supernet1Cidrs'
+        Supernet2Cidrs: !If [TotalSupernets2, !GetAtt 'Subnets.Outputs.Supernet2Cidrs', !Ref 'AWS::NoValue']
+        Supernet3Cidrs: !If [TotalSupernets3, !GetAtt 'Subnets.Outputs.Supernet3Cidrs', !Ref 'AWS::NoValue']
+        Supernet4Cidrs: !If [TotalSupernets4, !GetAtt 'Subnets.Outputs.Supernet4Cidrs', !Ref 'AWS::NoValue']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  Az5:
+    Type: AWS::CloudFormation::Stack
+    Condition: TotalAzs5
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/az.yaml'
+      Parameters:
+        AzIndex: '4'
+        Environment: !Ref 'Environment'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        RouteTablePublic: !GetAtt 'Vpc.Outputs.RouteTablePublic'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        Supernet1Cidrs: !GetAtt 'Subnets.Outputs.Supernet1Cidrs'
+        Supernet2Cidrs: !If [TotalSupernets2, !GetAtt 'Subnets.Outputs.Supernet2Cidrs', !Ref 'AWS::NoValue']
+        Supernet3Cidrs: !If [TotalSupernets3, !GetAtt 'Subnets.Outputs.Supernet3Cidrs', !Ref 'AWS::NoValue']
+        Supernet4Cidrs: !If [TotalSupernets4, !GetAtt 'Subnets.Outputs.Supernet4Cidrs', !Ref 'AWS::NoValue']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  Az6:
+    Type: AWS::CloudFormation::Stack
+    Condition: TotalAzs6
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/az.yaml'
+      Parameters:
+        AzIndex: '5'
+        Environment: !Ref 'Environment'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        RouteTablePublic: !GetAtt 'Vpc.Outputs.RouteTablePublic'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        Supernet1Cidrs: !GetAtt 'Subnets.Outputs.Supernet1Cidrs'
+        Supernet2Cidrs: !If [TotalSupernets2, !GetAtt 'Subnets.Outputs.Supernet2Cidrs', !Ref 'AWS::NoValue']
+        Supernet3Cidrs: !If [TotalSupernets3, !GetAtt 'Subnets.Outputs.Supernet3Cidrs', !Ref 'AWS::NoValue']
+        Supernet4Cidrs: !If [TotalSupernets4, !GetAtt 'Subnets.Outputs.Supernet4Cidrs', !Ref 'AWS::NoValue']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  Az7:
+    Type: AWS::CloudFormation::Stack
+    Condition: TotalAzs7
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/az.yaml'
+      Parameters:
+        AzIndex: '6'
+        Environment: !Ref 'Environment'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        RouteTablePublic: !GetAtt 'Vpc.Outputs.RouteTablePublic'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        Supernet1Cidrs: !GetAtt 'Subnets.Outputs.Supernet1Cidrs'
+        Supernet2Cidrs: !If [TotalSupernets2, !GetAtt 'Subnets.Outputs.Supernet2Cidrs', !Ref 'AWS::NoValue']
+        Supernet3Cidrs: !If [TotalSupernets3, !GetAtt 'Subnets.Outputs.Supernet3Cidrs', !Ref 'AWS::NoValue']
+        Supernet4Cidrs: !If [TotalSupernets4, !GetAtt 'Subnets.Outputs.Supernet4Cidrs', !Ref 'AWS::NoValue']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  Az8:
+    Type: AWS::CloudFormation::Stack
+    Condition: TotalAzs8
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/az.yaml'
+      Parameters:
+        AzIndex: '7'
+        Environment: !Ref 'Environment'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        RouteTablePublic: !GetAtt 'Vpc.Outputs.RouteTablePublic'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        Supernet1Cidrs: !GetAtt 'Subnets.Outputs.Supernet1Cidrs'
+        Supernet2Cidrs: !If [TotalSupernets2, !GetAtt 'Subnets.Outputs.Supernet2Cidrs', !Ref 'AWS::NoValue']
+        Supernet3Cidrs: !If [TotalSupernets3, !GetAtt 'Subnets.Outputs.Supernet3Cidrs', !Ref 'AWS::NoValue']
+        Supernet4Cidrs: !If [TotalSupernets4, !GetAtt 'Subnets.Outputs.Supernet4Cidrs', !Ref 'AWS::NoValue']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  Endpoints:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/endpoints.yaml'
+      Parameters:
+        RouteTables: !GetAtt 'Ssm.Outputs.RouteTablesAll'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  FlowLogs:
+    Type: AWS::CloudFormation::Stack
+    Condition: ParamEnableFlowLogsIsTrue
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/flow-logs.yaml'
+      Parameters:
+        Environment: !Ref 'Environment'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        Vpc: !GetAtt 'Vpc.Outputs.ParameterVpc'
+  Route53:
+    Type: AWS::CloudFormation::Stack
+    Condition: ResourceRoute53
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/route53.yaml'
+      Parameters:
+        Domain: !Ref 'DomainPrivate'
+        Environment: !Ref 'Environment'
+        HostedZoneManagement: !Ref 'HostedZoneManagement'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  SecurityGroups:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/security-groups.yaml'
+      Parameters:
+        CidrVpc: !GetAtt 'Vpc.Outputs.ParameterVpcCidr'
+        Environment: !Ref 'Environment'
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        Vpc: !GetAtt 'Vpc.Outputs.ParameterVpc'
+  Ssm:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/ssm.yaml'
+      Parameters:
+        Az1Subnets: !GetAtt 'Az1.Outputs.Subnets'
+        Az2Subnets: !If [TotalAzs2, !GetAtt 'Az2.Outputs.Subnets', !Ref 'AWS::NoValue']
+        Az3Subnets: !If [TotalAzs3, !GetAtt 'Az3.Outputs.Subnets', !Ref 'AWS::NoValue']
+        Az4Subnets: !If [TotalAzs4, !GetAtt 'Az4.Outputs.Subnets', !Ref 'AWS::NoValue']
+        Az5Subnets: !If [TotalAzs5, !GetAtt 'Az5.Outputs.Subnets', !Ref 'AWS::NoValue']
+        Az6Subnets: !If [TotalAzs6, !GetAtt 'Az6.Outputs.Subnets', !Ref 'AWS::NoValue']
+        Az7Subnets: !If [TotalAzs7, !GetAtt 'Az7.Outputs.Subnets', !Ref 'AWS::NoValue']
+        Az8Subnets: !If [TotalAzs8, !GetAtt 'Az8.Outputs.Subnets', !Ref 'AWS::NoValue']
+        RouteTablePrivateAz1: !GetAtt 'Az1.Outputs.RouteTablePrivate'
+        RouteTablePrivateAz2: !If [TotalAzs2, !GetAtt 'Az2.Outputs.RouteTablePrivate', !Ref 'AWS::NoValue']
+        RouteTablePrivateAz3: !If [TotalAzs3, !GetAtt 'Az3.Outputs.RouteTablePrivate', !Ref 'AWS::NoValue']
+        RouteTablePrivateAz4: !If [TotalAzs4, !GetAtt 'Az4.Outputs.RouteTablePrivate', !Ref 'AWS::NoValue']
+        RouteTablePrivateAz5: !If [TotalAzs5, !GetAtt 'Az5.Outputs.RouteTablePrivate', !Ref 'AWS::NoValue']
+        RouteTablePrivateAz6: !If [TotalAzs6, !GetAtt 'Az6.Outputs.RouteTablePrivate', !Ref 'AWS::NoValue']
+        RouteTablePrivateAz7: !If [TotalAzs7, !GetAtt 'Az7.Outputs.RouteTablePrivate', !Ref 'AWS::NoValue']
+        RouteTablePrivateAz8: !If [TotalAzs8, !GetAtt 'Az8.Outputs.RouteTablePrivate', !Ref 'AWS::NoValue']
+        RouteTablePublic: !GetAtt 'Vpc.Outputs.RouteTablePublic'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalAzs: !Ref 'TotalAzs'
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+  Subnets:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/subnets.yaml'
+      Parameters:
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        SupernetCidrs: !GetAtt 'Supernets.Outputs.ParameterSupernetCidrs'
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        Supernet1Mask: !Select ['1', !Split ['/', !GetAtt 'Supernets.Outputs.Supernet1Cidr']]
+        Supernet2Mask: !If [TotalSupernets2, !Select ['1', !Split ['/', !GetAtt 'Supernets.Outputs.Supernet2Cidr']], !Ref 'AWS::NoValue']
+        Supernet3Mask: !If [TotalSupernets3, !Select ['1', !Split ['/', !GetAtt 'Supernets.Outputs.Supernet3Cidr']], !Ref 'AWS::NoValue']
+        Supernet4Mask: !If [TotalSupernets4, !Select ['1', !Split ['/', !GetAtt 'Supernets.Outputs.Supernet4Cidr']], !Ref 'AWS::NoValue']
+        TotalAzs: !Ref 'TotalAzs'
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+  Supernets:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/supernets.yaml'
+      Parameters:
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !GetAtt 'Vpc.Outputs.ParameterSupernetTotal'
+        VpcCidr: !Ref 'Cidr'
+        VpcMask: !Select ['1', !Split ['/', !Ref 'Cidr']]
+  TransitGateway:
+    Type: AWS::CloudFormation::Stack
+    Condition: ParamTransitGatewayEnvironmentIsNotNull
+    DependsOn: Ssm
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/transit-gateway.yaml'
+      Parameters:
+        Environment: !Ref 'Environment'
+        Project: !Ref 'Project'
+        RouteTables: !If
+          - ParamTransitGatewaySupernetIsAll
+          - !GetAtt 'Ssm.Outputs.ParameterRouteTablesAll'
+          - !If [TransitGatewayRouteTableIsPublic, !GetAtt 'Ssm.Outputs.ParameterRouteTablesPublic', !GetAtt 'Ssm.Outputs.ParameterRouteTablesPrivate']
+        Subnets: !If [ParamTransitGatewaySupernetIsAll, !GetAtt 'Ssm.Outputs.ParameterSubnetsAll', !Sub '${Ssm.Outputs.SsmPrefixSubnets}/${TransitGatewaySupernet}/ids']
+        TransitGateway: !If [ParamTransitGatewayEnvironmentIsDefault, !Ref 'AWS::NoValue', !Sub '/project/${Project}/env/${TransitGatewayEnvironment}/network/transit-gateway/id']
+        Vpc: !GetAtt 'Vpc.Outputs.Vpc'
+  Vpc:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/vpc.yaml'
+      Parameters:
+        BucketCloudTools: !Ref 'BucketCloudTools'
+        CreatePublicSubnet: !Ref 'CreatePublicSubnet'
+        Cidr: !Ref 'Cidr'
+        DomainPrivate: !Ref 'DomainPrivate'
+        Environment: !Ref 'Environment'
+        HostedZoneManagement: !If [VpcHostedZoneManagement, 'true', 'false']
+        NetworkName: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+        Project: !Ref 'Project'
+        SsmPrefix: !If [ParamNetworkNameIsNull, !Sub '/networks/${Project}-${Environment}', !Sub '/networks/${NetworkName}']
+        SupernetNames: !Join [',', !Ref 'SupernetNames']
+        TotalSupernets: !If [TotalSupernets4, 4, !If [TotalSupernets3, 3, !If [TotalSupernets2, 2, 1]]]
+Outputs:
+  ParameterSecurityGroupLinux:
+    Description: Ssm parameter set to the physical id of the linux security group
+    Value: !GetAtt 'SecurityGroups.Outputs.ParameterSecurityGroupLinux'
+  ParameterSecurityGroupWindows:
+    Description: Ssm parameter set to the physical id of the windows security group
+    Value: !GetAtt 'SecurityGroups.Outputs.ParameterSecurityGroupWindows'
+  ParameterSupernet1SubnetCidrs:
+    Description: Ssm parameter set to a list of CIDR's for subnets belonging to supernet 1
+    Value: !GetAtt 'Subnets.Outputs.ParameterSupernet1Cidrs'
+  ParameterSupernet1SubnetIds:
+    Description: Ssm parameter set to a list of physical ids for subnets belonging to supernet 1
+    Value: !GetAtt 'Ssm.Outputs.ParameterSupernet1Subnets'
+  ParameterSupernet2SubnetCidrs:
+    Description: Ssm parameter set to a list of CIDR's for subnets belonging to supernet 2
+    Value: !GetAtt 'Subnets.Outputs.ParameterSupernet2Cidrs'
+  ParameterSupernet2SubnetIds:
+    Description: Ssm parameter set to a list of physical ids for subnets belonging to supernet 2
+    Value: !GetAtt 'Ssm.Outputs.ParameterSupernet2Subnets'
+  ParameterSupernet3SubnetCidrs:
+    Description: Ssm parameter set to a list of CIDR's for subnets belonging to supernet 3
+    Value: !GetAtt 'Subnets.Outputs.ParameterSupernet3Cidrs'
+  ParameterSupernet3SubnetIds:
+    Description: Ssm parameter set to a list of physical ids for subnets belonging to supernet 3
+    Value: !GetAtt 'Ssm.Outputs.ParameterSupernet3Subnets'
+  ParameterSupernet4SubnetCidrs:
+    Description: Ssm parameter set to a list of CIDR's for subnets belonging to supernet 4
+    Value: !GetAtt 'Subnets.Outputs.ParameterSupernet4Cidrs'
+  ParameterSupernet4SubnetIds:
+    Description: Ssm parameter set to a list of physical ids for subnets belonging to supernet 4
+    Value: !GetAtt 'Ssm.Outputs.ParameterSupernet4Subnets'
+  ParameterVpc:
+    Description: Name of SSM parameter for VPC physical id
+    Value: !GetAtt 'Vpc.Outputs.ParameterVpc'
+  ParameterVpcCidr:
+    Description: Name of SSM parameter for VPC CIDR range
+    Value: !GetAtt 'Vpc.Outputs.ParameterVpcCidr'
+  NetworkName:
+    Description: Friendly name that can be used for referencing the network
+    Value: !If [ParamNetworkNameIsNull, !Sub '${Project}-${Environment}', !Ref 'NetworkName']
+  Supernet1Subnets:
+    Description: List of physical ids for subnets in supernet 1
+    Value: !GetAtt 'Ssm.Outputs.Supernet1Subnets'
+  Supernet2Subnets:
+    Description: List of physical ids for subnets in supernet 2
+    Value: !GetAtt 'Ssm.Outputs.Supernet2Subnets'
+  Supernet3Subnets:
+    Description: List of physical ids for subnets in supernet 3
+    Value: !GetAtt 'Ssm.Outputs.Supernet3Subnets'
+  Supernet4Subnets:
+    Description: List of physical ids for subnets in supernet 4
+    Value: !GetAtt 'Ssm.Outputs.Supernet4Subnets'
+  Vpc:
+    Description: Physical id of the VPC
+    Value: !GetAtt 'Vpc.Outputs.Vpc'

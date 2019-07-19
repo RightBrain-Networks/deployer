@@ -15,10 +15,11 @@ class s3_sync(object):
         self.profile = profile
         self.environment = environment
         self.config = self.get_config(config_file)
-        self.region = self.get_config_att('region')
+        self.session = Session(profile_name=profile, region_name=self.get_config_att('region'))
+        self.region = self.session.region_name
         self.base = self.get_config_att('sync_base')
         self.sync_dirs = self.get_config_att('sync_dirs')
-        self.dest_bucket = self.get_config_att('sync_dest_bucket')
+        self.dest_bucket = self.get_sync_dest_bucket()
         self.repository = self.get_repository()
         self.commit = self.repository.head.object.hexsha if self.repository else 'null'
         self.release = self.get_config_att('release', self.commit).replace('/', '.')
@@ -28,6 +29,18 @@ class s3_sync(object):
         self.excludes = self.construct_excludes()
         self.valid = valid
         self.sync()
+
+    def get_sync_dest_bucket(self):
+        bucket = self.get_config_att('sync_dest_bucket')
+        if not bucket:
+            ssm = self.session.client('ssm')
+            try:
+                name = '/global/buckets/cloudtools/name'
+                return ssm.get_parameter(Name=name).get('Parameter', {}).get('Value', None)
+            except ClientError:
+                return None
+        else:
+            return bucket
 
     def get_repository(self):
         try:
@@ -113,7 +126,7 @@ class s3_sync(object):
     def skip_or_send(self, fname, dest_key):
         try:
             etag = self.generate_etag(fname)
-            s3_obj = self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+            self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
             logger.debug("Skipped: %s" % (fname))
         except Exception as e:
             self.client.upload_file(fname, self.dest_bucket, dest_key)

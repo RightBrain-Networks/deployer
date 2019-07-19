@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures parameters for VPC subnets
+Parameters:
+  SsmPrefix:
+    Description: The prefix portion to use for SSM parameters
+    Type: String
+  Supernet1Mask:
+    Description: The mask portion of the CIDR for supernet 1
+    Type: String
+  Supernet2Mask:
+    Default: 'null'
+    Description: The mask portion of the CIDR for supernet 1
+    Type: String
+  Supernet3Mask:
+    Default: 'null'
+    Description: The mask portion of the CIDR for supernet 1
+    Type: String
+  Supernet4Mask:
+    Default: 'null'
+    Description: The mask portion of the CIDR for supernet 1
+    Type: String
+  SupernetNames:
+    Description: Friendly names for the subnet groups
+    Type: CommaDelimitedList
+  SupernetCidrs:
+    Description: List of CIDR's for the supernets
+    Type: AWS::SSM::Parameter::Value<List<String>>
+  TotalAzs:
+    Description: The total number of availability zones
+    Type: Number
+  TotalSupernets:
+    Description: The total number of supernets
+    Type: AWS::SSM::Parameter::Value<String>
+Conditions:
+  TotalSupernets2: !Or [!Equals [!Ref 'TotalSupernets', '2'], !Condition 'TotalSupernets3']
+  TotalSupernets3: !Or [!Equals [!Ref 'TotalSupernets', '3'], !Condition 'TotalSupernets4']
+  TotalSupernets4: !Equals [!Ref 'TotalSupernets', '4']
+Mappings:
+  CidrBits:
+    "28": {"1":  '4'}
+    "27": {"1":  '5', "2":  '4'}
+    "26": {"1":  '6', "2":  '5', "3":  '4', "4":  '4'}
+    "25": {"1":  '7', "2":  '6', "3":  '5', "4":  '5', "5":  '4', "6":  '4', "7":  '4', "8":  '4'}
+    "24": {"1":  '8', "2":  '7', "3":  '6', "4":  '6', "5":  '5', "6":  '5', "7":  '5', "8":  '5'}
+    "23": {"1":  '9', "2":  '8', "3":  '7', "4":  '7', "5":  '6', "6":  '6', "7":  '6', "8":  '6'}
+    "22": {"1": '10', "2":  '9', "3":  '8', "4":  '8', "5":  '7', "6":  '7', "7":  '7', "8":  '7'}
+    "21": {"1": '11', "2": '10', "3":  '9', "4":  '9', "5":  '8', "6":  '8', "7":  '8', "8":  '8'}
+    "20": {"1": '12', "2": '11', "3": '10', "4": '10', "5":  '9', "6":  '9', "7":  '9', "8":  '9'}
+    "19": {"1": '13', "2": '12', "3": '11', "4": '11', "5": '10', "6": '10', "7": '10', "8": '10'}
+    "18": {"1": '14', "2": '13', "3": '12', "4": '12', "5": '11', "6": '11', "7": '11', "8": '11'}
+    "17": {"1": '15', "2": '14', "3": '13', "4": '13', "5": '12', "6": '12', "7": '12', "8": '12'}
+    "16": {"1": '16', "2": '15', "3": '14', "4": '14', "5": '13', "6": '13', "7": '13', "8": '13'}
+Resources:
+  ParameterSupernet1Cidrs:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: List of subnet CIDR blocks
+      Name: !Sub
+        - '${SsmPrefix}/subnets/${SupernetName}/cidrs'
+        - SupernetName: !Select ['0', !Ref 'SupernetNames']
+      Type: StringList
+      Value: !Join [',', !Cidr [!Select ['0', !Ref 'SupernetCidrs'], !Ref 'TotalAzs', !FindInMap [CidrBits, !Ref 'Supernet1Mask', !Ref 'TotalAzs']]]
+  ParameterSupernet2Cidrs:
+    Type: AWS::SSM::Parameter
+    Condition: TotalSupernets2
+    Properties:
+      Description: List of subnet CIDR blocks
+      Name: !Sub
+        - '${SsmPrefix}/subnets/${SupernetName}/cidrs'
+        - SupernetName: !Select ['1', !Ref 'SupernetNames']
+      Type: StringList
+      Value: !Join [',', !Cidr [!Select ['1', !Ref 'SupernetCidrs'], !Ref 'TotalAzs', !FindInMap [CidrBits, !Ref 'Supernet2Mask', !Ref 'TotalAzs']]]
+  ParameterSupernet3Cidrs:
+    Type: AWS::SSM::Parameter
+    Condition: TotalSupernets3
+    Properties:
+      Description: List of subnet CIDR blocks
+      Name: !Sub
+        - '${SsmPrefix}/subnets/${SupernetName}/cidrs'
+        - SupernetName: !Select ['2', !Ref 'SupernetNames']
+      Type: StringList
+      Value: !Join [',', !Cidr [!Select ['2', !Ref 'SupernetCidrs'], !Ref 'TotalAzs', !FindInMap [CidrBits, !Ref 'Supernet3Mask', !Ref 'TotalAzs']]]
+  ParameterSupernet4Cidrs:
+    Type: AWS::SSM::Parameter
+    Condition: TotalSupernets4
+    Properties:
+      Description: List of subnet CIDR blocks
+      Name: !Sub
+        - '${SsmPrefix}/subnets/${SupernetName}/cidrs'
+        - SupernetName: !Select ['3', !Ref 'SupernetNames']
+      Type: StringList
+      Value: !Join [',', !Cidr [!Select ['3', !Ref 'SupernetCidrs'], !Ref 'TotalAzs', !FindInMap [CidrBits, !Ref 'Supernet4Mask', !Ref 'TotalAzs']]]
+Outputs:
+  ParameterSupernet1Cidrs:
+    Description: Ssm parameter set to a list of CIDR's for subnets belonging to supernet 1
+    Value: !Ref 'ParameterSupernet1Cidrs'
+  ParameterSupernet2Cidrs:
+    Description: Ssm parameter set to a list of CIDR's for subnets belonging to supernet 2
+    Value: !If [TotalSupernets2, !Ref 'ParameterSupernet2Cidrs', 'null']
+  ParameterSupernet3Cidrs:
+    Description: Ssm parameter set to a list of CIDR's for subnets belonging to supernet 3
+    Value: !If [TotalSupernets3, !Ref 'ParameterSupernet3Cidrs', 'null']
+  ParameterSupernet4Cidrs:
+    Description: Ssm parameter set to a list of CIDR's for subnets belonging to supernet 4
+    Value: !If [TotalSupernets4, !Ref 'ParameterSupernet4Cidrs', 'null']
+  Supernet1Cidrs:
+    Description: List of CIDR's for subnets belonging to supernet 1
+    Value: !GetAtt 'ParameterSupernet1Cidrs.Value'
+  Supernet2Cidrs:
+    Description: List of CIDR's for subnets belonging to supernet 2
+    Value: !If [TotalSupernets2, !GetAtt 'ParameterSupernet2Cidrs.Value', 'null']
+  Supernet3Cidrs:
+    Description: List of CIDR's for subnets belonging to supernet 3
+    Value: !If [TotalSupernets3, !GetAtt 'ParameterSupernet3Cidrs.Value', 'null']
+  Supernet4Cidrs:
+    Description: List of CIDR's for subnets belonging to supernet 4
+    Value: !If [TotalSupernets4, !GetAtt 'ParameterSupernet4Cidrs.Value', 'null']
