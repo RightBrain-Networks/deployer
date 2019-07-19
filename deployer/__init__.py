@@ -15,10 +15,14 @@ __version__ = '0.3.18'
 
 
 def main():
-    if len(sys.argv) == 3 and sys.argv[1] == 'init':
+    if (len(sys.argv) == 2 or len(sys.argv) == 3) and sys.argv[1] == 'init':
         script_dir = os.path.dirname(__file__)
         skel_dir = os.path.join(script_dir, 'skel')
-        copy_tree(skel_dir, sys.argv[2])
+        if not 2 in sys.argv:
+            copy_tree(skel_dir, ".")
+        else:
+            copy_tree(skel_dir, sys.argv[2])
+        logger.info("Intialized directory for deployer")
         exit(0)
 
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
@@ -66,6 +70,7 @@ def main():
 
     if options_broken:
         parser.print_help()
+        print("\n  [init] DIR            Intializes the current directory")
         exit(1)
 
     if args.debug:

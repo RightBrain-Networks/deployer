@@ -423,6 +423,8 @@ class AbstractCloudFormation(object):
             return {}
             
 
+import pdb
+
 class Stack(AbstractCloudFormation):
     def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, params=None):
         self.profile = profile
