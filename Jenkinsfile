@@ -1,4 +1,5 @@
 library('pipeline-library')
+library('jenkins-library')
 
 pipeline {
   options { timestamps() }
@@ -10,26 +11,10 @@ pipeline {
     DOCKER_REGISTRY = '356438515751.dkr.ecr.us-east-1.amazonaws.com'
   }
   stages {
-    stage("Pull Versioning Image")
-    {
-        steps
-        {
-          withEcr {
-            sh "docker pull ${DOCKER_REGISTRY}/auto-semver"
-          }
-        }
-    }
     stage('Version') {
-        agent {
-            docker {
-                image "${DOCKER_REGISTRY}/auto-semver"
-            }
-        }
-      steps {
-        // runs the automatic semver tool which will version, & tag,
-        runAutoSemver()
 
-        //Grabs current version
+      steps {
+        autoSemVer()
         script
         {
             env.VERSION = getVersion('-d')
