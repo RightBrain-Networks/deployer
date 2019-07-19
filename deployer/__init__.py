@@ -70,8 +70,7 @@ def main():
     if args.zip_lambdas:
         LambdaPrep(args.config, args.stack).zip_lambdas()
 
-    if args.sync:
-        s3_sync(args.profile, args.config, args.stack, args.assume_valid)
+
 
     try:
         # Read Environment Config
@@ -92,17 +91,20 @@ def main():
             # Create or update all Environments
             for stack in stackQueue:
                 if stack != 'global' and (args.all or stack == args.stack):
-
+                    if args.sync:
+                        s3_sync(args.profile, args.config, stack, args.assume_valid)
                     logger.info("Running " + str(args.execute) + " on stack: " + stack)
                     env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, params)
                     if args.execute == 'create':
                         try:
                             env_stack.create()
                         except ClientError as e:
-                            if e.response['Error']['Code'] and not args.all:
+                            if not args.all:
                                 raise e
-                            else:
+                            elif e.response['Error']['Code'] == 'AlreadyExistsException':
                                 logger.info("Stack, " + stack + ", already exists.")
+                            else:
+                                raise e
                     elif args.execute == 'update':
                         env_stack.update()
                     elif args.execute == 'delete':
