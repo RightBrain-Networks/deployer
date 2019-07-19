@@ -96,7 +96,13 @@ def main():
                     logger.info("Running " + str(args.execute) + " on stack: " + stack)
                     env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, params)
                     if args.execute == 'create':
-                        env_stack.create()
+                        try:
+                            env_stack.create()
+                        except ClientError as e:
+                            if e.response['Error']['Code'] and not args.all:
+                                raise e
+                            else:
+                                logger.info("Stack, " + stack + ", already exists.")
                     elif args.execute == 'update':
                         env_stack.update()
                     elif args.execute == 'delete':
