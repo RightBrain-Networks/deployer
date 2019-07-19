@@ -92,7 +92,6 @@ def main():
             for stack, obj in config.items():
                 if stack != 'global':
                     print(stack)
-                    env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events)
                     env_stack = Stack(args.profile, args.config, stack, args.events)
                     if env_stack.stack_status:
                         print("Update %s" % stack)
