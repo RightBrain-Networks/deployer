@@ -67,6 +67,7 @@ def main():
 
     if options_broken:
         parser.print_help()
+        print("\n  [init] DIR            Intializes the current directory")
         exit(1)
 
     if args.debug:
