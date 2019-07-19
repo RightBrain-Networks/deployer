@@ -10,7 +10,6 @@ from botocore.exceptions import ClientError, WaiterError
 import ruamel.yaml
 import sys, traceback
 
-
 __version__ = '0.3.18'
 
 
@@ -79,29 +78,59 @@ def main():
         with open(args.config) as f:
             config = ruamel.yaml.safe_load(f)
 
-        # Create or update all Environments
-        for stack, obj in config.items():
-            if stack != 'global' and (args.all or stack == args.stack):
-                logger.info("Running " + str(args.execute) + " on stack: " + stack)
-                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, params)
-                if args.execute == 'create':
-                    env_stack.create()
-                elif args.execute == 'update':
-                    env_stack.update()
-                elif args.execute == 'delete':
-                    env_stack.delete_stack()
-                elif args.execute == 'upsert':
-                    env_stack.update() if env_stack.check_stack_exists() else env_stack.create()
-                elif args.execute == 'describe':
-                    print(json.dumps(env_stack.describe(),
-                                    sort_keys=True,
-                                    indent=4,
-                                    separators=(',', ': '),
-                                    default=lambda x: x.isoformat()))
-                elif args.execute == 'change':
-                    env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
-                elif args.sync or args.execute == 'sync':
-                    s3_sync(args.profile, args.config, args.stack, args.assume_valid)
+        effectedStacks = []
+        stackQueue = []
+        if not args.all:
+            # Add specified stack to queue
+            stackQueue.append(args.stack)
+        else:
+            # Add available stacks to queue
+            stackQueue = get_deployableStacks(config, effectedStacks)
+
+        #While there are stacks to be created
+        while(len(stackQueue) > 0):
+            # Create or update all Environments
+            for stack in stackQueue:
+                if stack != 'global' and (args.all or stack == args.stack):
+
+                    logger.info("Running " + str(args.execute) + " on stack: " + stack)
+                    env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, params)
+                    if args.execute == 'create':
+                        env_stack.create()
+                    elif args.execute == 'update':
+                        env_stack.update()
+                    elif args.execute == 'delete':
+                        env_stack.delete_stack()
+                    elif args.execute == 'upsert':
+                        env_stack.update() if env_stack.check_stack_exists() else env_stack.create()
+                    elif args.execute == 'describe':
+                        print(json.dumps(env_stack.describe(),
+                                        sort_keys=True,
+                                        indent=4,
+                                        separators=(',', ': '),
+                                        default=lambda x: x.isoformat()))
+                    elif args.execute == 'change':
+                        env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
+                    elif args.sync or args.execute == 'sync':
+                        s3_sync(args.profile, args.config, args.stack, args.assume_valid)
+                    effectedStacks.append(stack)
+            if args.all:
+                #Generate check for new deployable stacks
+                stackQueue = get_deployableStacks(config, effectedStacks)
+            else:
+                stackQueue.remove(stack)
+
+        #Check for any remaining stacks
+        if args.all:
+            remainingStacks = []
+            for item in config.items():
+                if item[0] not in effectedStacks and item[0] != "global":
+                    remainingStacks.append(item[0])
+            #Give error message if there were any circular dependencies
+            if(len(remainingStacks) > 0):
+                logger.error(str(len(remainingStacks)) + " stack(s) had circular dependencies:")
+                for stack in remainingStacks:
+                    logger.error("      " + stack)
 
     except (Exception) as e:
         logger.error(e)
@@ -110,7 +139,33 @@ def main():
             traceback.print_tb(tb)
     finally:
         if args.debug:
-            del tb
+            try:
+                del tb
+            except:
+                pass
+
+def get_deployableStacks(config, effectedStacks):
+    deployableStacks = [] #Output
+    checkQueue = []
+
+    #Add any stacks that were not created to queue
+    for item in config.items():
+        if item[0] not in effectedStacks and item[0] != "global":
+            checkQueue.append(item[0])
+
+    #Check stacks for dependencies
+    for stack in checkQueue:
+        haveAllDependency = True
+        for item in config.items():
+            if item[0] == stack:
+                if 'lookup_parameters' in item[1]:
+                    for parameter in item[1]['lookup_parameters']:
+                        if item[1]['lookup_parameters'][parameter]['Stack'] not in effectedStacks:
+                            haveAllDependency = False
+                            break
+        if haveAllDependency:
+            deployableStacks.append(stack)
+    return deployableStacks
 
 
 if __name__ == '__main__':
