@@ -1,0 +1,32 @@
+global:
+  sync_base: ./
+  sync_exclude:
+    - .swp
+    - .git
+    - .DS_Store
+    - README.md
+  parameters:
+    Environment: shared
+  tags:
+    Environment: shared
+
+deployer:
+  stack_name: shared-deployer
+  template: cloudformation/deployer/top.yaml
+  parameters: {}
+
+vpc:
+  stack_name: shared-vpc
+  template: cloudformation/vpc/top.yaml
+  sync_dirs:
+    - cloudformation/vpc
+  parameters:
+    CreatePublicSubnet: 'false'
+    Cidr: 10.138.0.0/16
+    DomainOwner: 'true'
+    DomainPrivate: mycompany.com
+    EnableFlowLogs: 'false'
+    NetworkName: 'shared'
+    Project: example
+    SupernetNames: public,private
+    TotalAzs: '3'

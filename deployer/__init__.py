@@ -15,12 +15,6 @@ __version__ = '0.3.18'
 
 
 def main():
-    if len(sys.argv) == 3 and sys.argv[1] == 'init':
-        script_dir = os.path.dirname(__file__)
-        skel_dir = os.path.join(script_dir, 'skel')
-        copy_tree(skel_dir, sys.argv[2])
-        exit(0)
-
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
     parser.add_argument("-c", "--config", help="Path to config file.")
     parser.add_argument("-s", "--stack", help="Stack Name.")
@@ -37,11 +31,18 @@ def main():
     parser.add_argument("-j", "--assume-valid", help="Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)", action="store_true", dest="assume_valid", default=False)
     parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG & enables traceback", action="store_true", dest="debug", default=False)
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
+    parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
 
     args = parser.parse_args()
 
     if args.version:
         print(__version__)
+        exit(0)
+
+    if args.init:
+        script_dir = os.path.dirname(__file__)
+        skel_dir = os.path.join(script_dir, 'skel')
+        copy_tree(skel_dir, args.init)
         exit(0)
 
     options_broken = False

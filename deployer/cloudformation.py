@@ -200,7 +200,7 @@ class AbstractCloudFormation(object):
         tags.append({'Key': 'deployer:caller', 'Value': self.identity_arn})
         tags.append({'Key': 'deployer:git:commit', 'Value': self.commit})
         tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
-        tags.append({'Key': 'deployer:config', 'Value': self.config_file})
+        tags.append({'Key': 'deployer:config', 'Value': self.config_file.replace('\\', '/')})
         return tags
 
     def create_stack(self):

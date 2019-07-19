@@ -1,0 +1,268 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures systems manager parameters for the VPC
+Parameters:
+  Az1Subnets:
+    Description: List of physical ids for subnets in AZ1
+    Type: CommaDelimitedList
+  Az2Subnets:
+    Default: 'null'
+    Description: List of physical ids for subnets in AZ2
+    Type: CommaDelimitedList
+  Az3Subnets:
+    Default: 'null'
+    Description: List of physical ids for subnets in AZ3
+    Type: CommaDelimitedList
+  Az4Subnets:
+    Default: 'null'
+    Description: List of physical ids for subnets in AZ4
+    Type: CommaDelimitedList
+  Az5Subnets:
+    Default: 'null'
+    Description: List of physical ids for subnets in AZ5
+    Type: CommaDelimitedList
+  Az6Subnets:
+    Default: 'null'
+    Description: List of physical ids for subnets in AZ6
+    Type: CommaDelimitedList
+  Az7Subnets:
+    Default: 'null'
+    Description: List of physical ids for subnets in AZ7
+    Type: CommaDelimitedList
+  Az8Subnets:
+    Default: 'null'
+    Description: List of physical ids for subnets in AZ8
+    Type: CommaDelimitedList
+  RouteTablePrivateAz1:
+    Default: 'null'
+    Description: Physical id of the private route table in AZ1
+    Type: String
+  RouteTablePrivateAz2:
+    Default: 'null'
+    Description: Physical id of the private route table in AZ2
+    Type: String
+  RouteTablePrivateAz3:
+    Default: 'null'
+    Description: Physical id of the private route table in AZ3
+    Type: String
+  RouteTablePrivateAz4:
+    Default: 'null'
+    Description: Physical id of the private route table in AZ4
+    Type: String
+  RouteTablePrivateAz5:
+    Default: 'null'
+    Description: Physical id of the private route table in AZ5
+    Type: String
+  RouteTablePrivateAz6:
+    Default: 'null'
+    Description: Physical id of the private route table in AZ6
+    Type: String
+  RouteTablePrivateAz7:
+    Default: 'null'
+    Description: Physical id of the private route table in AZ7
+    Type: String
+  RouteTablePrivateAz8:
+    Default: 'null'
+    Description: Physical id of the private route table in AZ8
+    Type: String
+  RouteTablePublic:
+    Description: Physical id of the public route table
+    Type: String
+  SsmPrefix:
+    Description: The prefix portion to use for SSM parameters
+    Type: String
+  SupernetNames:
+    Description: Friendly names for the subnet groups
+    Type: CommaDelimitedList
+  TotalAzs:
+    Description: The total number of availability zones
+    Type: Number
+  TotalSupernets:
+    Description: The total number of supernets
+    Type: AWS::SSM::Parameter::Value<String>
+Conditions:
+  ParamRouteTablePrivateAz1IsNotNull: !Not [!Equals [!Ref 'RouteTablePrivateAz1', 'null']]
+  ParamRouteTablePublicIsNotNull: !Not [!Equals [!Ref 'RouteTablePublic', 'null']]
+  TotalAzs1: !Or [!Equals [!Ref 'TotalAzs', '1'], !Condition 'TotalAzs2']
+  TotalAzs2: !Or [!Equals [!Ref 'TotalAzs', '2'], !Condition 'TotalAzs3']
+  TotalAzs3: !Or [!Equals [!Ref 'TotalAzs', '3'], !Condition 'TotalAzs4']
+  TotalAzs4: !Or [!Equals [!Ref 'TotalAzs', '4'], !Condition 'TotalAzs5']
+  TotalAzs5: !Or [!Equals [!Ref 'TotalAzs', '5'], !Condition 'TotalAzs6']
+  TotalAzs6: !Or [!Equals [!Ref 'TotalAzs', '6'], !Condition 'TotalAzs7']
+  TotalAzs7: !Or [!Equals [!Ref 'TotalAzs', '7'], !Condition 'TotalAzs8']
+  TotalAzs8: !Equals [!Ref 'TotalAzs', '8']
+  TotalSupernets2: !Or [!Equals [!Ref 'TotalSupernets', '2'], !Condition 'TotalSupernets3']
+  TotalSupernets3: !Or [!Equals [!Ref 'TotalSupernets', '3'], !Condition 'TotalSupernets4']
+  TotalSupernets4: !Equals [!Ref 'TotalSupernets', '4']
+Resources:
+  ParameterRouteTablesAll:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: List of private route tables
+      Name: !Sub '${SsmPrefix}/route-tables/all'
+      Type: StringList
+      Value: !Join
+        - ','
+        - - !If [ParamRouteTablePrivateAz1IsNotNull, !GetAtt 'ParameterRouteTablesPrivate.Value', !Ref 'AWS::NoValue']
+          - !If [ParamRouteTablePublicIsNotNull, !GetAtt 'ParameterRouteTablesPublic.Value', !Ref 'AWS::NoValue']
+  ParameterRouteTablesPrivate:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: List of private route tables
+      Name: !Sub '${SsmPrefix}/route-tables/private'
+      Type: StringList
+      Value: !Join
+        - ','
+        - - !Ref 'RouteTablePrivateAz1'
+          - !If [TotalAzs2, !Ref 'RouteTablePrivateAz2', !Ref 'AWS::NoValue']
+          - !If [TotalAzs3, !Ref 'RouteTablePrivateAz3', !Ref 'AWS::NoValue']
+          - !If [TotalAzs4, !Ref 'RouteTablePrivateAz4', !Ref 'AWS::NoValue']
+          - !If [TotalAzs5, !Ref 'RouteTablePrivateAz5', !Ref 'AWS::NoValue']
+          - !If [TotalAzs6, !Ref 'RouteTablePrivateAz6', !Ref 'AWS::NoValue']
+          - !If [TotalAzs7, !Ref 'RouteTablePrivateAz7', !Ref 'AWS::NoValue']
+          - !If [TotalAzs8, !Ref 'RouteTablePrivateAz8', !Ref 'AWS::NoValue']
+  ParameterRouteTablesPublic:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: List of public route tables
+      Name: !Sub '${SsmPrefix}/route-tables/public'
+      Type: StringList
+      Value: !Ref 'RouteTablePublic'
+  ParameterSubnetsAll:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: List of private route tables
+      Name: !Sub '${SsmPrefix}/subnets/all'
+      Type: StringList
+      Value: !Join
+        - ','
+        - - !GetAtt 'ParameterSupernet1Subnets.Value'
+          - !If [TotalSupernets2, !GetAtt 'ParameterSupernet2Subnets.Value', !Ref 'AWS::NoValue']
+          - !If [TotalSupernets3, !GetAtt 'ParameterSupernet3Subnets.Value', !Ref 'AWS::NoValue']
+          - !If [TotalSupernets4, !GetAtt 'ParameterSupernet4Subnets.Value', !Ref 'AWS::NoValue']
+  ParameterSupernet1Subnets:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: List of subnet physical ids
+      Name: !Sub
+        - '${SsmPrefix}/subnets/${SupernetName}/ids'
+        - SupernetName: !Select ['0', !Ref 'SupernetNames']
+      Type: StringList
+      Value: !Join
+        - ','
+        - - !Select ['0', !Ref 'Az1Subnets']
+          - !If [TotalAzs2, !Select ['0', !Ref 'Az2Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs3, !Select ['0', !Ref 'Az3Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs4, !Select ['0', !Ref 'Az4Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs5, !Select ['0', !Ref 'Az5Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs6, !Select ['0', !Ref 'Az6Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs7, !Select ['0', !Ref 'Az7Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs8, !Select ['0', !Ref 'Az8Subnets'], !Ref 'AWS::NoValue']
+  ParameterSupernet2Subnets:
+    Type: AWS::SSM::Parameter
+    Condition: TotalSupernets2
+    Properties:
+      Description: List of subnet physical ids
+      Name: !Sub
+        - '${SsmPrefix}/subnets/${SupernetName}/ids'
+        - SupernetName: !Select ['1', !Ref 'SupernetNames']
+      Type: StringList
+      Value: !Join
+        - ','
+        - - !Select ['1', !Ref 'Az1Subnets']
+          - !If [TotalAzs2, !Select ['1', !Ref 'Az2Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs3, !Select ['1', !Ref 'Az3Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs4, !Select ['1', !Ref 'Az4Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs5, !Select ['1', !Ref 'Az5Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs6, !Select ['1', !Ref 'Az6Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs7, !Select ['1', !Ref 'Az7Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs8, !Select ['1', !Ref 'Az8Subnets'], !Ref 'AWS::NoValue']
+  ParameterSupernet3Subnets:
+    Type: AWS::SSM::Parameter
+    Condition: TotalSupernets3
+    Properties:
+      Description: List of subnet physical ids
+      Name: !Sub
+        - '${SsmPrefix}/subnets/${SupernetName}/ids'
+        - SupernetName: !Select ['2', !Ref 'SupernetNames']
+      Type: StringList
+      Value: !Join
+        - ','
+        - - !Select ['2', !Ref 'Az1Subnets']
+          - !If [TotalAzs2, !Select ['2', !Ref 'Az2Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs3, !Select ['2', !Ref 'Az3Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs4, !Select ['2', !Ref 'Az4Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs5, !Select ['2', !Ref 'Az5Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs6, !Select ['2', !Ref 'Az6Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs7, !Select ['2', !Ref 'Az7Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs8, !Select ['2', !Ref 'Az8Subnets'], !Ref 'AWS::NoValue']
+  ParameterSupernet4Subnets:
+    Type: AWS::SSM::Parameter
+    Condition: TotalSupernets4
+    Properties:
+      Description: List of subnet physical ids
+      Name: !Sub
+        - '${SsmPrefix}/subnets/${SupernetName}/ids'
+        - SupernetName: !Select ['3', !Ref 'SupernetNames']
+      Type: StringList
+      Value: !Join
+        - ','
+        - - !Select ['3', !Ref 'Az1Subnets']
+          - !If [TotalAzs2, !Select ['3', !Ref 'Az2Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs3, !Select ['3', !Ref 'Az3Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs4, !Select ['3', !Ref 'Az4Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs5, !Select ['3', !Ref 'Az5Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs6, !Select ['3', !Ref 'Az6Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs7, !Select ['3', !Ref 'Az7Subnets'], !Ref 'AWS::NoValue']
+          - !If [TotalAzs8, !Select ['3', !Ref 'Az8Subnets'], !Ref 'AWS::NoValue']
+Outputs:
+  ParameterRouteTablesAll:
+    Description: Ssm parameter set to a list of physical ids for all route tables
+    Value: !Ref 'ParameterRouteTablesAll'
+  ParameterRouteTablesPrivate:
+    Description: Ssm parameter set to a list of physical ids for the private route tables
+    Value: !Ref 'ParameterRouteTablesPrivate'
+  ParameterRouteTablesPublic:
+    Description: Ssm parameter set to a list of physical ids for the public route tables
+    Value: !Ref 'ParameterRouteTablesPublic'
+  ParameterSubnetsAll:
+    Description: Ssm parameter set to a list of physical ids for all subnets in the vpc
+    Value: !Ref 'ParameterSubnetsAll'
+  ParameterSupernet1Subnets:
+    Description: Ssm parameter set to a list of physical ids for subnets belonging to supernet 1
+    Value: !Ref 'ParameterSupernet1Subnets'
+  ParameterSupernet2Subnets:
+    Description: Ssm parameter set to a list of physical ids for subnets belonging to supernet 2
+    Value: !If [TotalSupernets2, !Ref 'ParameterSupernet2Subnets', 'null']
+  ParameterSupernet3Subnets:
+    Description: Ssm parameter set to a list of physical ids for subnets belonging to supernet 3
+    Value: !If [TotalSupernets3, !Ref 'ParameterSupernet3Subnets', 'null']
+  ParameterSupernet4Subnets:
+    Description: Ssm parameter set to a list of physical ids for subnets belonging to supernet 4
+    Value: !If [TotalSupernets4, !Ref 'ParameterSupernet4Subnets', 'null']
+  RouteTablesAll:
+    Description: List of physical ids for all route tables
+    Value: !GetAtt 'ParameterRouteTablesAll.Value'
+  RouteTablesPrivate:
+    Description: List of physical ids for the private route tables
+    Value: !GetAtt 'ParameterRouteTablesPrivate.Value'
+  RouteTablesPublic:
+    Description: List of physical ids for the public route tables
+    Value: !GetAtt 'ParameterRouteTablesPublic.Value'
+  SsmPrefixRouteTables:
+    Description: Prefix to use when looking up SSM parameters containing route table info
+    Value: !Sub '${SsmPrefix}/route-tables'
+  SsmPrefixSubnets:
+    Description: Prefix to use when looking up SSM parameters containing subnet info
+    Value: !Sub '${SsmPrefix}/subnets'
+  Supernet1Subnets:
+    Description: List of physical ids for subnets in supernet 1
+    Value: !GetAtt 'ParameterSupernet1Subnets.Value'
+  Supernet2Subnets:
+    Description: List of physical ids for subnets in supernet 2
+    Value: !If [TotalSupernets2, !GetAtt 'ParameterSupernet2Subnets.Value', 'null']
+  Supernet3Subnets:
+    Description: List of physical ids for subnets in supernet 3
+    Value: !If [TotalSupernets3, !GetAtt 'ParameterSupernet3Subnets.Value', 'null']
+  Supernet4Subnets:
+    Description: List of physical ids for subnets in supernet 4
+    Value: !If [TotalSupernets4, !GetAtt 'ParameterSupernet4Subnets.Value', 'null']

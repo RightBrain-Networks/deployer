@@ -1,0 +1,314 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures transit gateway attachment and routing
+Parameters:
+  DefaultRoute:
+    AllowedValues:
+      - 'false'
+      - 'true'
+    Default: 'false'
+    Description: Boolean value indicating if the transit gateway should be used as the default route
+    Type: String
+  Environment:
+    Description: Name of the environment deployed
+    Type: String
+  Project:
+    Description: Name of current project
+    Type: String
+  RouteTables:
+    Description: List of physical ids of the route tables connecting to the transit gateway
+    Type: AWS::SSM::Parameter::Value<List<String>>
+  Subnets:
+    Description: List of physical ids of the subnets to attach to the transit gateway
+    Type: AWS::SSM::Parameter::Value<List<AWS::EC2::Subnet::Id>>
+  TransitGateway:
+    Default: /global/network/transit-gateway/id
+    Description: Physical id of the transit gateway to attach
+    Type: AWS::SSM::Parameter::Value<String>
+  Vpc:
+    Description: Physical id of the VPC
+    Type: String
+Conditions:
+  ParamDefaultRouteIsTrue: !Equals [!Ref 'DefaultRoute', 'true']
+  ResourceRouteRouteTable2Default: !And [!Condition 'ParamDefaultRouteIsTrue', !Condition 'TotalRouteTables2']
+  ResourceRouteRouteTable3Default: !And [!Condition 'ParamDefaultRouteIsTrue', !Condition 'TotalRouteTables3']
+  ResourceRouteRouteTable4Default: !And [!Condition 'ParamDefaultRouteIsTrue', !Condition 'TotalRouteTables4']
+  ResourceRouteRouteTable5Default: !And [!Condition 'ParamDefaultRouteIsTrue', !Condition 'TotalRouteTables5']
+  ResourceRouteRouteTable6Default: !And [!Condition 'ParamDefaultRouteIsTrue', !Condition 'TotalRouteTables6']
+  ResourceRouteRouteTable7Default: !And [!Condition 'ParamDefaultRouteIsTrue', !Condition 'TotalRouteTables7']
+  ResourceRouteRouteTable8Default: !And [!Condition 'ParamDefaultRouteIsTrue', !Condition 'TotalRouteTables8']
+  ResourceRouteRouteTable9Default: !And [!Condition 'ParamDefaultRouteIsTrue', !Condition 'TotalRouteTables9']
+  TotalRouteTables2: !Not [!Equals [!Select ['1', !Split [',', !Sub ['${x},,,,,,,,', {x: !Join [',', !Ref 'RouteTables']}]]], '']]
+  TotalRouteTables3: !And [!Condition 'TotalRouteTables2', !Not [!Equals [!Select ['2', !Split [',', !Sub ['${x},,,,,,,,', {x: !Join [',', !Ref 'RouteTables']}]]], '']]]
+  TotalRouteTables4: !And [!Condition 'TotalRouteTables3', !Not [!Equals [!Select ['3', !Split [',', !Sub ['${x},,,,,,,,', {x: !Join [',', !Ref 'RouteTables']}]]], '']]]
+  TotalRouteTables5: !And [!Condition 'TotalRouteTables4', !Not [!Equals [!Select ['4', !Split [',', !Sub ['${x},,,,,,,,', {x: !Join [',', !Ref 'RouteTables']}]]], '']]]
+  TotalRouteTables6: !And [!Condition 'TotalRouteTables5', !Not [!Equals [!Select ['5', !Split [',', !Sub ['${x},,,,,,,,', {x: !Join [',', !Ref 'RouteTables']}]]], '']]]
+  TotalRouteTables7: !And [!Condition 'TotalRouteTables6', !Not [!Equals [!Select ['6', !Split [',', !Sub ['${x},,,,,,,,', {x: !Join [',', !Ref 'RouteTables']}]]], '']]]
+  TotalRouteTables8: !And [!Condition 'TotalRouteTables7', !Not [!Equals [!Select ['7', !Split [',', !Sub ['${x},,,,,,,,', {x: !Join [',', !Ref 'RouteTables']}]]], '']]]
+  TotalRouteTables9: !And [!Condition 'TotalRouteTables8', !Not [!Equals [!Select ['8', !Split [',', !Sub ['${x},,,,,,,,', {x: !Join [',', !Ref 'RouteTables']}]]], '']]]
+Resources:
+  TransitGatewayAttachment:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties:
+      SubnetIds: !Ref 'Subnets'
+      Tags:
+        - Key: Environment
+          Value: !Ref 'Environment'
+        - Key: Name
+          Value: !Sub '${Project}-${Environment}'
+        - Key: Project
+          Value: !Ref 'Project'
+      TransitGatewayId: !Ref 'TransitGateway'
+      VpcId: !Ref 'Vpc'
+  RouteRouteTable1Default:
+    Type: AWS::EC2::Route
+    Condition: ParamDefaultRouteIsTrue
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [0, !Ref 'RouteTables']
+  RouteRouteTable1PrivateRange1:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [0, !Ref 'RouteTables']
+  RouteRouteTable1PrivateRange2:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 172.16.0.0/12
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [0, !Ref 'RouteTables']
+  RouteRouteTable1PrivateRange3:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [0, !Ref 'RouteTables']
+  RouteRouteTable2Default:
+    Type: AWS::EC2::Route
+    Condition: ResourceRouteRouteTable2Default
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [1, !Ref 'RouteTables']
+  RouteRouteTable2PrivateRange1:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables2
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [1, !Ref 'RouteTables']
+  RouteRouteTable2PrivateRange2:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables2
+    Properties:
+      DestinationCidrBlock: 172.16.0.0/12
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [1, !Ref 'RouteTables']
+  RouteRouteTable2PrivateRange3:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables2
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [1, !Ref 'RouteTables']
+  RouteRouteTable3Default:
+    Type: AWS::EC2::Route
+    Condition: ResourceRouteRouteTable3Default
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [2, !Ref 'RouteTables']
+  RouteRouteTable3PrivateRange1:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables3
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [2, !Ref 'RouteTables']
+  RouteRouteTable3PrivateRange2:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables3
+    Properties:
+      DestinationCidrBlock: 172.16.0.0/12
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [2, !Ref 'RouteTables']
+  RouteRouteTable3PrivateRange3:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables3
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [2, !Ref 'RouteTables']
+  RouteRouteTable4Default:
+    Type: AWS::EC2::Route
+    Condition: ResourceRouteRouteTable4Default
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [3, !Ref 'RouteTables']
+  RouteRouteTable4PrivateRange1:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables4
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [3, !Ref 'RouteTables']
+  RouteRouteTable4PrivateRange2:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables4
+    Properties:
+      DestinationCidrBlock: 172.16.0.0/12
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [3, !Ref 'RouteTables']
+  RouteRouteTable4PrivateRange3:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables4
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [3, !Ref 'RouteTables']
+  RouteRouteTable5Default:
+    Type: AWS::EC2::Route
+    Condition: ResourceRouteRouteTable5Default
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [4, !Ref 'RouteTables']
+  RouteRouteTable5PrivateRange1:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables5
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [4, !Ref 'RouteTables']
+  RouteRouteTable5PrivateRange2:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables5
+    Properties:
+      DestinationCidrBlock: 172.16.0.0/12
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [4, !Ref 'RouteTables']
+  RouteRouteTable5PrivateRange3:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables5
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [4, !Ref 'RouteTables']
+  RouteRouteTable6Default:
+    Type: AWS::EC2::Route
+    Condition: ResourceRouteRouteTable6Default
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [5, !Ref 'RouteTables']
+  RouteRouteTable6PrivateRange1:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables6
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [5, !Ref 'RouteTables']
+  RouteRouteTable6PrivateRange2:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables6
+    Properties:
+      DestinationCidrBlock: 172.16.0.0/12
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [5, !Ref 'RouteTables']
+  RouteRouteTable6PrivateRange3:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables6
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [5, !Ref 'RouteTables']
+  RouteRouteTable7Default:
+    Type: AWS::EC2::Route
+    Condition: ResourceRouteRouteTable7Default
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [6, !Ref 'RouteTables']
+  RouteRouteTable7PrivateRange1:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables7
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [6, !Ref 'RouteTables']
+  RouteRouteTable7PrivateRange2:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables7
+    Properties:
+      DestinationCidrBlock: 172.16.0.0/12
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [6, !Ref 'RouteTables']
+  RouteRouteTable7PrivateRange3:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables7
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [6, !Ref 'RouteTables']
+  RouteRouteTable8Default:
+    Type: AWS::EC2::Route
+    Condition: ResourceRouteRouteTable8Default
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [7, !Ref 'RouteTables']
+  RouteRouteTable8PrivateRange1:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables8
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [7, !Ref 'RouteTables']
+  RouteRouteTable8PrivateRange2:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables8
+    Properties:
+      DestinationCidrBlock: 172.16.0.0/12
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [7, !Ref 'RouteTables']
+  RouteRouteTable8PrivateRange3:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables8
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [7, !Ref 'RouteTables']
+  RouteRouteTable9Default:
+    Type: AWS::EC2::Route
+    Condition: ResourceRouteRouteTable9Default
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [8, !Ref 'RouteTables']
+  RouteRouteTable9PrivateRange1:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables9
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [8, !Ref 'RouteTables']
+  RouteRouteTable9PrivateRange2:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables9
+    Properties:
+      DestinationCidrBlock: 172.16.0.0/12
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [8, !Ref 'RouteTables']
+  RouteRouteTable9PrivateRange3:
+    Type: AWS::EC2::Route
+    Condition: TotalRouteTables9
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref 'TransitGateway'
+      RouteTableId: !Select [8, !Ref 'RouteTables']
+Outputs:
+  TransitGatewayAttachment:
+    Description: Physical id of the transit gateway attachment
+    Value: !Ref 'TransitGatewayAttachment'
