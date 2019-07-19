@@ -39,7 +39,7 @@ def main():
         print(__version__)
         exit(0)
 
-    if args.init:
+    if args.init is not None:
         script_dir = os.path.dirname(__file__)
         skel_dir = os.path.join(script_dir, 'skel')
         copy_tree(skel_dir, args.init)
