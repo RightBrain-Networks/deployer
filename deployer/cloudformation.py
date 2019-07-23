@@ -139,22 +139,33 @@ class AbstractCloudFormation(object):
         alt = 'full_template_url'
         if alt in self.config[self.stack]:
             self.template_url = self.config[self.stack][alt]
-        elif not self.get_config_att('template_bucket'):
+        elif self.get_template_bucket() is None:
             return None
         else:
+            s3 = self.session.client('s3')
             url_string = "https://{}.amazonaws.com/{}/{}/{}"
-            self.template_bucket = self.get_config_att('template_bucket')
+            self.template_bucket = self.get_template_bucket()
             self.template = self.get_config_att('template')
-            if self.region == 'us-east-1':
-                s3_endpoint = 's3'
-            else:
-                s3_endpoint = "s3-%s" % self.region
-            self.template_url = url_string.format(
-                s3_endpoint,
-                self.template_bucket,
-                self.release,
-                self.template)
+            s3_endpoint = 's3' if self.region == 'us-east-1' else "s3-%s" % self.region
+            try:
+                s3.head_object(Bucket=self.template_bucket, Key="{}/{}".format(self.release, self.template))
+                template_url = url_string.format(s3_endpoint, self.template_bucket, self.release, self.template)
+                self.template_url = template_url
+            except ClientError:
+                self.template_url = None
         return self.template_url
+
+    def get_template_bucket(self):
+        bucket = self.get_config_att('template_bucket')
+        if not bucket:
+            ssm = self.session.client('ssm')
+            try:
+                name = '/global/buckets/cloudtools/name'
+                return ssm.get_parameter(Name=name).get('Parameter', {}).get('Value', None)
+            except ClientError:
+                return None
+        else:
+            return bucket
 
     def get_template_file(self):
         if 'template' in self.config[self.stack]:
@@ -189,7 +200,7 @@ class AbstractCloudFormation(object):
         tags.append({'Key': 'deployer:caller', 'Value': self.identity_arn})
         tags.append({'Key': 'deployer:git:commit', 'Value': self.commit})
         tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
-        tags.append({'Key': 'deployer:config', 'Value': self.config_file})
+        tags.append({'Key': 'deployer:config', 'Value': self.config_file.replace('\\', '/')})
         return tags
 
     def create_stack(self):
@@ -412,6 +423,8 @@ class AbstractCloudFormation(object):
             return {}
             
 
+import pdb
+
 class Stack(AbstractCloudFormation):
     def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, params=None):
         self.profile = profile
@@ -420,10 +433,11 @@ class Stack(AbstractCloudFormation):
         self.disable_rollback = disable_rollback
         self.print_events = print_events
         self.config = self.get_config()
-        self.region = self.get_config_att('region')
         self.stack_name = self.get_config_att('stack_name')
         self.base = self.get_config_att('sync_base')
+        self.session = Session(profile_name=profile,region_name=self.get_config_att('region'))
         self.repository = self.get_repository()
+        self.region = self.session.region_name
         self.commit = self.repository.head.object.hexsha if self.repository else 'null'
         self.origin = self.get_repository_origin() if self.repository else 'null'
         self.release = self.get_config_att('release', self.commit).replace('/','.')
@@ -431,7 +445,6 @@ class Stack(AbstractCloudFormation):
         self.template_file = self.get_template_file()
         self.template_body = self.get_template_body()
         self.transforms = self.get_config_att('transforms')
-        self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
         self.sts = self.session.client('sts')
         self.identity_arn = self.sts.get_caller_identity().get('Arn', '')

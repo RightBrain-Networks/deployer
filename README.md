@@ -197,3 +197,115 @@ The `config_updater` command is meant to help with updating config files in the 
 
 `./config_updater -c example_configs/dummy.yml -u "{ \"Network\": { \"release\": \"$RELEASE\", \"parameters\":{ \"VirtualPrivateGateway\":\"someotherthing\"} } }"`
 `./config_updater -c example_configs/dummy.yml -u '{ "Network": { "release": "1.0.2" }, "Dev-Env": { "release": "1.0.2" } }'`
+
+# Getting Started
+
+You can set up the initial directory structure for deployer by running it with the `--init` flag:
+
+```
+deployer --init
+```
+
+This will create a directory tree like the following in your current directory:
+
+```
+.
+├── cloudformation
+│   ├── deployer
+│   │   └── top.yaml
+│   └── vpc
+│       ├── az.yaml
+│       ├── endpoints.yaml
+│       ├── flow-logs.yaml
+│       ├── route53.yaml
+│       ├── security-groups.yaml
+│       ├── ssm.yaml
+│       ├── subnets.yaml
+│       ├── supernets.yaml
+│       ├── top.yaml
+│       ├── transit-gateway.yaml
+│       └── vpc.yaml
+└── config
+    └── shared.yaml
+```
+
+This initial setup includes two example stacks: `deployer` and `vpc`. It also includes a barebones configuration to let you deploy them.
+
+> WARNING: This guide assumes you are running inside of a git repository. Deployer will use some values from git to set some defaults while deploying. If you are not running in git you will need to add the following line to the `config/shared.yaml` file under the `vpc` top level node:
+>
+> ```
+>   release: develop
+> ```
+
+Let's try deploying the `deployer` stack. This stack creates a bucket to store CloudFormation templates and sets an SSM parameter that allows deployer to find the bucket. Once this bucket is created we can use deployer to deploy more complex stacks with nested templates such as the `vpc` stack.
+
+To deploy the `deployer` stack run the command:
+
+```
+deployer -x upsert -c config/shared.yaml -s deployer
+```
+
+To break down the arguments of this command:
+
+`-x upsert` - This tells deployer to create the stack if it doesn't currently exist. If it does exist it will perform an update.
+
+`-c config/shared.yaml` - This is the deployer configuration file we want to use. This file defines the configuration (sync directories, parameters, etc) for one or more stacks.
+
+`-s deployer` - This is the top level name of a node in the `config/shared.yaml` file that we passed in the previous argument. It tells deployer which stack to deploy.
+
+Once the `deployer` stack is updated we can deploy the `vpc` stack. This stack provides a good starting point for deploying a new VPC and allows for a good amount of customization through parameters alone.
+
+```
+deployer -x upsert -c config/shared.yaml -s vpc -y
+```
+
+This command works like the command we used to deploy the `deployer` stack. The only difference is the last parameter:
+
+`-y` - This parameter tells deployer to upload all the files related to the stack to the bucket created in the `deployer` stack.
+
+Which files get uploaded is specified in the config file with the `sync_dirs` directive:
+
+```
+vpc:
+  stack_name: shared-vpc
+  template: cloudformation/vpc/top.yaml
+  sync_dirs:
+    - cloudformation/vpc
+```
+
+Deployer will give you a series of updates as the deployment happens to show you the progress of the current deployment. Once it is finished you should have a new vpc with the IP address range of 10.138.0.0/16 if you kept the default configuration.
+
+Now that your stack is deployed lets take a look at a couple of important sections of the `cloudformation/vpc/top.yaml` template that we just deployed:
+
+```
+Parameters:
+  BucketCloudTools:
+    Default: /global/buckets/cloudtools/name
+    Description: S3 bucket holding CloudFormation templates
+    Type: AWS::SSM::Parameter::Value<String>
+  Release:
+    Description: Release name
+    Type: String
+```
+
+This stack contains a couple of special parameters:
+
+`BucketCloudTools` - This is the S3 bucket that deployer synced our files to. It is referenced using the SSM parameter that was created when we deployed the `deployer` stack. This parameter is `/global/buckets/cloudtools/name`. It is a special parameter that deployer checks to know where to upload files to.
+
+`Release` - This parameter is not actually passed as a parameter in the configuration. When deployer uploads files if doesn't put them in the root of the bucket. Instead it prefixes them with a release name so as to not accidentally overwrite files in previous deployments. You can specify the release name in the deployer config with the `release` directive. If this directive isn't set and you are using git the release will be automatically set to the current commit hash. Deployer automatically passes this parameter if it detects it defined in the `Parameters` section of the template.
+
+```
+Resources:
+  Vpc:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/vpc.yaml'
+```
+
+Our top template contains numerous references to child templates. Using a combination of our `BucketCloudTools` parameter and `Release` parameter we can reference these files in s3. The line below references the file `cloudformation/vpc/vpc.yaml` from our local workspace:
+
+```
+!Sub 'https://s3.${AWS::Region}.amazonaws.com/${BucketCloudTools}/${Release}/cloudformation/vpc/vpc.yaml'
+```
+
+You can add your own templates under the `cloudformation` directory to deploy your own stacks. Each stack will also need an entry in your deployer config file to specify which directories should be uploaded, the name of the stack, and any required parameters.

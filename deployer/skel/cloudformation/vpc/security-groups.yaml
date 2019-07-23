@@ -1,0 +1,144 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures security groups to be shared by instances in the vpc
+Parameters:
+  CidrVpc:
+    Description: Cidr range of the local VPC
+    Type: AWS::SSM::Parameter::Value<String>
+  Environment:
+    Description: Name of the environment deployed
+    Type: String
+  NetworkName:
+    Description: Friendly name that can be used for referencing the network
+    Type: String
+  Project:
+    Description: Name of current project
+    Type: String
+  SsmPrefix:
+    Description: The prefix portion to use for SSM parameters
+    Type: String
+  Vpc:
+    Description: The physical id of the VPC
+    Type: AWS::SSM::Parameter::Value<String>
+Resources:
+  ParameterSecurityGroupLinux:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Physical id of the shared linux security group
+      Name: !Sub '${SsmPrefix}/security-groups/linux'
+      Type: StringList
+      Value: !Ref 'SecurityGroupLinux'
+  ParameterSecurityGroupWindows:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Physical id of the shared windows security group
+      Name: !Sub '${SsmPrefix}/security-groups/windows'
+      Type: StringList
+      Value: !Ref 'SecurityGroupWindows'
+  SecurityGroupLinux:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Base security group to be shared by Linux instances in the VPC
+#      SecurityGroupIngress:
+#
+#          # ICMP
+#        - CidrIp: !Ref 'CidrVpc'
+#          Description: ICMP from local VPC
+#          FromPort: '-1'
+#          IpProtocol: icmp
+#          ToPort: '-1'
+#        - CidrIp: !Ref 'CidrRbnOffice'
+#          Description: ICMP from RBN office
+#          FromPort: '-1'
+#          IpProtocol: icmp
+#          ToPort: '-1'
+#
+#          #SSH
+#        - CidrIp: !Ref 'CidrRbnOffice'
+#          Description: SSH from RBN office
+#          FromPort: '22'
+#          IpProtocol: tcp
+#          ToPort: '22'
+#
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Full access for ICMP
+          FromPort: '-1'
+          IpProtocol: icmp
+          ToPort: '-1'
+        - CidrIp: 0.0.0.0/0
+          Description: Full access for TCP
+          FromPort: '0'
+          IpProtocol: tcp
+          ToPort: '65535'
+        - CidrIp: 0.0.0.0/0
+          Description: Full access for UDP
+          FromPort: '0'
+          IpProtocol: udp
+          ToPort: '65535'
+      Tags:
+        - Key: Name
+          Value: !Sub '${Project}-${Environment}-common-linux'
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+      VpcId: !Ref 'Vpc'
+  SecurityGroupWindows:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Base security group to be shared by Linux instances in the VPC
+#      SecurityGroupIngress:
+#
+#          # ICMP
+#        - CidrIp: !Ref 'CidrVpc'
+#          Description: ICMP from local VPC
+#          FromPort: '-1'
+#          IpProtocol: icmp
+#          ToPort: '-1'
+#        - CidrIp: !Ref 'CidrRbnOffice'
+#          Description: ICMP from RBN office
+#          FromPort: '-1'
+#          IpProtocol: icmp
+#          ToPort: '-1'
+#
+#          #RDP
+#        - CidrIp: !Ref 'CidrRbnOffice'
+#          Description: RDP from RBN office
+#          FromPort: '3389'
+#          IpProtocol: tcp
+#          ToPort: '3389'
+#
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Full access for ICMP
+          FromPort: '-1'
+          IpProtocol: icmp
+          ToPort: '-1'
+        - CidrIp: 0.0.0.0/0
+          Description: Full access for TCP
+          FromPort: '0'
+          IpProtocol: tcp
+          ToPort: '65535'
+        - CidrIp: 0.0.0.0/0
+          Description: Full access for UDP
+          FromPort: '0'
+          IpProtocol: udp
+          ToPort: '65535'
+      Tags:
+        - Key: Name
+          Value: !Sub '${Project}-${Environment}-common-windows'
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+      VpcId: !Ref 'Vpc'
+Outputs:
+  ParameterSecurityGroupLinux:
+    Description: Ssm parameter set to the physical id of the linux security group
+    Value: !Ref 'ParameterSecurityGroupLinux'
+  ParameterSecurityGroupWindows:
+    Description: Ssm parameter set to the physical id of the windows security group
+    Value: !Ref 'ParameterSecurityGroupWindows'
+  SsmPrefixSecurityGroups:
+    Description: Prefix to use when looking up SSM parameters containing security group info
+    Value: !Sub '${SsmPrefix}/security-groups'

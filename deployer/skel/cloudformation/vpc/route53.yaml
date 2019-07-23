@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures domain name services for the VPC
+Parameters:
+  Domain:
+    Description: Private domain for the project
+    Type: String
+  Environment:
+    Description: Name of the environment deployed
+    Type: String
+  HostedZoneManagement:
+    Description: Boolean indicating whether tag based hosted zone management is enabled
+    Type: String
+  NetworkName:
+    Description: Friendly name that can be used for referencing the network
+    Type: String
+  Project:
+    Description: Name of current project
+    Type: String
+  Vpc:
+    Description: Physical id of the VPC
+    Type: String
+Conditions:
+  ParamHostedZoneManagementIsTrue: !Equals [!Ref 'HostedZoneManagement', 'true']
+Resources:
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      HostedZoneTags:
+        - Key: HostedZoneManagement
+          Value: !If [ParamHostedZoneManagementIsTrue, lambda, none]
+        - Key: Name
+          Value: !Sub '${Project}-${Environment}'
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+      Name: !Ref 'Domain'
+      VPCs:
+        - VPCId: !Ref 'Vpc'
+          VPCRegion: !Ref 'AWS::Region'
