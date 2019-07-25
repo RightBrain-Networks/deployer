@@ -152,6 +152,29 @@ def main():
             except:
                 pass
 
+def find_deploy_path(stackConfig, stack, deployed = []):
+    #Generate depedency graph
+    graph = {}
+    for stack in stackConfig.items():
+        if stack[0] != "global":
+            edges = []
+            for param in stackConfig[1]['lookup_parameters']:
+                if param['Stack'] not in edges:
+                    edges.append(param['Stack'])
+            graph[stack[0]] = edges
+    result = []
+    resolve_dependency(graph, stack, result)
+
+def resolve_dependency(graph, node, resolved, seen = []):
+    seen.append(node)
+    for edge in graph[node]:
+        if edge not in resolved:
+            if edge in seen:
+                raise Exception("Circular dependency detected between stacks %s and %s." % (node, edge))
+            resolve_dependency(graph, edge, resolved, seen)
+    resolved.append(node)
+
+
 def get_deployableStacks(config, effectedStacks):
     deployableStacks = [] #Output
     checkQueue = []
