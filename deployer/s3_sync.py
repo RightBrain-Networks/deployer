@@ -124,15 +124,19 @@ class s3_sync(object):
             etag = self.generate_etag(fname)
             s3_obj = self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
             logger.debug("Skipped: %s" % (fname))
+            return
         except ClientError:
-            try:
-                self.client.upload_file(fname, self.dest_bucket, dest_key)
-                logger.info("Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key))
-            except (Exception) as e:
-                logger.error(e)
-                if self.debug:
-                    ex_type, ex, tb = sys.exc_info()
-                    traceback.print_tb(tb)
+            logger.debug("Uploading: %s" % (fname))
+
+        try:
+            self.client.upload_file(fname, self.dest_bucket, dest_key)
+            logger.info("Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key))
+        except (Exception) as e:
+            logger.error(e)
+            if self.debug:
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)
+                
     def upload(self):
         if self.sync_dirs:
             for sync_dir in self.sync_dirs:
