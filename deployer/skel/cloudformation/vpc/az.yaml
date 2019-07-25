@@ -1,0 +1,208 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures availability zone specific resources
+Parameters:
+  AzIndex:
+    Description: The index of the availability zone
+    Type: Number
+  Environment:
+    Description: Name of the environment deployed
+    Type: String
+  NetworkName:
+    Description: Friendly name that can be used for referencing the network
+    Type: String
+  Project:
+    Description: Name of current project
+    Type: String
+  RouteTablePublic:
+    Description: Physical id of the public route table
+    Type: String
+  SsmPrefix:
+    Description: The prefix portion to use for SSM parameters
+    Type: String
+  Supernet1Cidrs:
+    Description: List of CIDR's for subnets belonging to supernet 1
+    Type: CommaDelimitedList
+  Supernet2Cidrs:
+    Default: 'null'
+    Description: List of CIDR's for subnets belonging to supernet 2
+    Type: CommaDelimitedList
+  Supernet3Cidrs:
+    Default: 'null'
+    Description: List of CIDR's for subnets belonging to supernet 3
+    Type: CommaDelimitedList
+  Supernet4Cidrs:
+    Default: 'null'
+    Description: List of CIDR's for subnets belonging to supernet 4
+    Type: CommaDelimitedList
+  SupernetNames:
+    Description: Friendly names for the subnet groups
+    Type: CommaDelimitedList
+  TotalSupernets:
+    Description: The total number of subnet groups
+    Type: AWS::SSM::Parameter::Value<String>
+  Vpc:
+    Description: Physical id of the VPC
+    Type: AWS::EC2::VPC::Id
+Conditions:
+  ParamRouteTablePublicIsNull: !Equals [!Ref 'RouteTablePublic', 'null']
+  ParamTotalSupernetsIs2: !Or [!Equals [!Ref 'TotalSupernets', '2'], !Condition 'ParamTotalSupernetsIs3']
+  ParamTotalSupernetsIs3: !Or [!Equals [!Ref 'TotalSupernets', '3'], !Condition 'ParamTotalSupernetsIs4']
+  ParamTotalSupernetsIs4: !Equals [!Ref 'TotalSupernets', '4']
+  ResourceNatGateway: !And [!Not [!Condition 'ParamRouteTablePublicIsNull'], !Condition 'ParamTotalSupernetsIs2']
+  ResourceRouteTablePrivate: !Or [!Condition 'ParamRouteTablePublicIsNull', !Condition 'ParamTotalSupernetsIs2']
+Resources:
+  Eip:
+    Type: AWS::EC2::EIP
+    Condition: ResourceNatGateway
+    Properties:
+      Domain: vpc
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Condition: ResourceNatGateway
+    Properties:
+      AllocationId: !GetAtt 'Eip.AllocationId'
+      SubnetId: !Ref 'Subnet1'
+      Tags:
+        - Key: Name
+          Value: !Sub
+            - '${Project}-${Environment}-private-${AvailabilityZone}'
+            - AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+  RouteNatGateway:
+    Type: AWS::EC2::Route
+    Condition: ResourceNatGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref 'NatGateway'
+      RouteTableId: !Ref 'RouteTablePrivate'
+  RouteTablePrivate:
+    Type: AWS::EC2::RouteTable
+    Condition: ResourceRouteTablePrivate
+    Properties:
+      VpcId: !Ref 'Vpc'
+      Tags:
+        - Key: Name
+          Value: !Sub
+            - '${Project}-${Environment}-private-${AvailabilityZone}'
+            - AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+  SubnetRouteTableAssociationSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 'Subnet1'
+      RouteTableId: !If [ParamRouteTablePublicIsNull, !Ref 'RouteTablePrivate', !Ref 'RouteTablePublic']
+  SubnetRouteTableAssociationSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ParamTotalSupernetsIs2
+    Properties:
+      SubnetId: !Ref 'Subnet2'
+      RouteTableId: !Ref 'RouteTablePrivate'
+  SubnetRouteTableAssociationSubnet3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ParamTotalSupernetsIs3
+    Properties:
+      SubnetId: !Ref 'Subnet3'
+      RouteTableId: !Ref 'RouteTablePrivate'
+  SubnetRouteTableAssociationSubnet4:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ParamTotalSupernetsIs4
+    Properties:
+      SubnetId: !Ref 'Subnet4'
+      RouteTableId: !Ref 'RouteTablePrivate'
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+      CidrBlock: !Select [!Ref 'AzIndex', !Ref 'Supernet1Cidrs']
+      Tags:
+        - Key: Name
+          Value: !Sub
+            - '${Project}-${Environment}-${SupernetName}-${AvailabilityZone}'
+            - AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+              SupernetName: !Select ['0', !Ref 'SupernetNames']
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+      VpcId: !Ref 'Vpc'
+  Subnet2:
+    Type: AWS::EC2::Subnet
+    Condition: ParamTotalSupernetsIs2
+    Properties:
+      AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+      CidrBlock: !Select [!Ref 'AzIndex', !Ref 'Supernet2Cidrs']
+      Tags:
+        - Key: Name
+          Value: !Sub
+            - '${Project}-${Environment}-${SupernetName}-${AvailabilityZone}'
+            - AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+              SupernetName: !Select ['1', !Ref 'SupernetNames']
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+      VpcId: !Ref 'Vpc'
+  Subnet3:
+    Type: AWS::EC2::Subnet
+    Condition: ParamTotalSupernetsIs3
+    Properties:
+      AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+      CidrBlock: !Select [!Ref 'AzIndex', !Ref 'Supernet3Cidrs']
+      Tags:
+        - Key: Name
+          Value: !Sub
+            - '${Project}-${Environment}-${SupernetName}-${AvailabilityZone}'
+            - AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+              SupernetName: !Select ['2', !Ref 'SupernetNames']
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+      VpcId: !Ref 'Vpc'
+  Subnet4:
+    Type: AWS::EC2::Subnet
+    Condition: ParamTotalSupernetsIs4
+    Properties:
+      AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+      CidrBlock: !Select [!Ref 'AzIndex', !Ref 'Supernet4Cidrs']
+      Tags:
+        - Key: Name
+          Value: !Sub
+            - '${Project}-${Environment}-${SupernetName}-${AvailabilityZone}'
+            - AvailabilityZone: !Select [!Ref 'AzIndex', !GetAZs '']
+              SupernetName: !Select ['3', !Ref 'SupernetNames']
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+      VpcId: !Ref 'Vpc'
+Outputs:
+  RouteTablePrivate:
+    Description: Physical id of the private route table
+    Value: !If [ResourceRouteTablePrivate, !Ref 'RouteTablePrivate', 'null']
+  Subnet1:
+    Description: Physical id of subnet 1
+    Value: !Ref 'Subnet1'
+  Subnet2:
+    Description: Physical id of subnet 2
+    Value: !If [ParamTotalSupernetsIs2, !Ref 'Subnet2', 'null']
+  Subnet3:
+    Description: Physical id of subnet 3
+    Value: !If [ParamTotalSupernetsIs3, !Ref 'Subnet3', 'null']
+  Subnet4:
+    Description: Physical id of subnet 4
+    Value: !If [ParamTotalSupernetsIs4, !Ref 'Subnet4', 'null']
+  Subnets:
+    Description: List of physical ids for the subnets
+    Value: !Join
+      - ','
+      - - !Ref 'Subnet1'
+        - !If [ParamTotalSupernetsIs2, !Ref 'Subnet2', !Ref 'AWS::NoValue']
+        - !If [ParamTotalSupernetsIs3, !Ref 'Subnet3', !Ref 'AWS::NoValue']
+        - !If [ParamTotalSupernetsIs4, !Ref 'Subnet4', !Ref 'AWS::NoValue']

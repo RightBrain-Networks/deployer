@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 import argparse
 import json
+import os
 from deployer.cloudformation import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
-from botocore.exceptions import ClientError, WaiterError
+from distutils.dir_util import copy_tree
 
 import ruamel.yaml
 import sys, traceback
@@ -31,11 +32,18 @@ def main():
     parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG & enables traceback", action="store_true", dest="debug", default=False)
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
     parser.add_argument("-R","--resolve-dependencies", help='Includes dependencies when executing an action', dest="resolve", action='store_true', default=False)
+    parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
 
     args = parser.parse_args()
 
     if args.version:
         print(__version__)
+        exit(0)
+
+    if args.init is not None:
+        script_dir = os.path.dirname(__file__)
+        skel_dir = os.path.join(script_dir, 'skel')
+        copy_tree(skel_dir, args.init)
         exit(0)
 
     options_broken = False
@@ -91,9 +99,6 @@ def main():
                 if stack[0] != "global":
                     stackQueue = find_deploy_path(config, stack[0], stackQueue)
 
-        print(stackQueue)
-        input()
-
         # Create or update all Environments
         for stack in stackQueue:
             if stack != 'global' and (args.all or stack == args.stack):
@@ -135,7 +140,6 @@ def main():
         if args.debug:
             ex_type, ex, tb = sys.exc_info()
             traceback.print_tb(tb)
-    finally:
         if args.debug:
             try:
                 del tb
