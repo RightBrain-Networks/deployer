@@ -118,9 +118,6 @@ def main():
         if args.debug:
             ex_type, ex, tb = sys.exc_info()
             traceback.print_tb(tb)
-    finally:
-        if args.debug:
-            del tb
 
 
 if __name__ == '__main__':
