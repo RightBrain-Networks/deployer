@@ -38,6 +38,18 @@ class s3_sync(object):
                 ex_type, ex, tb = sys.exc_info()
                 traceback.print_tb(tb)
 
+    def get_sync_dest_bucket(self):
+        bucket = self.get_config_att('sync_dest_bucket')
+        if not bucket:
+            ssm = self.session.client('ssm')
+            try:
+                name = '/global/buckets/cloudtools/name'
+                return ssm.get_parameter(Name=name).get('Parameter', {}).get('Value', None)
+            except ClientError:
+                return None
+        else:
+            return bucket
+
     def get_repository(self):
         try:
             return git.Repo(self.base or '.', search_parent_directories=True)
@@ -122,7 +134,7 @@ class s3_sync(object):
     def skip_or_send(self, fname, dest_key):
         try:
             etag = self.generate_etag(fname)
-            s3_obj = self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+            self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
             logger.debug("Skipped: %s" % (fname))
             return
         except ClientError:

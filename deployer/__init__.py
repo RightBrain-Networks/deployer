@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 import argparse
 import json
+import os
 from deployer.cloudformation import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
-from botocore.exceptions import ClientError, WaiterError
+from distutils.dir_util import copy_tree
 
 import ruamel.yaml
 import sys, traceback
-
 
 __version__ = '0.3.18'
 
@@ -31,11 +31,18 @@ def main():
     parser.add_argument("-j", "--assume-valid", help="Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)", action="store_true", dest="assume_valid", default=False)
     parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG & enables traceback", action="store_true", dest="debug", default=False)
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
+    parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
 
     args = parser.parse_args()
 
     if args.version:
         print(__version__)
+        exit(0)
+
+    if args.init is not None:
+        script_dir = os.path.dirname(__file__)
+        skel_dir = os.path.join(script_dir, 'skel')
+        copy_tree(skel_dir, args.init)
         exit(0)
 
     options_broken = False

@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deployer Setup Stack
+Resources:
+  BucketCloudtools:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: TRUE
+        BlockPublicPolicy: TRUE
+        IgnorePublicAcls: TRUE
+  ParameterBucketCloudtoolsArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Arn of the bucket containing CloudFormation infrastructure templates
+      Name: /global/buckets/cloudtools/arn
+      Type: String
+      Value: !GetAtt 'BucketCloudtools.Arn'
+  ParameterBucketCloudtoolsDomainName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Domain name of the bucket containing CloudFormation infrastructure templates
+      Name: /global/buckets/cloudtools/domain-name
+      Type: String
+      Value: !GetAtt 'BucketCloudtools.DomainName'
+  ParameterBucketCloudtoolsName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Name of the bucket containing CloudFormation infrastructure templates
+      Name: /global/buckets/cloudtools/name
+      Type: String
+      Value: !Ref 'BucketCloudtools'
+Outputs:
+  BucketCloudtools:
+    Description: Name of the bucket containing CloudFormation infrastructure templates
+    Value: !Ref 'BucketCloudtools'
+  ParameterBucketCloudtoolsArn:
+    Description: Parameter contianing the arn of the bucket containing CloudFormation infrastructure templates
+    Value: !Ref 'ParameterBucketCloudtoolsArn'
+  ParameterBucketCloudtoolsDomainName:
+    Description: Parameter contianing the domain name of the bucket containing CloudFormation infrastructure templates
+    Value: !Ref 'ParameterBucketCloudtoolsDomainName'
+  ParameterBucketCloudtoolsName:
+    Description: Parameter contianing the name of the bucket containing CloudFormation infrastructure templates
+    Value: !Ref 'ParameterBucketCloudtoolsName'
