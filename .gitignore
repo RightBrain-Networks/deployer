@@ -4,7 +4,6 @@
 env
 .idea
 # Byte-compiled / optimized / DLL files
-tests/
 __pycache__/
 *.py[cod]
 *$py.class
