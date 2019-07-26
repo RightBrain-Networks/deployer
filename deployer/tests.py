@@ -40,7 +40,6 @@ global:
 test:
   stack_name: deployer-test-case
   template: deployer/tests/cloudformation.yaml
-  parameters: {}
 """
 
 
