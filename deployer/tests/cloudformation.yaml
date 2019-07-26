@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Deployer Test Cases
+
 Resources:
   SsmParameter:
     Type: AWS::SSM::Parameter

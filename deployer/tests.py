@@ -148,9 +148,18 @@ class DeployerTestCase(unittest.TestCase):
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
-
-
         self.assertEqual(get_stack_tag(testStackName, "Environment"), "stack-updated")
+
+    def test_lambda(self):
+        reset_config()
+        try:
+            output = subprocess.check_output(['python', deployerExecutor,'-s', 'lambda', '-c', 'deployer/tests/config.yaml', '-x', 'sync', '-z'])
+        except SystemExit as exit:
+            if exit.code != 0:
+                raise exit
+
+        self.assertTrue(os.path.exists('deployer/tests/lambda.zip'))
+       
 
     def test_sync(self):
         reset_config()
