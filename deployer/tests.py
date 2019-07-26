@@ -92,7 +92,7 @@ class DeployerTestCase(unittest.TestCase):
 
         #Run deployer -x create
         try:
-            output = subprocess.check_output(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s','test'])
+            output = subprocess.check_output(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s','test', '-D'])
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
@@ -112,7 +112,7 @@ class DeployerTestCase(unittest.TestCase):
 
         #Run deployer -x delete
         try:
-            output = subprocess.check_output(['python', deployerExecutor, '-x', 'delete', '-c', testStackConfig, '-s','test'])
+            output = subprocess.check_output(['python', deployerExecutor, '-x', 'delete', '-c', testStackConfig, '-s','test','-D'])
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
@@ -145,7 +145,7 @@ class DeployerTestCase(unittest.TestCase):
             time.sleep(apiHitRate)
         subprocess.check_output(['python', configUpdateExecutor, '-c', testStackConfig, '-u', json.dumps({"global":{'tags':{ 'Environment' : 'stack-updated' }}})])
         try:
-            output = subprocess.check_output(['python', deployerExecutor, '-x', 'update', '-c', testStackConfig, '-s','test'])
+            output = subprocess.check_output(['python', deployerExecutor, '-x', 'update', '-c', testStackConfig, '-s','test', '-D'])
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
@@ -161,7 +161,7 @@ class DeployerTestCase(unittest.TestCase):
 
         #Try to sync
         try:
-            output = subprocess.check_output(['python', deployerExecutor, '-x', 'sync', '-c', testStackConfig, '-s','test'])
+            output = subprocess.check_output(['python', deployerExecutor, '-x', 'sync', '-c', testStackConfig, '-s','test', '-D'])
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
