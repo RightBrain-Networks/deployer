@@ -45,6 +45,9 @@ pipeline {
         }
       }
     }
+    stage('Test') {
+      sh 'python deployer/tests.py'
+    }
     stage('Build') {
       steps {
 
