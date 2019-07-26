@@ -44,8 +44,8 @@ test:
 
 
 
-cloudformation = boto3.client('cloudformation', region="us-east-1")
-simplestorageservice = boto3.client('s3', region="us-east-1")
+cloudformation = boto3.client('cloudformation', region_name="us-east-1")
+simplestorageservice = boto3.client('s3', region_name="us-east-1")
 
 class DeployerTestCase(unittest.TestCase):
     def test_version(self):
