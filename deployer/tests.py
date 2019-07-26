@@ -57,7 +57,7 @@ class DeployerTestCase(unittest.TestCase):
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
-        self.assertEqual(__version__, v)
+        self.assertEqual(str(__version__), str(v))
 
     def test_help(self):
         #Checks if -h returns the help message
@@ -67,7 +67,7 @@ class DeployerTestCase(unittest.TestCase):
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
-        self.assertTrue("show this help message and exit" in output)
+        self.assertTrue("show this help message and exit" in str(output))
 
     def test_intialize(self):
         #Checks if --init creates a config & cloudformation folder
@@ -235,7 +235,6 @@ def reset_config():
         config.write(testStackConfig_data)
 
 def main():
-    print(subprocess.check_output(['pwd']))
     reset_config()
     unittest.main()
     cloudformation.delete_stack(StackName=testStackName)
