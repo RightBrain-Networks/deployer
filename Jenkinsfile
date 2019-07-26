@@ -48,7 +48,7 @@ pipeline {
     stage('Test') {
       steps
       {
-        sh 'python deployer/tests.py'
+        sh 'python -m deployer.tests'
       }
     }
     stage('Build') {
@@ -130,7 +130,7 @@ pipeline {
   post {
     always {
       removeDockerImages()
-      //cleanWs()
+      cleanWs()
     }
   }
 }

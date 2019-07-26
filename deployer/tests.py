@@ -52,7 +52,7 @@ class DeployerTestCase(unittest.TestCase):
     def test_version(self):
         #Checks if -v returns the version stored in the python file
         v = ""
-        from __init__ import __version__ 
+        from . import __version__ 
         try:
             v = subprocess.check_output(['python', deployerExecutor, '-v']).rstrip()
         except SystemExit as exit:
