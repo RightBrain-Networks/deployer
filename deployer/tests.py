@@ -57,7 +57,7 @@ class DeployerTestCase(unittest.TestCase):
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
-        self.assertEqual(str(__version__), str(v))
+        self.assertEqual(__version__, v.decode())
 
     def test_help(self):
         #Checks if -h returns the help message
