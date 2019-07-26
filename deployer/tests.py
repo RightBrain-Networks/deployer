@@ -6,8 +6,8 @@ from botocore.exceptions import ClientError
 import yaml
 from datetime import tzinfo, timedelta, datetime
 
-deployerExecutor = "deployer/__init__.py"
-configUpdateExecutor = "deployer/config_updater.py"
+deployerExecutor = "./deployer/__init__.py"
+configUpdateExecutor = "./deployer/config_updater.py"
 
 apiHitRate = 0.25
 
