@@ -235,6 +235,7 @@ def reset_config():
         config.write(testStackConfig_data)
 
 def main():
+    print(subprocess.check_output(['pwd']))
     reset_config()
     unittest.main()
     cloudformation.delete_stack(StackName=testStackName)
