@@ -45,12 +45,6 @@ pipeline {
         }
       }
     }
-    stage('Test') {
-      steps
-      {
-        sh 'python deployer/tests.py'
-      }
-    }
     stage('Build') {
       steps {
 
@@ -69,6 +63,26 @@ pipeline {
         }
         failure {
           updateGithubCommitStatus(GITHUB_URL, 'Failed build stage', 'FAILURE', 'Build')
+        }
+      }
+    }
+    stage('Test') {
+      agent {
+          docker {
+              image "${env.DOCKER_REGISTRY}/${env.SERVICE}:${env.VERSION}"
+          }
+      }
+      steps
+      {
+        sh 'python deployer/tests.py'
+      }
+      post{
+        // Update Git with status of test stage.
+        success {
+          updateGithubCommitStatus(GITHUB_URL, 'Passed test stage', 'SUCCESS', 'Test')
+        }
+        failure {
+          updateGithubCommitStatus(GITHUB_URL, 'Failed test stage', 'FAILURE', 'Test')
         }
       }
     }
