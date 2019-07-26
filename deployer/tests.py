@@ -40,6 +40,10 @@ global:
 test:
   stack_name: deployer-test-case
   template: deployer/tests/cloudformation.yaml
+lambda:
+  stack_name: deployer-test-case
+  template: deployer/tests/cloudformation.yaml
+  lambda_dirs: [ lambda ]
 """
 
 
