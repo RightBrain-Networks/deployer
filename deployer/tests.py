@@ -51,7 +51,7 @@ class DeployerTestCase(unittest.TestCase):
     def test_version(self):
         #Checks if -v returns the version stored in the python file
         v = ""
-        from deployer import __version__ 
+        from __init__ import __version__ 
         try:
             v = subprocess.check_output(['python', deployerExecutor, '-v']).rstrip()
         except SystemExit as exit:
@@ -107,8 +107,7 @@ class DeployerTestCase(unittest.TestCase):
             create_test_stack()
 
 
-        time.sleep(1)
-        print(get_stack_status(testStackName))
+        time.sleep(apiHitRate)
 
         #Run deployer -x delete
         try:
@@ -117,8 +116,7 @@ class DeployerTestCase(unittest.TestCase):
             if exit.code != 0:
                 raise exit
 
-        time.sleep(1)
-        print(get_stack_status(testStackName))
+        time.sleep(apiHitRate)
 
         #Wait for result
         while("IN_PROGRESS" in get_stack_status(testStackName)):
