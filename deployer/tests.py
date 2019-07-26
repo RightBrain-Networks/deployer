@@ -18,12 +18,12 @@ testStackName = "deployer-test-case"
 testStackConfig = "deployer/tests/config.yaml"
 testStackCloudFormation = "deployer/tests/cloudformation.yaml"
 
-testBucket = "rbn-temp-us-east-1"
+testBucket = "deployer-testing-us-east-1"
 
 testStackConfig_data = """
 global:
   sync_base: ./deployer/
-  sync_dest_bucket: rbn-temp-us-east-1
+  sync_dest_bucket: deployer-testing-us-east-1
   sync_dirs: [ tests ]
   release: deployer-test
   sync_exclude:
