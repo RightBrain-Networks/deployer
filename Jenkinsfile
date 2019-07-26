@@ -130,7 +130,7 @@ pipeline {
   post {
     always {
       removeDockerImages()
-      cleanWs()
+      //cleanWs()
     }
   }
 }
