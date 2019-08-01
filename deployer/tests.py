@@ -156,6 +156,7 @@ class DeployerTestCase(unittest.TestCase):
 
     def test_lambda(self):
         reset_config()
+        print("You are here: " + str(os.getcwd()))
         try:
             output = subprocess.check_output(['python', deployerExecutor,'-s', 'lambda', '-c', 'deployer/tests/config.yaml', '-x', 'sync', '-z'])
         except SystemExit as exit:
