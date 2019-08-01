@@ -1,5 +1,4 @@
 global:
-  sync_base: ./
   sync_dest_bucket: deployer-testing-us-east-1
   sync_dirs: [deployer/tests]
   region: us-east-1
