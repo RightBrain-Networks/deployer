@@ -22,9 +22,9 @@ testBucket = "deployer-testing-us-east-1"
 
 testStackConfig_data = """
 global:
-  sync_base: ./deployer/
+global:
   sync_dest_bucket: deployer-testing-us-east-1
-  sync_dirs: [ tests ]
+  sync_dirs: [deployer/tests]
   region: us-east-1
   release: deployer-test
   sync_exclude:
@@ -36,14 +36,14 @@ global:
   parameters:
     Environment: test-case
   tags:
-    Environment: test-case
+    Environment: stack-updated
 test:
   stack_name: deployer-test-case
   template: deployer/tests/cloudformation.yaml
 lambda:
   stack_name: deployer-test-case
   template: deployer/tests/cloudformation.yaml
-  lambda_dirs: [ deployer/tests/lambda ]
+  lambda_dirs: [ tests/lambda ]
 """
 
 
