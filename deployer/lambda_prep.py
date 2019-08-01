@@ -63,7 +63,7 @@ class LambdaPrep:
                     file_name = "{}.zip".format(dir.split('/')[-1])
 
                     # Move package to sync_base if not already in sync scope
-                    if (self.sync_base == './' and '/' != dir[0]) or (self.sync_base != './' and self.sync_base not in dir):
+                    if (self.sync_base == './' and '/' != dir[0]) or (self.sync_base != './' and self.sync_base.remove('./') not in dir):
                         dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
                         try:
                             shutil.copytree(file_name, dest)
