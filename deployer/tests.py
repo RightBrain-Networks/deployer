@@ -157,12 +157,14 @@ class DeployerTestCase(unittest.TestCase):
     def test_lambda(self):
         reset_config()
         print("You are here: " + str(os.getcwd()))
+        print(subprocess.check_output(['ls', 'deployer/tests']))
         try:
             output = subprocess.check_output(['python', deployerExecutor,'-s', 'lambda', '-c', 'deployer/tests/config.yaml', '-x', 'sync', '-z'])
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
 
+       
         self.assertTrue(os.path.exists('deployer/tests/lambda.zip'))
        
 
