@@ -1,4 +1,4 @@
-import os
+import os, errno
 import shutil
 import subprocess
 import yaml
@@ -61,11 +61,20 @@ class LambdaPrep:
                     logger.debug('Removing ' + temp_dir)
                     shutil.rmtree(temp_dir)
                     file_name = "{}.zip".format(dir.split('/')[-1])
-                    dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
-                    if not os.path.exists(dest): os.mkdir(dest)
-                    logger.debug('Moving archive to ' + dest)
-                    shutil.copy(file_name, dest)
-                    os.remove(file_name)
+
+                    # Move package to sync_base if not already in sync scope
+                    if (self.sync_base == './' and '/' != dir[0]) or (self.sync_base != './' and self.sync_base not in dir):
+                        dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
+                        try:
+                            shutil.copytree(file_name, dest)
+                        except OSError as e:
+                            if e.errno == errno.ENOTDIR:
+                                shutil.copy(file_name, dest)
+                            else:
+                                raise e
+                        logger.debug('Moving archive to ' + dest)
+                        shutil.copy(file_name, dest)
+                        os.remove(file_name)
                 else:
                     raise ValueError("Lambda path '{}' does not exist.".format(dir))
         else:
