@@ -43,7 +43,7 @@ test:
 lambda:
   stack_name: deployer-test-case
   template: deployer/tests/cloudformation.yaml
-  lambda_dirs: [ /tests/lambda ]
+  lambda_dirs: [ tests/lambda ]
 """
 
 
