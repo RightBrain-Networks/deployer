@@ -22,7 +22,6 @@ testBucket = "deployer-testing-us-east-1"
 
 testStackConfig_data = """
 global:
-global:
   sync_dest_bucket: deployer-testing-us-east-1
   sync_dirs: [deployer/tests]
   region: us-east-1
