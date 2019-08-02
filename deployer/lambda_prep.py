@@ -68,15 +68,14 @@ class LambdaPrep:
                         logger.debug("DEST: " + str(dest))
                         logger.debug("FILENAME: " + file_name)
                         logger.debug("DIR: " + str(dir))
+                        logger.debug('Moving archive to ' + dest)
                         try:
-                            shutil.copytree(file_name, dest)
+                            shutil.copytree(dir + '/' + file_name, dest + '/' + file_name)
                         except Exception as e:
                             if e.errno == errno.ENOTDIR:
-                                shutil.copy(file_name, dest)
+                                shutil.copy(dir + '/' + file_name, dest + '/' + file_name)
                             else:
                                 raise e
-                        logger.debug('Moving archive to ' + dest)
-                        shutil.copy(file_name, dest)
                         os.remove(file_name)
                 else:
                     raise ValueError("Lambda path '{}' does not exist.".format(dir))
