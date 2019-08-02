@@ -61,23 +61,18 @@ class LambdaPrep:
                     logger.debug('Removing ' + temp_dir)
                     shutil.rmtree(temp_dir)
                     file_name = "{}.zip".format(dir.split('/')[-1])
-                    #or (self.sync_base == './' and './' not in dir)
-                    # Move package to sync_base if not already in sync scope
+
+                    # Move package to either sync_base or next to lambda directory
                     if self.sync_base not in dir and self.sync_base != './' and dir[0] == '/':
-                        dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
-                        logger.debug("DEST: " + str(dest))
-                        logger.debug("FILENAME: " + file_name)
-                        logger.debug("DIR: " + str(dir))
-                        logger.debug('Moving archive to ' + dest)
-                        logger.debug(subprocess.check_output(['ls']))
-                        if not os.path.isdir(self.sync_base + 'lambdas'):
-                            os.mkdir(self.sync_base + 'lambdas')
-                        shutil.copy(file_name, self.sync_base + 'lambdas' + '/' + file_name)
-     
-                        os.remove(file_name)
+                        dest = '/'.join([self.sync_base , '/'.join('lambdas')]).replace('//', '/')
+                        if not os.path.exists(dest): os.mkdir(dest)
+                        shutil.copy(file_name, dest)
                     else:
                         dest = '/'.join(dir.split('/')[:-1]).replace('//', '/')
+                        if not os.path.exists(dest): os.mkdir(dest)
                         shutil.copy(file_name, dest)
+
+                    os.remove(file_name)
                 else:
                     raise ValueError("Lambda path '{}' does not exist.".format(dir))
         else:
