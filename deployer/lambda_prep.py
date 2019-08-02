@@ -62,19 +62,17 @@ class LambdaPrep:
                     shutil.rmtree(temp_dir)
                     file_name = "{}.zip".format(dir.split('/')[-1])
 
-                    # Move package to sync_base if not already in sync scope
-                    if (self.sync_base == './' and '/' != dir[0]) or (self.sync_base != './' and self.sync_base not in dir):
-                        dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
-                        try:
-                            shutil.copytree(file_name, dest)
-                        except OSError as e:
-                            if e.errno == errno.ENOTDIR:
-                                shutil.copy(file_name, dest)
-                            else:
-                                raise e
-                        logger.debug('Moving archive to ' + dest)
+                    # Move package to either sync_base or next to lambda directory
+                    if self.sync_base not in dir and self.sync_base != './' and dir[0] == '/':
+                        dest = '/'.join([self.sync_base , '/'.join('lambdas')]).replace('//', '/')
+                        if not os.path.exists(dest): os.mkdir(dest)
                         shutil.copy(file_name, dest)
-                        os.remove(file_name)
+                    else:
+                        dest = '/'.join(dir.split('/')[:-1]).replace('//', '/')
+                        if not os.path.exists(dest): os.mkdir(dest)
+                        shutil.copy(file_name, dest)
+
+                    os.remove(file_name)
                 else:
                     raise ValueError("Lambda path '{}' does not exist.".format(dir))
         else:
