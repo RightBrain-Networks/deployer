@@ -65,6 +65,8 @@ class LambdaPrep:
                     # Move package to sync_base if not already in sync scope
                     if (self.sync_base == './' and '/' != dir[0]) or (self.sync_base != './' and self.sync_base not in dir):
                         dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
+                        print("DEST: " + str(dest))
+                        print("FILENAME: " + file_name)
                         try:
                             shutil.copytree(file_name, dest)
                         except OSError as e:
