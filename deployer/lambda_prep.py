@@ -67,6 +67,7 @@ class LambdaPrep:
                         dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
                         logger.debug("DEST: " + str(dest))
                         logger.debug("FILENAME: " + file_name)
+                        logger.debug("DIR: " + str(dir))
                         try:
                             shutil.copytree(file_name, dest)
                         except Exception as e:
