@@ -80,6 +80,8 @@ class LambdaPrep:
                                 raise e
                         os.removedirs('lambdas_temp')
                         os.remove(file_name)
+                    else:
+                        shutil.copytree(file_name, dir + '.zip')
                 else:
                     raise ValueError("Lambda path '{}' does not exist.".format(dir))
         else:
