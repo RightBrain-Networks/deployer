@@ -24,7 +24,7 @@ testStackConfig_data = """
 global:
   sync_base: ./deployer/
   sync_dest_bucket: deployer-testing-us-east-1
-  sync_dirs: [ tests ]
+  sync_dirs: [tests]
   region: us-east-1
   release: deployer-test
   sync_exclude:
@@ -36,7 +36,7 @@ global:
   parameters:
     Environment: test-case
   tags:
-    Environment: test-case
+    Environment: stack-updated
 test:
   stack_name: deployer-test-case
   template: deployer/tests/cloudformation.yaml
@@ -154,15 +154,18 @@ class DeployerTestCase(unittest.TestCase):
                 raise exit
         self.assertEqual(get_stack_tag(testStackName, "Environment"), "stack-updated")
 
-    # def test_lambda(self):
-    #     reset_config()
-    #     try:
-    #         output = subprocess.check_output(['python', deployerExecutor,'-s', 'lambda', '-c', 'deployer/tests/config.yaml', '-x', 'sync', '-z'])
-    #     except SystemExit as exit:
-    #         if exit.code != 0:
-    #             raise exit
+    def test_lambda(self):
+        reset_config()
+        print("You are here: " + str(os.getcwd()))
+        print(subprocess.check_output(['ls', 'deployer/tests']))
+        try:
+            output = subprocess.check_output(['python', deployerExecutor,'-s', 'lambda', '-c', 'deployer/tests/config.yaml', '-x', 'sync', '-z', '-D'])
+        except SystemExit as exit:
+            if exit.code != 0:
+                raise exit
 
-    #     self.assertTrue(os.path.exists('deployer/tests/lambda.zip'))
+       
+        self.assertTrue(os.path.exists('deployer/tests/lambda.zip'))
        
 
     def test_sync(self):
