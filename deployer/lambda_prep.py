@@ -70,7 +70,8 @@ class LambdaPrep:
                         logger.debug("DIR: " + str(dir))
                         logger.debug('Moving archive to ' + dest)
                         logger.debug(subprocess.check_output(['ls']))
-                        os.mkdir('lambdas_temp')
+                        if not os._exists('lambdas_temp'):
+                            os.mkdir('lambdas_temp')
                         try:
                             shutil.copytree('lambdas_temp', dest + '/' + file_name)
                         except Exception as e:
