@@ -70,10 +70,10 @@ class LambdaPrep:
                         logger.debug("DIR: " + str(dir))
                         logger.debug('Moving archive to ' + dest)
                         try:
-                            shutil.copytree(dir + '/' + file_name, dest + '/' + file_name)
+                            shutil.copytree(dir + '.zip', dest + '/' + file_name)
                         except Exception as e:
                             if e.errno == errno.ENOTDIR:
-                                shutil.copy(dir + '/' + file_name, dest + '/' + file_name)
+                                shutil.copy(dir + '.zip', dest + '/' + file_name)
                             else:
                                 raise e
                         os.remove(file_name)
