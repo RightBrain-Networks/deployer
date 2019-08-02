@@ -63,7 +63,7 @@ class LambdaPrep:
                     file_name = "{}.zip".format(dir.split('/')[-1])
 
                     # Move package to either sync_base or next to lambda directory
-                    if self.sync_base not in dir and self.sync_base != './' and dir[0] == '/':
+                    if self.sync_base.split('/')[-1] not in dir and self.sync_base != './' and dir[0] == '/':
                         dest = '/'.join([self.sync_base , '/'.join('lambdas')]).replace('//', '/')
                         if not os.path.exists(dest): os.mkdir(dest)
                         shutil.copy(file_name, dest)
