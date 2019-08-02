@@ -69,7 +69,7 @@ class LambdaPrep:
                         print("FILENAME: " + file_name)
                         try:
                             shutil.copytree(file_name, dest)
-                        except OSError as e:
+                        except Exception as e:
                             if e.errno == errno.ENOTDIR:
                                 shutil.copy(file_name, dest)
                             else:
