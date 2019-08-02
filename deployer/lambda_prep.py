@@ -70,16 +70,10 @@ class LambdaPrep:
                         logger.debug("DIR: " + str(dir))
                         logger.debug('Moving archive to ' + dest)
                         logger.debug(subprocess.check_output(['ls']))
-                        if not os.path.isdir('lambdas_temp'):
-                            os.mkdir('lambdas_temp')
-                        try:
-                            shutil.copytree('lambdas_temp', dest + '/' + file_name)
-                        except Exception as e:
-                            if e.errno == errno.ENOTDIR:
-                                shutil.copy(file_name, dest + '/' + file_name)
-                            else:
-                                raise e
-                        os.removedirs('lambdas_temp')
+                        if not os.path.isdir(self.sync_base + 'lambdas'):
+                            os.mkdir(self.sync_base + 'lambdas')
+                        shutil.copy(file_name, self.sync_base + 'lambdas' + '/' + file_name)
+     
                         os.remove(file_name)
                     else:
                         shutil.copytree(file_name, dir + '.zip')
