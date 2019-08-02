@@ -63,7 +63,7 @@ class LambdaPrep:
                     file_name = "{}.zip".format(dir.split('/')[-1])
                     #or (self.sync_base == './' and './' not in dir)
                     # Move package to sync_base if not already in sync scope
-                    if self.sync_base not in dir and (self.sync_base != './' and dir[0] != '/'):
+                    if self.sync_base not in dir and self.sync_base != './' and dir[0] == '/':
                         dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
                         logger.debug("DEST: " + str(dest))
                         logger.debug("FILENAME: " + file_name)
