@@ -76,7 +76,8 @@ class LambdaPrep:
      
                         os.remove(file_name)
                     else:
-                        shutil.copytree(file_name, dir + '.zip')
+                        dest = '/'.join([self.sync_base, '/'.join(dir.split('/')[:-1])]).replace('//', '/')
+                        shutil.copy(file_name, dest)
                 else:
                     raise ValueError("Lambda path '{}' does not exist.".format(dir))
         else:
