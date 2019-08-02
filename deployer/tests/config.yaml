@@ -1,6 +1,8 @@
+
 global:
+  sync_base: ./deployer/
   sync_dest_bucket: deployer-testing-us-east-1
-  sync_dirs: [deployer/tests]
+  sync_dirs: [tests]
   region: us-east-1
   release: deployer-test
   sync_exclude:
@@ -19,4 +21,4 @@ test:
 lambda:
   stack_name: deployer-test-case
   template: deployer/tests/cloudformation.yaml
-  lambda_dirs: [ /tests/lambda ]
+  lambda_dirs: [ tests/lambda ]

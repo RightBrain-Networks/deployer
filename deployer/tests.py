@@ -159,7 +159,7 @@ class DeployerTestCase(unittest.TestCase):
         print("You are here: " + str(os.getcwd()))
         print(subprocess.check_output(['ls', 'deployer/tests']))
         try:
-            output = subprocess.check_output(['python', deployerExecutor,'-s', 'lambda', '-c', 'deployer/tests/config.yaml', '-x', 'sync', '-z'])
+            output = subprocess.check_output(['python', deployerExecutor,'-s', 'lambda', '-c', 'deployer/tests/config.yaml', '-x', 'sync', '-z', '-D'])
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
