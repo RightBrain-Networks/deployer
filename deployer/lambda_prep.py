@@ -69,6 +69,7 @@ class LambdaPrep:
                         logger.debug("FILENAME: " + file_name)
                         logger.debug("DIR: " + str(dir))
                         logger.debug('Moving archive to ' + dest)
+                        logger.debug(subprocess.check_output(['ls']))
                         try:
                             shutil.copytree(dir + '.zip', dest + '/' + file_name)
                         except Exception as e:
