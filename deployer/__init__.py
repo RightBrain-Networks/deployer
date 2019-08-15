@@ -31,7 +31,6 @@ def main():
     parser.add_argument("-j", "--assume-valid", help="Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)", action="store_true", dest="assume_valid", default=False)
     parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG & enables traceback", action="store_true", dest="debug", default=False)
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
-    parser.add_argument("-R","--resolve-dependencies", help='Includes dependencies when executing an action', dest="resolve", action='store_true', default=False)
     parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
 
     args = parser.parse_args()
@@ -88,12 +87,7 @@ def main():
 
         stackQueue = []
         if not args.all:
-            if args.resolve:
-                # Add stack and it's dependencies to queue
-                stackQueue = find_deploy_path(config, args.stack, stackQueue)
-            else:
-                # Add specified stack to queue
-                stackQueue = [args.stack]
+            stackQueue = [args.stack]
         else:
             for stack in config.items():
                 if stack[0] != "global":
