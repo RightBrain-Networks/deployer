@@ -119,14 +119,12 @@ def main():
                 elif args.execute == 'change':
                     env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
                 elif args.sync or args.execute == 'sync':
-                    s3_sync(args.profile, args.config, args.stack, args.assume_valid)
+                    s3_sync(args.profile, args.config, args.stack, args.assume_valid, args.debug)
     except (Exception) as e:
         logger.error(e)
         if args.debug:
             ex_type, ex, tb = sys.exc_info()
             traceback.print_tb(tb)
-        if args.debug:
-            del tb
 
 
 if __name__ == '__main__':
