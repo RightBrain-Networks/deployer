@@ -78,32 +78,38 @@ def main():
     if args.zip_lambdas:
         LambdaPrep(args.config, args.stack).zip_lambdas()
 
-    if args.sync:
-        s3_sync(args.profile, args.config, args.stack, args.assume_valid)
+
 
     try:
-        if args.all:
-            # Read Environment Config
-            with open(args.config) as f:
-                config = ruamel.yaml.safe_load(f)
+        # Read Environment Config
+        with open(args.config) as f:
+            config = ruamel.yaml.safe_load(f)
 
-            # Create or update all Environments
-            for stack, obj in config.items():
-                if stack != 'global':
-                    print(stack)
-                    env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events)
-                    env_stack = Stack(args.profile, args.config, stack, args.events)
-                    if env_stack.stack_status:
-                        print("Update %s" % stack)
-                        env_stack.update_stack()
-                    else:
-                        print("Create %s" % stack)
-                        env_stack.create_stack()
+        stackQueue = []
+        if not args.all:
+            stackQueue = [args.stack]
         else:
+            for stack in config.items():
+                if stack[0] != "global":
+                    stackQueue = find_deploy_path(config, stack[0], stackQueue)
 
-                env_stack = Stack(args.profile, args.config, args.stack, args.rollback, args.events, params)
+        # Create or update all Environments
+        for stack in stackQueue:
+            if stack != 'global' and (args.all or stack == args.stack):
+                if args.sync:
+                    s3_sync(args.profile, args.config, stack, args.assume_valid)
+                logger.info("Running " + str(args.execute) + " on stack: " + stack)
+                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, params)
                 if args.execute == 'create':
-                    env_stack.create()
+                    try:
+                        env_stack.create()
+                    except ClientError as e:
+                        if not args.all:
+                            raise e
+                        elif e.response['Error']['Code'] == 'AlreadyExistsException':
+                            logger.info("Stack, " + stack + ", already exists.")
+                        else:
+                            raise e
                 elif args.execute == 'update':
                     env_stack.update()
                 elif args.execute == 'delete':
@@ -125,6 +131,35 @@ def main():
         if args.debug:
             ex_type, ex, tb = sys.exc_info()
             traceback.print_tb(tb)
+
+def find_deploy_path(stackConfig, checkStack, resolved = []):
+    #Generate depedency graph
+    graph = {}
+    for stack in stackConfig.items():
+        if stack[0] != "global":
+            edges = []
+            if 'lookup_parameters' in stack[1]:
+                for param in stack[1]['lookup_parameters']:
+                    edge = stack[1]['lookup_parameters'][param]
+                    if edge['Stack'] not in edges:
+                        edges.append(edge['Stack'])
+            graph[stack[0]] = edges
+
+    #Find dependency order
+    resolve_dependency(graph, checkStack, resolved)
+    return resolved
+
+def resolve_dependency(graph, node, resolved, seen = []):
+    seen.append(node)
+    for edge in graph[node]:
+        if edge not in resolved:
+            #If node has already been seen, it's a circular dependency
+            if edge in seen:
+                raise Exception("Circular dependency detected between stacks %s and %s." % (node, edge))
+            #Check edge for dependencies
+            resolve_dependency(graph, edge, resolved, seen)
+    if node not in resolved:
+        resolved.append(node)
 
 
 if __name__ == '__main__':
