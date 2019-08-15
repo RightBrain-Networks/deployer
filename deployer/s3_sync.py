@@ -10,25 +10,33 @@ from multiprocessing import Process
 from deployer.decorators import retry
 from deployer.logger import logger
 
+import sys, traceback
+
 class s3_sync(object):
-    def __init__(self, profile, config_file, environment, valid=False):
-        self.profile = profile
-        self.environment = environment
-        self.config = self.get_config(config_file)
-        self.session = Session(profile_name=profile, region_name=self.get_config_att('region'))
-        self.region = self.session.region_name
-        self.base = self.get_config_att('sync_base')
-        self.sync_dirs = self.get_config_att('sync_dirs')
-        self.dest_bucket = self.get_sync_dest_bucket()
-        self.repository = self.get_repository()
-        self.commit = self.repository.head.object.hexsha if self.repository else 'null'
-        self.release = self.get_config_att('release', self.commit).replace('/', '.')
-        self.session = Session(profile_name=profile, region_name=self.region)
-        self.client = self.session.client('s3')
-        self.cfn = self.session.client('cloudformation')
-        self.excludes = self.construct_excludes()
-        self.valid = valid
-        self.sync()
+    def __init__(self, profile, config_file, environment, valid=False, debug=False):
+        try:
+            self.profile = profile
+            self.debug = debug
+            self.environment = environment
+            self.config = self.get_config(config_file)
+            self.region = self.get_config_att('region')
+            self.base = self.get_config_att('sync_base')
+            self.sync_dirs = self.get_config_att('sync_dirs')
+            self.dest_bucket = self.get_config_att('sync_dest_bucket')
+            self.repository = self.get_repository()
+            self.commit = self.repository.head.object.hexsha if self.repository else 'null'
+            self.release = self.get_config_att('release', self.commit).replace('/', '.')
+            self.session = Session(profile_name=profile, region_name=self.region)
+            self.client = self.session.client('s3')
+            self.cfn = self.session.client('cloudformation')
+            self.excludes = self.construct_excludes()
+            self.valid = valid
+            self.sync()
+        except (Exception) as e:
+            logger.error(e)
+            if self.debug:
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)
 
     def get_sync_dest_bucket(self):
         bucket = self.get_config_att('sync_dest_bucket')
@@ -128,10 +136,19 @@ class s3_sync(object):
             etag = self.generate_etag(fname)
             self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
             logger.debug("Skipped: %s" % (fname))
-        except Exception as e:
+            return
+        except ClientError:
+            logger.debug("Uploading: %s" % (fname))
+
+        try:
             self.client.upload_file(fname, self.dest_bucket, dest_key)
             logger.info("Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key))
-
+        except (Exception) as e:
+            logger.error(e)
+            if self.debug:
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)
+                
     def upload(self):
         if self.sync_dirs:
             for sync_dir in self.sync_dirs:
@@ -156,7 +173,6 @@ class s3_sync(object):
                         count += 1
                     if 'rv' in vars():
                         rv.join()
-
     def test(self):
         logger.info("Validating Templates")
         if self.sync_dirs:
