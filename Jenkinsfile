@@ -66,6 +66,26 @@ pipeline {
         }
       }
     }
+    stage('Test') {
+      agent {
+          docker {
+              image "${env.DOCKER_REGISTRY}/${env.SERVICE}:${env.VERSION}"
+          }
+      }
+      steps
+      {
+        sh 'python deployer/tests.py'
+      }
+      post{
+        // Update Git with status of test stage.
+        success {
+          updateGithubCommitStatus(GITHUB_URL, 'Passed test stage', 'SUCCESS', 'Test')
+        }
+        failure {
+          updateGithubCommitStatus(GITHUB_URL, 'Failed test stage', 'FAILURE', 'Test')
+        }
+      }
+    }
     stage('Ship')
     {
       steps {     

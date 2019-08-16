@@ -1,0 +1,11 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deployer Test Cases
+
+Resources:
+  SsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Created for a test-case for deployer
+      Name: /test/deployer
+      Type: String
+      Value: "create"
