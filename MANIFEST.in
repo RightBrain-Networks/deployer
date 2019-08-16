@@ -1,1 +1,1 @@
-recursive-include deployer *.yaml
+global-include deployer *.yaml
