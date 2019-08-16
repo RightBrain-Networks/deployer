@@ -88,9 +88,9 @@ class DeployerTestCase(unittest.TestCase):
         reset_config()
         
         #Make sure no stack exists
-        if(get_stack_status(testStackName) != "DELETE_COMPLETE"):
+        if(get_stack_status(testStackName) != "NULL"):
             cloudformation.delete_stack(StackName=testStackName)
-        while(get_stack_status(testStackName) != "DELETE_COMPLETE"):
+        while(get_stack_status(testStackName) != "NULL"):
             time.sleep(apiHitRate)
 
         #Run deployer -x create
@@ -107,7 +107,7 @@ class DeployerTestCase(unittest.TestCase):
         reset_config()
 
         #Create test stack
-        if(get_stack_status(testStackName) == "DELETE_COMPLETE"):
+        if(get_stack_status(testStackName) == "NULL"):
             create_test_stack()
 
 
@@ -126,7 +126,7 @@ class DeployerTestCase(unittest.TestCase):
         while("IN_PROGRESS" in get_stack_status(testStackName)):
             time.sleep(apiHitRate)
 
-        self.assertEqual(get_stack_status(testStackName), "DELETE_COMPLETE")
+        self.assertEqual(get_stack_status(testStackName), "NULL")
 
 
     def test_config_updater(self):
@@ -205,12 +205,14 @@ def get_stack_status(stack):
         result = cloudformation.describe_stacks(StackName=stack)
         if 'Stacks' in result:
             if(len(result['Stacks']) > 0):
+                if result['Stacks'][0]['StackStatus'] == "NULL":
+                    return "NULL"
                 return result['Stacks'][0]['StackStatus']
     except ClientError as e:
         if e.response['Error']['Code'] != "ValidationError":
             raise e
         else:
-            return "DELETE_COMPLETE"
+            return "NULL"
 
 def get_stack_tag(stack, tag):
     cfnStack = cloudformation.describe_stacks(StackName=stack)['Stacks'][0]
@@ -225,7 +227,7 @@ def create_test_stack():
         result = cloudformation.describe_stacks(StackName=testStackName)
         if 'Stacks' in result:
             if(len(result['Stacks']) > 0):
-                if(result['Stacks'][0]['StackStatus'] != "DELETE_COMPLETE"):
+                if(result['Stacks'][0]['StackStatus'] != "NULL"):
                     cloudformation.delete_stack(StackName=testStackName)
     except ClientError as e:
         if e.response['Error']['Code'] != "ValidationError":
