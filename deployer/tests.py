@@ -205,7 +205,7 @@ def get_stack_status(stack):
         result = cloudformation.describe_stacks(StackName=stack)
         if 'Stacks' in result:
             if(len(result['Stacks']) > 0):
-                if result['Stacks'][0]['StackStatus'] == "NULL":
+                if result['Stacks'][0]['StackStatus'] == "DELETE_COMPLETE":
                     return "NULL"
                 return result['Stacks'][0]['StackStatus']
     except ClientError as e:
