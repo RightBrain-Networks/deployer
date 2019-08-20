@@ -12,7 +12,7 @@ from distutils.dir_util import copy_tree
 import ruamel.yaml
 import sys, traceback
 
-__version__ = '0.3.18'
+__version__ = '0.3.8'
 
 
 def main():
