@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+from botocore.exceptions import ClientError
 from deployer.cloudformation import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
