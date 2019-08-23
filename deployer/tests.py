@@ -44,6 +44,9 @@ lambda:
   stack_name: deployer-test-case
   template: deployer/tests/cloudformation.yaml
   lambda_dirs: [ deployer/tests/lambda ]
+timeout:
+  stack_name: deployer-test-case
+  template: deployer/tests/timeout.yaml
 """
 
 
@@ -187,6 +190,20 @@ class DeployerTestCase(unittest.TestCase):
             fullfillsCriteria = True
 
         self.assertTrue(fullfillsCriteria)
+
+    # Checks if a basic stack can be created
+    def test_timeout(self):
+        reset_config()
+
+        # Make sure no stack exists
+        if (get_stack_status(testStackName) != "NULL"):
+            cloudformation.delete_stack(StackName=testStackName)
+        while (get_stack_status(testStackName) != "NULL"):
+            time.sleep(apiHitRate)
+
+        # Run deployer -x create with timeout
+        result = subprocess.call(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s', 'timeout', '-T', '1'])
+        self.assertEqual(result, 2)
 
 #Used for UTC time
 ZERO = timedelta(0)
