@@ -9,25 +9,30 @@ from deployer.logger import logger
 class LambdaPrep:
 
     def __init__(self, config_file, environment):
+        self.config_file = config_file
         self.config = self.get_config(config_file)
         self.environment = environment
-        self.lambda_dirs = self.get_config_att('lambda_dirs')
-        self.sync_base = self.get_config_att('sync_base')
-        self.sync_dirs = self.get_config_att('sync_dirs')
-        pass
+        self.lambda_dirs = self.get_config_att('lambda_dirs', [])
+        self.sync_base = self.get_config_att('sync_base', '.')
+
+        if not isinstance(self.lambda_dirs, list):
+            logger.error("Attribute 'lambda_dirs' must be a list.")
+            exit(5)
+        elif not self.lambda_dirs:
+            logger.warning("Lambda packaging requested but no directories specified with the 'lambda_dirs' attribute")
 
     def get_config(self, config):
         with open(config) as f:
             data = yaml.safe_load(f)
         return data
 
-    def get_config_att(self, key):
-        base = None
-        if key in self.config['global']:
-            base = self.config['global'][key]
-        if key in self.config[self.environment]:
-            base = self.config[self.environment][key]
-        return base
+    def get_config_att(self, key, default=None, required=False):
+        base = self.config.get('global', {}).get(key, None)
+        base = self.config.get(self.environment).get(key, base)
+        if required and base is None:
+            logger.error("Required attribute '{}' not found in config '{}'.".format(key, self.config_file))
+            exit(3)
+        return base if base is not None else default
 
     #  zip_lambdas() will traverse through our configured lambda_dirs array,
     #  create a temp lambda directory, install necessary dependencies,

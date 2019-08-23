@@ -18,11 +18,12 @@ class s3_sync(object):
             self.profile = profile
             self.debug = debug
             self.environment = environment
+            self.config_file = config_file
             self.config = self.get_config(config_file)
             self.region = self.get_config_att('region')
-            self.base = self.get_config_att('sync_base')
-            self.sync_dirs = self.get_config_att('sync_dirs')
-            self.dest_bucket = self.get_config_att('sync_dest_bucket')
+            self.base = self.get_config_att('sync_base', '.')
+            self.sync_dirs = self.get_config_att('sync_dirs', [])
+            self.dest_bucket = self.get_config_att('sync_dest_bucket', required=True)
             self.repository = self.get_repository()
             self.commit = self.repository.head.object.hexsha if self.repository else 'null'
             self.release = self.get_config_att('release', self.commit).replace('/', '.')
@@ -31,6 +32,13 @@ class s3_sync(object):
             self.cfn = self.session.client('cloudformation')
             self.excludes = self.construct_excludes()
             self.valid = valid
+
+            if not isinstance(self.sync_dirs, list):
+                logger.error("Attribute 'sync_dirs' must be a list.")
+                exit(4)
+            elif not self.sync_dirs:
+                logger.warning("Sync requested but no directories specified with the 'sync_dirs' attribute")
+
             self.sync()
         except (Exception) as e:
             logger.error(e)
@@ -52,7 +60,7 @@ class s3_sync(object):
 
     def get_repository(self):
         try:
-            return git.Repo(self.base or '.', search_parent_directories=True)
+            return git.Repo(self.base, search_parent_directories=True)
         except git.exc.InvalidGitRepositoryError:
             return None
 
@@ -61,12 +69,12 @@ class s3_sync(object):
             data = yaml.safe_load(f)
         return data
 
-    def get_config_att(self, key, default=None):
-        base = None
-        if key in self.config['global']:
-            base = self.config['global'][key]
-        if key in self.config[self.environment]:
-            base = self.config[self.environment][key]
+    def get_config_att(self, key, default=None, required=False):
+        base = self.config.get('global', {}).get(key, None)
+        base = self.config.get(self.environment).get(key, base)
+        if required and base is None:
+            logger.error("Required attribute '{}' not found in config '{}'.".format(key, self.config_file))
+            exit(3)
         return base if base is not None else default
 
     def construct_excludes(self):
