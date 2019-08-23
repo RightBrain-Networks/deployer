@@ -158,21 +158,20 @@ class s3_sync(object):
                     fileList = [os.path.join(dirName,filename) for filename in fileList]
                     if self.excludes:
                         for ignore in self.excludes:
-                            fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
-                    count = 0
+                            fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)]
+                    procs = []
                     for fname in fileList:
                         dest_key = self.generate_dest_key(fname, thisdir)
                         if os.name != 'nt':
-                            rv = Process(target=self.skip_or_send, args=(fname, dest_key))
-                            rv.deamon = True
-                            rv.start()
-                            if count % 20 == 0:
-                                rv.join()
+                            procs.append(Process(target=self.skip_or_send, args=(fname, dest_key)))
+                            procs[-1].deamon = True
+                            procs[-1].start()
+                            if len(procs) >= 20:
+                                list(map(lambda x: x.join(), procs))
+                                procs = []
                         else:
                             self.skip_or_send(fname, dest_key)
-                        count += 1
-                    if 'rv' in vars():
-                        rv.join()
+                    list(map(lambda x: x.join(), procs))
     def test(self):
         logger.info("Validating Templates")
         if self.sync_dirs:
