@@ -336,7 +336,10 @@ class AbstractCloudFormation(object):
             count += 1
 
     def delete_stack(self):
-        logger.info("Sent delete request to stack")
+        if self.use_color:
+            logger.info("\033[91mSent delete request to stack\033[0m")
+        else:
+            logger.info("Sent delete request to stack")
         resp = self.client.delete_stack(StackName=self.stack_name)
         return True
 
@@ -435,7 +438,7 @@ class AbstractCloudFormation(object):
 import pdb
 
 class Stack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None):
+    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None, use_color=False):
         self.profile = profile
         self.stack = stack
         self.config_file = config_file
@@ -457,6 +460,7 @@ class Stack(AbstractCloudFormation):
         self._timed_out = False
         self.transforms = self.get_config_att('transforms')
         self.client = self.session.client('cloudformation')
+        self.use_color = use_color
         self.sts = self.session.client('sts')
         self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
         self.reload_stack_status()

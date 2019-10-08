@@ -8,8 +8,12 @@ logger.setLevel(logging.DEBUG)
 console_logger = logging.StreamHandler()
 console_logger.setLevel(logging.INFO)
 
+
+
+
 # create formatter
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+color_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
 # add formatter to console_logger
 console_logger.setFormatter(formatter)

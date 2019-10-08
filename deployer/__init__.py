@@ -34,8 +34,17 @@ def main():
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
     parser.add_argument("-T", "--timeout", type=int, help='Stack create timeout')
     parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
+    parser.add_argument("--disable-color", help='Disables color output', action='store_true', dest='no_color')
+
 
     args = parser.parse_args()
+
+    if not args.no_color:
+        # Set level formatting and colors
+        logging.addLevelName( logging.DEBUG, "\033[3;35m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
+        logging.addLevelName( logging.INFO, "\033[3m%s\033[1;0m" % logging.getLevelName(logging.INFO))
+        logging.addLevelName( logging.WARNING, "\033[1;33m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
+        logging.addLevelName( logging.ERROR, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
 
     if args.version:
         print(__version__)
@@ -47,16 +56,17 @@ def main():
         copy_tree(skel_dir, args.init)
         exit(0)
 
+    print
     options_broken = False
     params = {}
     if not args.config:
         args.config = 'config.yml'
     if not args.all:
         if not args.execute:
-            print("Must Specify execute flag!")
+            print("\033[1;33mMust Specify execute flag!\033[1;0m")
             options_broken = True
         if not args.stack:
-            print("Must Specify stack flag!")
+            print("\033[1;33mMust Stack execute flag!\033[1;0m")
             options_broken = True
     if args.param:
         for param in args.param:
@@ -64,7 +74,7 @@ def main():
             if len(split) == 2:
                 params[split[0]] = split[1]
             else:
-                console_logger.error("Invalid format for parameter '{}'".format(param))
+                print("\033[3mInvalid format for parameter\033[1;0m '{}'".format(param))
                 options_broken = True
 
     if options_broken:
@@ -103,7 +113,10 @@ def main():
             if stack != 'global' and (args.all or stack == args.stack):
                 if args.sync:
                     s3_sync(args.profile, args.config, stack, args.assume_valid)
-                logger.info("Running " + str(args.execute) + " on stack: " + stack)
+                if args.no_color:
+                    logger.info("Running " + str(args.execute) + " on stack: " + stack)
+                else:
+                    logger.info("Running \033[4m" + str(args.execute) + "\033[0m on stack: \033[1;93m" + stack + "\033[0m")
                 env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params)
                 if args.execute == 'create':
                     try:
