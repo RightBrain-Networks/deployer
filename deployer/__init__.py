@@ -56,17 +56,22 @@ def main():
         copy_tree(skel_dir, args.init)
         exit(0)
 
-    print
     options_broken = False
     params = {}
     if not args.config:
         args.config = 'config.yml'
     if not args.all:
         if not args.execute:
-            print("\033[1;33mMust Specify execute flag!\033[1;0m")
+            if args.no_color:
+                print("Must specify execute flag!")
+            else:
+                print("\033[1;33mMust Specify execute flag!\033[1;0m")
             options_broken = True
         if not args.stack:
-            print("\033[1;33mMust Stack execute flag!\033[1;0m")
+            if args.no_color:
+                print("Must specify stack flag!")
+            else:
+                print("\033[1;33mMust Specify stack flag!\033[1;0m")
             options_broken = True
     if args.param:
         for param in args.param:
@@ -74,7 +79,10 @@ def main():
             if len(split) == 2:
                 params[split[0]] = split[1]
             else:
-                print("\033[3mInvalid format for parameter\033[1;0m '{}'".format(param))
+                if args.no_color:
+                    print("Invalid format for parameter '{}'".format(param))
+                else:
+                    print("\033[3mInvalid format for parameter\033[1;0m '{}'".format(param))
                 options_broken = True
 
     if options_broken:
