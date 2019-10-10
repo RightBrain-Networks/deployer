@@ -8,6 +8,8 @@ from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
 from distutils.dir_util import copy_tree
+from collections import defaultdict
+from deployer.logger import update_colors
 
 import ruamel.yaml
 import sys, traceback
@@ -39,12 +41,15 @@ def main():
 
     args = parser.parse_args()
 
+
+    colors = defaultdict(lambda: '')
     if not args.no_color:
+        update_colors(colors)
         # Set level formatting and colors
-        logging.addLevelName( logging.DEBUG, "\033[3;35m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
-        logging.addLevelName( logging.INFO, "\033[3m%s\033[1;0m" % logging.getLevelName(logging.INFO))
-        logging.addLevelName( logging.WARNING, "\033[1;33m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
-        logging.addLevelName( logging.ERROR, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+        logging.addLevelName( logging.DEBUG, colors['debug'] + "%s" % logging.getLevelName(logging.DEBUG) + colors['reset'])
+        logging.addLevelName( logging.INFO, colors['info'] + "%s" % logging.getLevelName(logging.INFO) + colors['reset'])
+        logging.addLevelName( logging.WARNING, colors['warning'] + "%s" % logging.getLevelName(logging.WARNING) + colors['reset'])
+        logging.addLevelName( logging.ERROR, colors['error'] + "%s" % logging.getLevelName(logging.ERROR) + colors['reset'])
 
     if args.version:
         print(__version__)
@@ -62,16 +67,10 @@ def main():
         args.config = 'config.yml'
     if not args.all:
         if not args.execute:
-            if args.no_color:
-                print("Must specify execute flag!")
-            else:
-                print("\033[1;33mMust Specify execute flag!\033[1;0m")
+            print(colors['warning'] + "Must Specify execute flag!" + colors['reset'])
             options_broken = True
         if not args.stack:
-            if args.no_color:
-                print("Must specify stack flag!")
-            else:
-                print("\033[1;33mMust Specify stack flag!\033[1;0m")
+            print(colors['warning'] + "Must specify stack flag!" + colors['reset'])
             options_broken = True
     if args.param:
         for param in args.param:
@@ -79,10 +78,7 @@ def main():
             if len(split) == 2:
                 params[split[0]] = split[1]
             else:
-                if args.no_color:
-                    print("Invalid format for parameter '{}'".format(param))
-                else:
-                    print("\033[3mInvalid format for parameter\033[1;0m '{}'".format(param))
+                print(colors['warning'] + "Invalid format for parameter '{}'".format(param) + colors['reset'])
                 options_broken = True
 
     if options_broken:
@@ -124,8 +120,8 @@ def main():
                 if args.no_color:
                     logger.info("Running " + str(args.execute) + " on stack: " + stack)
                 else:
-                    logger.info("Running \033[4m" + str(args.execute) + "\033[0m on stack: \033[1;93m" + stack + "\033[0m")
-                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params)
+                    logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
+                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params, colors=colors)
                 if args.execute == 'create':
                     try:
                         env_stack.create()
