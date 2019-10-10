@@ -18,10 +18,13 @@ console_logger.setFormatter(formatter)
 logger.addHandler(console_logger)
 
 def update_colors(color_dictionary):
-    color_dictionary['error'] = '\033[91m'
-    color_dictionary['debug'] = '\033[3;35m'
-    color_dictionary['info'] = '\033[3m'
-    color_dictionary['warning'] = '\033[1;33m'
-    color_dictionary['stack'] = '\033[1;93m'
-    color_dictionary['underline'] = '\033[4m'
-    color_dictionary['reset'] = '\033[0m'
+    #escape_code = '\033'
+    escape_code = '\027'
+
+    color_dictionary['error'] = escape_code + '[91m'
+    color_dictionary['debug'] = escape_code + '[3;35m'
+    color_dictionary['info'] = escape_code + '[3m'
+    color_dictionary['warning'] = escape_code + '[1;33m'
+    color_dictionary['stack'] = escape_code + '[1;93m'
+    color_dictionary['underline'] = escape_code + '[4m'
+    color_dictionary['reset'] = escape_code + '[0m'
