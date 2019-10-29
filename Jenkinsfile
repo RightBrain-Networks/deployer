@@ -1,4 +1,4 @@
-library('pipeline-library')
+library('pipeline-library@bugfix/updateSemver')
 
 pipeline {
   options { timestamps() }
