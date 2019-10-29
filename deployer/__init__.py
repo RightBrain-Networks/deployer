@@ -8,6 +8,8 @@ from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
 from distutils.dir_util import copy_tree
+from collections import defaultdict
+from deployer.logger import update_colors
 
 import ruamel.yaml
 import sys, traceback
@@ -34,8 +36,20 @@ def main():
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
     parser.add_argument("-T", "--timeout", type=int, help='Stack create timeout')
     parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
+    parser.add_argument("--disable-color", help='Disables color output', action='store_true', dest='no_color')
+
 
     args = parser.parse_args()
+
+
+    colors = defaultdict(lambda: '')
+    if not args.no_color:
+        update_colors(colors)
+        # Set level formatting and colors
+        logging.addLevelName( logging.DEBUG, colors['debug'] + "%s" % logging.getLevelName(logging.DEBUG) + colors['reset'])
+        logging.addLevelName( logging.INFO, colors['info'] + "%s" % logging.getLevelName(logging.INFO) + colors['reset'])
+        logging.addLevelName( logging.WARNING, colors['warning'] + "%s" % logging.getLevelName(logging.WARNING) + colors['reset'])
+        logging.addLevelName( logging.ERROR, colors['error'] + "%s" % logging.getLevelName(logging.ERROR) + colors['reset'])
 
     if args.version:
         print(__version__)
@@ -53,10 +67,10 @@ def main():
         args.config = 'config.yml'
     if not args.all:
         if not args.execute:
-            print("Must Specify execute flag!")
+            print(colors['warning'] + "Must Specify execute flag!" + colors['reset'])
             options_broken = True
         if not args.stack:
-            print("Must Specify stack flag!")
+            print(colors['warning'] + "Must specify stack flag!" + colors['reset'])
             options_broken = True
     if args.param:
         for param in args.param:
@@ -64,7 +78,7 @@ def main():
             if len(split) == 2:
                 params[split[0]] = split[1]
             else:
-                console_logger.error("Invalid format for parameter '{}'".format(param))
+                print(colors['warning'] + "Invalid format for parameter '{}'".format(param) + colors['reset'])
                 options_broken = True
 
     if options_broken:
@@ -103,8 +117,11 @@ def main():
             if stack != 'global' and (args.all or stack == args.stack):
                 if args.sync:
                     s3_sync(args.profile, args.config, stack, args.assume_valid)
-                logger.info("Running " + str(args.execute) + " on stack: " + stack)
-                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params)
+                if args.no_color:
+                    logger.info("Running " + str(args.execute) + " on stack: " + stack)
+                else:
+                    logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
+                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params, colors=colors)
                 if args.execute == 'create':
                     try:
                         env_stack.create()

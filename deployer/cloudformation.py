@@ -14,6 +14,7 @@ from datetime import datetime
 from parse import parse
 from deployer.decorators import retry
 from deployer.logger import logger
+from collections import defaultdict
 
 # Used to enable parsing of yaml templates using shorthand notation
 def general_constructor(loader, tag_suffix, node):
@@ -336,7 +337,7 @@ class AbstractCloudFormation(object):
             count += 1
 
     def delete_stack(self):
-        logger.info("Sent delete request to stack")
+        logger.info(self.colors['error'] + "Sent delete request to stack" + self.colors['reset'])
         resp = self.client.delete_stack(StackName=self.stack_name)
         return True
 
@@ -435,7 +436,7 @@ class AbstractCloudFormation(object):
 import pdb
 
 class Stack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None):
+    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None, colors= defaultdict(lambda: '')):
         self.profile = profile
         self.stack = stack
         self.config_file = config_file
@@ -457,6 +458,7 @@ class Stack(AbstractCloudFormation):
         self._timed_out = False
         self.transforms = self.get_config_att('transforms')
         self.client = self.session.client('cloudformation')
+        self.colors = colors           
         self.sts = self.session.client('sts')
         self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
         self.reload_stack_status()
