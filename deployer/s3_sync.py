@@ -83,12 +83,14 @@ class s3_sync(object):
             excludes = ["*%s*" % exclude for exclude in excludes]
         return excludes
 
+
     def generate_etag(self,fname):
         md5s = []
         with open(fname, 'rb') as f:
-            count = 0
             for chunk in iter(lambda: f.read(8388608), b""):
                 md5s.append(hashlib.md5(chunk))
+            if len(md5s) == 0:
+                md5s.append(hashlib.md5(f.read(8388608)))
         if len(md5s) > 1:
             digests = b"".join(m.digest() for m in md5s)
             new_md5 = hashlib.md5(digests)
@@ -142,7 +144,10 @@ class s3_sync(object):
     def skip_or_send(self, fname, dest_key):
         try:
             etag = self.generate_etag(fname)
-            self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+            if etag:
+                self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+            else:
+                logger.error("%s has no etag!" % (fname))
             logger.debug("Skipped: %s" % (fname))
             return
         except ClientError:

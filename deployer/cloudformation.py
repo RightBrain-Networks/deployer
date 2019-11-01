@@ -14,6 +14,7 @@ from datetime import datetime
 from parse import parse
 from deployer.decorators import retry
 from deployer.logger import logger
+from collections import defaultdict
 
 # Used to enable parsing of yaml templates using shorthand notation
 def general_constructor(loader, tag_suffix, node):
@@ -215,9 +216,10 @@ class AbstractCloudFormation(object):
             ]
         }
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
+        args.update({'TimeoutInMinutes': self.timeout} if self.timeout else {})
         if self.template_body:
             logger.info("Using local template due to null template bucket")
-        resp = self.client.create_stack(**args)
+        self.client.create_stack(**args)
         self.create_waiter(start_time)
         
 
@@ -227,7 +229,14 @@ class AbstractCloudFormation(object):
         sleep(5)
         logger.info(self.reload_stack_status())
         if self.print_events:
-            self.output_events(start_time, 'create')
+            try:
+                self.output_events(start_time, 'create')
+            except RuntimeError as e:
+                if self.timed_out:
+                    logger.error('Stack creation exceeded timeout of {} minutes and was aborted.'.format(self.timeout))
+                    exit(2)
+                else:
+                    raise e
         else:
             try:
                 waiter.wait(StackName=self.stack_name)
@@ -300,14 +309,15 @@ class AbstractCloudFormation(object):
             events.reverse()
             for event in events:
                 if event['Timestamp'] > start_time and event['Timestamp'] > update_time:
-                    if 'ResourceStatusReason' not in event:
-                        event['ResourceStatusReason'] = ''
+                    reason = event.get('ResourceStatusReason', '')
+                    if reason == 'Stack creation time exceeded the specified timeout. Rollback requested by user.':
+                        self.timed_out = True
                     table.append([
                         event['Timestamp'].strftime('%Y/%m/%d %H:%M:%S'),
                         event['ResourceStatus'],
                         event['ResourceType'],
                         event['LogicalResourceId'],
-                        event['ResourceStatusReason']
+                        reason
                     ])
             update_time = datetime.now(pytz.utc) 
             if len(table) > 0:
@@ -324,8 +334,8 @@ class AbstractCloudFormation(object):
             count += 1
 
     def delete_stack(self):
-        logger.info("Sent delete request to stack")
         self.client.delete_stack(StackName=self.stack_name)
+        logger.info(self.colors['error'] + "Sent delete request to stack" + self.colors['reset'])
         return True
 
     def get_latest_change_set_name(self):
@@ -423,7 +433,7 @@ class AbstractCloudFormation(object):
 import pdb
 
 class Stack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, params=None):
+    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None, colors= defaultdict(lambda: '')):
         self.profile = profile
         self.stack = stack
         self.config_file = config_file
@@ -442,8 +452,11 @@ class Stack(AbstractCloudFormation):
         self.template_url = self.construct_template_url()
         self.template_file = self.get_template_file()
         self.template_body = self.get_template_body()
+        self.timeout = timeout or self.get_config_att('timeout')
+        self._timed_out = False
         self.transforms = self.get_config_att('transforms')
         self.client = self.session.client('cloudformation')
+        self.colors = colors           
         self.sts = self.session.client('sts')
         self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
         self.reload_stack_status()
