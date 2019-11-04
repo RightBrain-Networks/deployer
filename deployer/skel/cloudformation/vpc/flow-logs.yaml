@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures VPC flow logs
+Parameters:
+  Environment:
+    Description: Name of the environment deployed
+    Type: String
+  NetworkName:
+    Description: Friendly name that can be used for referencing the network
+    Type: String
+  Project:
+    Description: Name of current project
+    Type: String
+  Vpc:
+    Description: The physical id of the VPC
+    Type: AWS::SSM::Parameter::Value<String>
+Resources:
+  FlowLog:
+    Type: AWS::EC2::FlowLog
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt 'Role.Arn'
+      LogDestinationType: cloud-watch-logs
+      LogGroupName: !Ref 'LogGroup'
+      ResourceId: !Ref 'Vpc'
+      ResourceType: VPC
+      TrafficType: ALL
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: '1'
+  Policy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub '${Project}-${Environment}-vpc-flow-logs'
+      Roles:
+        - !Ref 'Role'
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+            Effect: Allow
+            Resource: !GetAtt 'LogGroup.Arn'
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - vpc-flow-logs.amazonaws.com
+      Path: /
+      RoleName: !Sub '${Project}-${Environment}-vpc-flow-logs'

@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures VPC service endpoints
+Parameters:
+  RouteTables:
+    Default: 'null'
+    Description: List of physical ids for the route tables in the VPC
+    Type: CommaDelimitedList
+  Vpc:
+    Description: Physical id of the VPC
+    Type: AWS::EC2::VPC::Id
+Resources:
+  VpcEndpointDynamo:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: dynamodb:*
+            Effect: Allow
+            Principal: '*'
+            Resource: '*'
+        Version: 2012-10-17
+      RouteTableIds: !Ref 'RouteTables'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.dynamodb'
+      VpcId: !Ref 'Vpc'
+  VpcEndpointS3:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Effect: Allow
+            Principal: '*'
+            Resource: arn:aws:s3:::*
+        Version: 2012-10-17
+      RouteTableIds: !Ref 'RouteTables'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcId: !Ref 'Vpc'

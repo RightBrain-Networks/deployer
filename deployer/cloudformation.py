@@ -1,17 +1,18 @@
 #!/usr/bin/env python
-import boto3
+import git
 import json
 import pytz
 import re
-import signal
 import ruamel.yaml
+import signal
 from boto3.session import Session
-from botocore.exceptions import WaiterError
+from botocore.exceptions import ClientError, WaiterError
 from tabulate import tabulate
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from time import sleep 
 from datetime import datetime 
 from parse import parse
+from deployer.decorators import retry
 from deployer.logger import logger
 
 # Used to enable parsing of yaml templates using shorthand notation
@@ -35,7 +36,23 @@ class AbstractCloudFormation(object):
 
     @abstractmethod
     def delete_stack(self):
-        pass 
+        pass
+
+    def get_repository(self):
+        try:
+            return git.Repo(self.base or '.', search_parent_directories=True)
+        except git.exc.InvalidGitRepositoryError:
+            return None
+
+    def get_repository_origin(self):
+        if self.repository:
+            try:
+                origin = next(self.repository.remote().urls)
+                return origin.split('@', 1)[-1] if origin else None
+            except (StopIteration, ValueError):
+                return None
+        else:
+            return None
 
     def create(self):
         signal.signal(signal.SIGINT, self.cancel_create)
@@ -76,13 +93,15 @@ class AbstractCloudFormation(object):
         logger.critical('Cancelling Stack Update: %s' % self.stack_name)
         self.client.cancel_update_stack(StackName=self.stack_name)
         exit(1)
-     
+
+    @retry(ClientError,logger=logger)
     def get_outputs(self):
         resp = self.client.describe_stacks(
                    StackName=self.stack_name)
         self.outputs = resp['Stacks'][0]['Outputs']
         return self.outputs
 
+    @retry(ClientError,tries=6,logger=logger)
     def reload_stack_status(self): 
         try:
             resp = self.client.describe_stacks(
@@ -108,32 +127,45 @@ class AbstractCloudFormation(object):
             data = ruamel.yaml.safe_load(f)
         return data
 
-    def get_config_att(self, key):
+    def get_config_att(self, key, default=None):
         base = None
         if key in self.config['global']:
             base = self.config['global'][key]
         if key in self.config[self.stack]:
             base = self.config[self.stack][key]
-        return base
+        return base if base is not None else default
 
     def construct_template_url(self):
         alt = 'full_template_url'
         if alt in self.config[self.stack]:
             self.template_url = self.config[self.stack][alt]
+        elif self.get_template_bucket() is None:
+            return None
         else:
+            s3 = self.session.client('s3')
             url_string = "https://{}.amazonaws.com/{}/{}/{}"
-            self.template_bucket = self.get_config_att('template_bucket')
+            self.template_bucket = self.get_template_bucket()
             self.template = self.get_config_att('template')
-            if self.region == 'us-east-1':
-                s3_endpoint = 's3'
-            else:
-                s3_endpoint = "s3-%s" % self.region
-            self.template_url = url_string.format(
-                s3_endpoint,
-                self.template_bucket,
-                self.release,
-                self.template)
+            s3_endpoint = 's3' if self.region == 'us-east-1' else "s3-%s" % self.region
+            try:
+                s3.head_object(Bucket=self.template_bucket, Key="{}/{}".format(self.release, self.template))
+                template_url = url_string.format(s3_endpoint, self.template_bucket, self.release, self.template)
+                self.template_url = template_url
+            except ClientError:
+                self.template_url = None
         return self.template_url
+
+    def get_template_bucket(self):
+        bucket = self.get_config_att('template_bucket')
+        if not bucket:
+            ssm = self.session.client('ssm')
+            try:
+                name = '/global/buckets/cloudtools/name'
+                return ssm.get_parameter(Name=name).get('Parameter', {}).get('Value', None)
+            except ClientError:
+                return None
+        else:
+            return bucket
 
     def get_template_file(self):
         if 'template' in self.config[self.stack]:
@@ -143,31 +175,54 @@ class AbstractCloudFormation(object):
             template_url = self.construct_template_url()
             return parse(format_string,template_url)['template']
 
+    def get_template_body(self):
+        bucket = self.config[self.stack]['template_bucket'] if 'template_bucket' in self.config[self.stack] else self.get_config_att('template_bucket')
+        if not bucket:
+            template = self.config[self.stack]['template'] if 'template' in self.config[self.stack] else self.get_config_att('template')
+            try:
+                with open(template, 'r') as f:
+                    return f.read()
+            except Exception as e:
+                logger.warning("Failed to read template file")
+                return None
+        else:
+            return None
+
     def construct_tags(self): 
         tags = self.get_config_att('tags')
         if tags:
             tags = [ { 'Key': key, 'Value': value } for key, value in tags.items() ] 
-            if len(tags) > 9:
-                raise ValueError('Resources tag limit is 10, you have provided more than 9 tags. Please limit your tagging, safe room for name tag.') 
+            if len(tags) > 47:
+                raise ValueError('Resources tag limit is 50, you have provided more than 47 tags. Please limit your tagging, save room for name and deployer tags.')
         else:
             tags = []
+        tags.append({'Key': 'deployer:stack', 'Value': self.stack})
+        tags.append({'Key': 'deployer:caller', 'Value': self.identity_arn})
+        tags.append({'Key': 'deployer:git:commit', 'Value': self.commit})
+        tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
+        tags.append({'Key': 'deployer:config', 'Value': self.config_file.replace('\\', '/')})
         return tags
 
     def create_stack(self):
         # create the stack 
-        start_time = datetime.now(pytz.utc) 
-        resp = self.client.create_stack(
-            StackName=self.stack_name,
-            TemplateURL=self.template_url,
-            Parameters=self.build_params(),
-            DisableRollback=self.disable_rollback,
-            Tags=self.construct_tags(),
-            Capabilities=[
+        start_time = datetime.now(pytz.utc)
+        args = {
+            "StackName": self.stack_name,
+            "Parameters": self.build_params(),
+            "DisableRollback": self.disable_rollback,
+            "Tags": self.construct_tags(),
+            "Capabilities": [
                 'CAPABILITY_IAM',
-                'CAPABILITY_NAMED_IAM'
-            ] 
-        )
+                'CAPABILITY_NAMED_IAM',
+                'CAPABILITY_AUTO_EXPAND'
+            ]
+        }
+        args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
+        if self.template_body:
+            logger.info("Using local template due to null template bucket")
+        resp = self.client.create_stack(**args)
         self.create_waiter(start_time)
+        
 
     def create_waiter(self, start_time):
         waiter = self.client.get_waiter('stack_create_complete')
@@ -189,19 +244,29 @@ class AbstractCloudFormation(object):
     def update_stack(self):
         # update the stack 
         waiter = self.client.get_waiter('stack_update_complete')
-        start_time = datetime.now(pytz.utc) 
-        if self.stack_status: 
-            resp = self.client.update_stack(
-                StackName=self.stack_name,
-                TemplateURL=self.template_url,
-                Parameters=self.build_params(),
-                Tags=self.construct_tags(),
-                Capabilities=[
-                    'CAPABILITY_IAM',
-                    'CAPABILITY_NAMED_IAM'
-                ] 
-            )
-            self.update_waiter(start_time)
+        start_time = datetime.now(pytz.utc)
+        args = {
+            "StackName": self.stack_name,
+            "Parameters": self.build_params(),
+            "Tags": self.construct_tags(),
+            "Capabilities": [
+                'CAPABILITY_IAM',
+                'CAPABILITY_NAMED_IAM',
+                'CAPABILITY_AUTO_EXPAND'
+            ]
+        }
+        args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
+        if self.template_body:
+            logger.info("Using local template due to null template bucket")
+        if self.stack_status:
+            try:
+                self.client.update_stack(**args)
+                self.update_waiter(start_time)
+            except ClientError as e:
+                if 'No updates are to be performed' in e.response['Error']['Message']:
+                    logger.warning('No updates are to be performed')
+                else:
+                    raise e
         else:
             raise RuntimeError("Stack does not exist")
 
@@ -262,6 +327,7 @@ class AbstractCloudFormation(object):
             count += 1
 
     def delete_stack(self):
+        logger.info("Sent delete request to stack")
         resp = self.client.delete_stack(StackName=self.stack_name)
         return True
 
@@ -296,7 +362,8 @@ class AbstractCloudFormation(object):
                 Parameters=self.build_params(),
                 Capabilities=[
                     'CAPABILITY_IAM',
-                    'CAPABILITY_NAMED_IAM'
+                    'CAPABILITY_NAMED_IAM',
+                    'CAPABILITY_AUTO_EXPAND'
                 ],
                 ChangeSetName=change_set_name, 
                 Description=change_set_description,
@@ -341,25 +408,48 @@ class AbstractCloudFormation(object):
                 row.append('')
             table.append(row)
         print(tabulate(table, headers, tablefmt='simple'))
+
+    def check_stack_exists(self):
+        try:
+            self.client.describe_stacks(StackName=self.stack_name)
+            return True
+        except ClientError:
+            return False
+
+    def describe(self):
+        try:
+            return self.client.describe_stacks(StackName=self.stack_name)['Stacks'][0]
+        except ClientError:
+            return {}
             
 
+import pdb
+
 class Stack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False):
+    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, params=None):
         self.profile = profile
         self.stack = stack
         self.config_file = config_file
         self.disable_rollback = disable_rollback
         self.print_events = print_events
         self.config = self.get_config()
-        self.region = self.get_config_att('region')
         self.stack_name = self.get_config_att('stack_name')
-        self.release = self.get_config_att('release').replace('/','.')
+        self.base = self.get_config_att('sync_base')
+        self.session = Session(profile_name=profile,region_name=self.get_config_att('region'))
+        self.repository = self.get_repository()
+        self.region = self.session.region_name
+        self.commit = self.repository.head.object.hexsha if self.repository else 'null'
+        self.origin = self.get_repository_origin() if self.repository else 'null'
+        self.release = self.get_config_att('release', self.commit).replace('/','.')
         self.template_url = self.construct_template_url()
         self.template_file = self.get_template_file()
+        self.template_body = self.get_template_body()
         self.transforms = self.get_config_att('transforms')
-        self.session = Session(profile_name=profile,region_name=self.region)
         self.client = self.session.client('cloudformation')
+        self.sts = self.session.client('sts')
+        self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
         self.reload_stack_status()
+        self.params = params or {}
 
     def build_params(self):
         # create parameters from the config.yml file
@@ -376,13 +466,14 @@ class Stack(AbstractCloudFormation):
                 for param_key, param_value in self.config[env]['parameters'].items():
                     count = 0 
                     overwritten = False
+                    param_xform = ','.join(param_value) if isinstance(param_value, list) else param_value
                     for param_item in expanded_params:
                         if param_item['ParameterKey'] == param_key:
-                            expanded_params[count] = { "ParameterKey": param_key, "ParameterValue": param_value } 
+                            expanded_params[count] = { "ParameterKey": param_key, "ParameterValue": param_xform } 
                             overwritten = True 
                         count += 1
                     if not overwritten:
-                        expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_value })
+                        expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_xform })
             if 'lookup_parameters' in self.config[env]:
                 for param_key, lookup_struct in self.config[env]['lookup_parameters'].items():
                     stack = Stack(self.profile, self.config_file, lookup_struct['Stack'])
@@ -390,6 +481,12 @@ class Stack(AbstractCloudFormation):
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:
                             expanded_params.append({ "ParameterKey": param_key, "ParameterValue": output['OutputValue'] })
+
+        # Remove overridden parameters and set them based on the override
+        # provided. Explicit overrides take priority over anything in the
+        # configuration files.
+        expanded_params = [x for x in expanded_params if x['ParameterKey'] not in self.params.keys()]
+        expanded_params += [{"ParameterKey": x, "ParameterValue": self.params[x]} for x in self.params.keys()]
 
         # Here we restrict the returned parameters to only the ones that the
         # template accepts by copying expanded_params into return_params and removing
@@ -399,14 +496,14 @@ class Stack(AbstractCloudFormation):
         with open(self.template_file, 'r') as template_file:
             if re.match(".*\.json",self.template_file):
                 parsed_template_file = json.load(template_file)
-            elif re.match(".*\.yml",self.template_file):
+            elif re.match(".*\.ya?ml",self.template_file):
                 parsed_template_file = ruamel.yaml.safe_load(template_file)
             else:
-                logger.info("Filename does not end in json or yml")
+                logger.info("Filename does not end in json/yml/yaml")
                 return return_params
             for item in expanded_params:
                 logger.debug("item: {0}".format(item))
-                if item['ParameterKey'] not in parsed_template_file['Parameters']:
+                if item['ParameterKey'] not in parsed_template_file.get('Parameters', {}):
                     logger.debug("Not using parameter '{0}': not found in template '{1}'".format(item['ParameterKey'], template_file))
                     return_params.remove(item)
         logger.info("Parameters Created")

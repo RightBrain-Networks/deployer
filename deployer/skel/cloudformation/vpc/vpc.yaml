@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Configures VPC wide resources
+Parameters:
+  BucketCloudTools:
+    Description: S3 bucket holding CloudFormation templates
+    Type: String
+  CreatePublicSubnet:
+    Description: Boolean indicating whether a public subnet should be created or not
+    Type: String
+  Cidr:
+    Description: Cidr range for the VPC
+    Type: String
+  DomainPrivate:
+    Description: Domain name for internal communication
+    Type: String
+  Environment:
+    Description: Name of the environment deployed
+    Type: String
+  HostedZoneManagement:
+    Description: Boolean indicating whether tag based hosted zone management is enabled
+    Type: String
+  NetworkName:
+    Description: Friendly name that can be used for referencing the network
+    Type: String
+  Project:
+    Description: Name of current project
+    Type: String
+  SsmPrefix:
+    Description: The prefix portion to use for SSM parameters
+    Type: String
+  SupernetNames:
+    Description: Friendly names for the subnet groups
+    Type: CommaDelimitedList
+  TotalSupernets:
+    Description: The total number of supernets
+    Type: Number
+Conditions:
+  ParamCreatePublicSubnetIsTrue: !Equals [!Ref 'CreatePublicSubnet', 'true']
+  ParamDomainPrivateIsNotNull: !Not [!Equals [!Ref 'DomainPrivate', 'null']]
+  ParamHostedZoneManagementIsTrue: !Equals [!Ref 'HostedZoneManagement', 'true']
+Resources:
+  BucketPolicyCloudTools:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref 'BucketCloudTools'
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Condition:
+              StringEquals:
+                aws:sourceVpc: !Ref 'Vpc'
+            Effect: Allow
+            Principal: '*'
+            Resource: !Sub 'arn:aws:s3:::${BucketCloudTools}/*/bootstrap/os/*'
+            Sid: !Ref 'Vpc'
+        Version: 2012-10-17
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Condition: ParamCreatePublicSubnetIsTrue
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${Project}-${Environment}'
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+  ParameterInternetGateway:
+    Type: AWS::SSM::Parameter
+    Condition: ParamCreatePublicSubnetIsTrue
+    Properties:
+      Description: Physical id of the internet gateway
+      Name: !Sub '${SsmPrefix}/internet-gateway/id'
+      Type: String
+      Value: !Ref 'InternetGateway'
+  ParameterRouteTablePublic:
+    Type: AWS::SSM::Parameter
+    Condition: ParamCreatePublicSubnetIsTrue
+    Properties:
+      Description: Physical id of the public route table
+      Name: !Sub '${SsmPrefix}/route-tables/public/id'
+      Type: String
+      Value: !Ref 'RouteTablePublic'
+  ParameterSupernetNames:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: List of names of the supernets
+      Name: !Sub '${SsmPrefix}/supernets/names'
+      Type: StringList
+      Value: !Join [',', !Ref 'SupernetNames']
+  ParameterSupernetTotal:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Number of supernets
+      Name: !Sub '${SsmPrefix}/supernets/total'
+      Type: String
+      Value: !Ref 'TotalSupernets'
+  ParameterVpc:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Physical id of the VPC
+      Name: !Sub '${SsmPrefix}/vpc/id'
+      Type: String
+      Value: !Ref 'Vpc'
+  ParameterVpcCidr:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: CIDR range of the VPC
+      Name: !Sub '${SsmPrefix}/vpc/cidr'
+      Type: String
+      Value: !GetAtt 'Vpc.CidrBlock'
+  RouteInternetGateway:
+    Type: AWS::EC2::Route
+    Condition: ParamCreatePublicSubnetIsTrue
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref 'RouteTablePublic'
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref 'InternetGateway'
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    Condition: ParamCreatePublicSubnetIsTrue
+    Properties:
+      VpcId: !Ref 'Vpc'
+      Tags:
+        - Key: Name
+          Value: !Sub '${Project}-${Environment}-public'
+        - Key: Network
+          Value: !Ref 'NetworkName'
+        - Key: Vpc
+          Value: !Ref 'Vpc'
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref 'Cidr'
+      EnableDnsHostnames: 'true'
+      EnableDnsSupport: 'true'
+      Tags:
+        - Key: DomainPrivate
+          Value: !Ref 'DomainPrivate'
+        - Key: HostedZoneManagement
+          Value: !If [ParamHostedZoneManagementIsTrue, lambda, none]
+        - Key: Name
+          Value: !Sub '${Project}-${Environment}'
+        - Key: Network
+          Value: !Ref 'NetworkName'
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Condition: ParamCreatePublicSubnetIsTrue
+    Properties:
+      VpcId: !Ref 'Vpc'
+      InternetGatewayId: !Ref 'InternetGateway'
+Outputs:
+  InternetGateway:
+    Description: Physical id of the internet gateway
+    Value: !If [ParamCreatePublicSubnetIsTrue, !Ref 'InternetGateway', 'null']
+  ParameterSupernetNames:
+    Description: Name of SSM parameter for the list of names of the supernets
+    Value: !Ref 'ParameterSupernetNames'
+  ParameterSupernetTotal:
+    Description: Name of SSM parameter for the total number of supernets
+    Value: !Ref 'ParameterSupernetTotal'
+  ParameterVpc:
+    Description: Name of SSM parameter for VPC physical id
+    Value: !Ref 'ParameterVpc'
+  ParameterVpcCidr:
+    Description: Name of SSM parameter for VPC CIDR range
+    Value: !Ref 'ParameterVpcCidr'
+  RouteTablePublic:
+    Description: Physical id of the public route table
+    Value: !If [ParamCreatePublicSubnetIsTrue, !Ref 'RouteTablePublic', 'null']
+  Vpc:
+    Description: Physical id of the VPC
+    Value: !Ref 'Vpc'
