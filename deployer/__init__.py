@@ -16,6 +16,7 @@ import sys, traceback
 
 __version__ = '0.4.1'
 
+
 def main():
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
     parser.add_argument("-c", "--config", help="Path to config file.")
