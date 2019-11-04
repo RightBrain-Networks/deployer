@@ -14,8 +14,7 @@ from deployer.logger import update_colors
 import ruamel.yaml
 import sys, traceback
 
-__version__ = '0.4.0'
-
+__version__ = '0.4.1'
 
 def main():
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
