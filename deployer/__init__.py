@@ -14,7 +14,7 @@ from deployer.logger import update_colors
 import ruamel.yaml
 import sys, traceback
 
-__version__ = '0.3.18'
+__version__ = '0.4.0'
 
 
 def main():
