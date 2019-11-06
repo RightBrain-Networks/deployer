@@ -13,17 +13,25 @@ pip install path/to/deployer-<version>.tar.gz
 Deployer is free for use by RightBrain Networks Clients however comes as is with out any guarantees.
 
 ##### Flags
-* -c <config file> (REQUIRED) -- Yaml configuration file to run against.
-* -s <stack name>  (REQUIRED) -- Stack Name corresponding to a block in the config file.
-* -x <execute command> (REQUIRED) -- create|update|delete|sync|change Action you wish to take on the stack.
-* -p <profile>     (REQUIRED) -- AWS CLI Profile to use for AWS commands [CLI Getting Started](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html).
-* -y <copy>        -- Copy directory structures specified in the configuration file under the sync_dirs configuration.
-* -A <All>         -- Create or Update all stacks in the configuration file, Note you do not have to specify a stack when using this option.
-* -r <disable rollback> -- Disable rollback on failure, useful when trying to debug a failing stack.
-* -e <display events> -- Display events of the CloudFormation stack at regular intervals.
-* -z <zip>         -- Pip install requirements, and zip up lambda's for builds.
-* -t <change set name> (REQUIRED Change Sets Only) -- Used when creating a change set to name the change set.
-* -d <change set description> (REQUIRED Change Sets Only) -- Used when creating a change set to describe the change set.
+* -c --config <config file> (REQUIRED) : Yaml configuration file to run against.
+* -s --stack <stack name>  (REQUIRED) : Stack Name corresponding to a block in the config file.
+* -x --execute <execute command> (REQUIRED) : create|update|delete|sync|change Action you wish to take on the stack.
+* -p --profile <profile>     : AWS CLI Profile to use for AWS commands [CLI Getting Started](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html).
+* -P --param <PARAM>, --param PARAM An override for a parameter
+* -y --copy <copy>        : Copy directory structures specified in the configuration file under the sync_dirs configuration.
+* -A --all         : Create or Update all stacks in the configuration file, Note you do not have to specify a stack when using this option.
+* -r --disable-roleback : Disable rollback on failure, useful when trying to debug a failing stack.
+* -t --timeout : Sets Stack create timeout
+* -e --events : Display events of the CloudFormation stack at regular intervals.
+* -z --zip         : Pip install requirements, and zip up lambda's for builds.
+* -t --change-set-name <change set name> (REQUIRED Change Sets Only) : Used when creating a change set to name the change set.
+* -d --change-set-description <change set description> (REQUIRED Change Sets Only) : Used when creating a change set to describe the change set.
+* -j, --assume-valid    Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)
+* -D, --debug           Sets logging level to DEBUG & enables traceback
+* -v, --version         Print version number
+* --init [INIT]         Initialize a skeleton directory
+* --disable-color       Disables color output
+
 
 
 ##### Examples
@@ -190,8 +198,8 @@ The `config_updater` command is meant to help with updating config files in the 
 
 ## Usage
 
-* -c <config file> (REQUIRED) -- Yaml configuration file to run against.
-* -u <updates> (REQUIRED) -- JSON formated string representing the changes you want to take place
+* -c <config file> (REQUIRED) : Yaml configuration file to run against.
+* -u <updates> (REQUIRED) : JSON formated string representing the changes you want to take place
 
 ## Example
 
