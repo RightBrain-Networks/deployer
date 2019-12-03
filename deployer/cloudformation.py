@@ -48,7 +48,7 @@ class AbstractCloudFormation(object):
     def get_repository_origin(self):
         if self.repository:
             try:
-                origin = next(self.repository.remote().urls)
+                origin = self.repository.remotes.origin.url
                 return origin.split('@', 1)[-1] if origin else None
             except (StopIteration, ValueError):
                 return None
