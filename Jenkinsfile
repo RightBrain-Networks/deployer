@@ -93,7 +93,7 @@ pipeline {
     {
       when {
           expression {
-              ${env.BRANCH_NAME} == "feature/releaseAsFunctions"
+              "${env.BRANCH_NAME}" == "feature/releaseAsFunctions"
               //"${env.SEMVER_STATUS}" == "0" && "${env.BRANCH_NAME}"  == "development"
           }
       }
