@@ -1,4 +1,4 @@
-library('pipeline-library@feature/gitHubReleases')
+library('pipeline-library')
 
 pipeline {
   options { timestamps() }
