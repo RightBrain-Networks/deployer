@@ -99,10 +99,8 @@ pipeline {
         echo "New version deteced!"
         script
         {
-
-          releaseId = createGitHubRelease("RightBrain-Networks/deployer", "v${env.SEMVER_RESOLVED_VERSION}", "development", "${env.SEMVER_RESOLVED_VERSION}", "false", "deployer/gitHub/releaseKey")
-          uploadGitHubArtifact("RightBrain-Networks/deployer", releaseId, ["deployer.tar.gz" : "dist/${env.SERVICE}-*.tar.gz"], "deployer/gitHub/releaseKey")
-
+          createGitHubRelease('rbn-opsGitHubToken', 'RightBrain-Networks/deployer', "v${env.SEMVER_RESOLVED_VERSION}",
+          "v${env.SEMVER_RESOLVED_VERSION}", ["deployer.tar.gz" : "dist/deployer-${env.SEMVER_NEW_VERSION}.tar.gz"])
         }
       }
     }
