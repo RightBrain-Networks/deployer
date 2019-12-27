@@ -82,6 +82,9 @@ class AbstractCloudFormation(object):
             self.execute_change_set(change_set_name)
             self.update_waiter(start_time)
 
+    def upsert(self):
+        self.update() if self.check_stack_exists() else self.create()
+
     def cancel_create(self, signal, frame):
         logger.critical('Process Interupt')
         logger.critical('Deleteing Stack: %s' % self.stack_name)

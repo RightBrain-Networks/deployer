@@ -2,10 +2,10 @@
 import argparse
 import json
 import os
-from deployer.cloudformation import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
+from deployer.stack_set import StackSet
 from distutils.dir_util import copy_tree
 
 import ruamel.yaml
@@ -91,8 +91,7 @@ def main():
             for stack, obj in config.items():
                 if stack != 'global':
                     print(stack)
-                    env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events)
-                    env_stack = Stack(args.profile, args.config, stack, args.events)
+                    env_stack = StackSet(args.profile, args.config, stack, args.events)
                     if env_stack.stack_status:
                         print("Update %s" % stack)
                         env_stack.update_stack()
@@ -101,7 +100,7 @@ def main():
                         env_stack.create_stack()
         else:
 
-                env_stack = Stack(args.profile, args.config, args.stack, args.rollback, args.events, params)
+                env_stack = StackSet(args.profile, args.config, args.stack, args.rollback, args.events, params)
                 if args.execute == 'create':
                     env_stack.create()
                 elif args.execute == 'update':
@@ -109,7 +108,7 @@ def main():
                 elif args.execute == 'delete':
                     env_stack.delete_stack()
                 elif args.execute == 'upsert':
-                    env_stack.update() if env_stack.check_stack_exists() else env_stack.create()
+                    env_stack.upsert()
                 elif args.execute == 'describe':
                     print(json.dumps(env_stack.describe(),
                                     sort_keys=True,
