@@ -14,7 +14,7 @@ from deployer.logger import update_colors
 import ruamel.yaml
 import sys, traceback
 
-__version__ = 'develop'
+__version__ = '0.0.0'
 
 
 def main():
@@ -121,7 +121,7 @@ def main():
                     logger.info("Running " + str(args.execute) + " on stack: " + stack)
                 else:
                     logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
-                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params, colors=colors)
+                env_stack = StackSet(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params, colors=colors)
                 if args.execute == 'create':
                     try:
                         env_stack.create()
