@@ -7,6 +7,7 @@ from deployer.cloudformation import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
+from deployer.stack_sets import StackSet
 from distutils.dir_util import copy_tree
 from collections import defaultdict
 from deployer.logger import update_colors
