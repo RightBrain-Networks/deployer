@@ -14,6 +14,7 @@ from datetime import datetime
 from parse import parse
 from deployer.decorators import retry
 from deployer.logger import logger
+from collections import defaultdict
 
 # Used to enable parsing of yaml templates using shorthand notation
 def general_constructor(loader, tag_suffix, node):
@@ -40,7 +41,7 @@ class AbstractCloudFormation(object):
 
     def get_repository(self):
         try:
-            return git.Repo(self.base or '.', search_parent_directories=True)
+            return git.Repo(self.base, search_parent_directories=True)
         except git.exc.InvalidGitRepositoryError:
             return None
 
@@ -130,12 +131,12 @@ class AbstractCloudFormation(object):
             data = ruamel.yaml.safe_load(f)
         return data
 
-    def get_config_att(self, key, default=None):
-        base = None
-        if key in self.config['global']:
-            base = self.config['global'][key]
-        if key in self.config[self.stack]:
-            base = self.config[self.stack][key]
+    def get_config_att(self, key, default=None, required=False):
+        base = self.config.get('global', {}).get(key, None)
+        base = self.config.get(self.stack).get(key, base)
+        if required and base is None:
+            logger.error("Required attribute '{}' not found in config '{}'.".format(key, self.config_file))
+            exit(3)
         return base if base is not None else default
 
     def construct_template_url(self):
@@ -148,7 +149,6 @@ class AbstractCloudFormation(object):
             s3 = self.session.client('s3')
             url_string = "https://{}.amazonaws.com/{}/{}/{}"
             self.template_bucket = self.get_template_bucket()
-            self.template = self.get_config_att('template')
             s3_endpoint = 's3' if self.region == 'us-east-1' else "s3-%s" % self.region
             try:
                 s3.head_object(Bucket=self.template_bucket, Key="{}/{}".format(self.release, self.template))
@@ -175,15 +175,13 @@ class AbstractCloudFormation(object):
             return self.config[self.stack]['template']
         else:
             format_string = "http://{sub}.amazonaws.com/{bucket}/{release}/{template}"
-            template_url = self.construct_template_url()
-            return parse(format_string,template_url)['template']
+            return parse(format_string, self.template_url)['template']
 
     def get_template_body(self):
-        bucket = self.config[self.stack]['template_bucket'] if 'template_bucket' in self.config[self.stack] else self.get_config_att('template_bucket')
+        bucket = self.get_config_att('template_bucket')
         if not bucket:
-            template = self.config[self.stack]['template'] if 'template' in self.config[self.stack] else self.get_config_att('template')
             try:
-                with open(template, 'r') as f:
+                with open(self.template, 'r') as f:
                     return f.read()
             except Exception as e:
                 logger.warning("Failed to read template file")
@@ -221,9 +219,10 @@ class AbstractCloudFormation(object):
             ]
         }
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
+        args.update({'TimeoutInMinutes': self.timeout} if self.timeout else {})
         if self.template_body:
             logger.info("Using local template due to null template bucket")
-        resp = self.client.create_stack(**args)
+        self.client.create_stack(**args)
         self.create_waiter(start_time)
         
 
@@ -233,7 +232,14 @@ class AbstractCloudFormation(object):
         sleep(5)
         logger.info(self.reload_stack_status())
         if self.print_events:
-            self.output_events(start_time, 'create')
+            try:
+                self.output_events(start_time, 'create')
+            except RuntimeError as e:
+                if self.timed_out:
+                    logger.error('Stack creation exceeded timeout of {} minutes and was aborted.'.format(self.timeout))
+                    exit(2)
+                else:
+                    raise e
         else:
             try:
                 waiter.wait(StackName=self.stack_name)
@@ -306,14 +312,15 @@ class AbstractCloudFormation(object):
             events.reverse()
             for event in events:
                 if event['Timestamp'] > start_time and event['Timestamp'] > update_time:
-                    if 'ResourceStatusReason' not in event:
-                        event['ResourceStatusReason'] = ''
+                    reason = event.get('ResourceStatusReason', '')
+                    if reason == 'Stack creation time exceeded the specified timeout. Rollback requested by user.':
+                        self.timed_out = True
                     table.append([
                         event['Timestamp'].strftime('%Y/%m/%d %H:%M:%S'),
                         event['ResourceStatus'],
                         event['ResourceType'],
                         event['LogicalResourceId'],
-                        event['ResourceStatusReason']
+                        reason
                     ])
             update_time = datetime.now(pytz.utc) 
             if len(table) > 0:
@@ -330,8 +337,8 @@ class AbstractCloudFormation(object):
             count += 1
 
     def delete_stack(self):
-        logger.info("Sent delete request to stack")
-        resp = self.client.delete_stack(StackName=self.stack_name)
+        self.client.delete_stack(StackName=self.stack_name)
+        logger.info(self.colors['error'] + "Sent delete request to stack" + self.colors['reset'])
         return True
 
     def get_latest_change_set_name(self):
@@ -429,26 +436,30 @@ class AbstractCloudFormation(object):
 import pdb
 
 class Stack(AbstractCloudFormation):
-    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, params=None):
+    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None, colors= defaultdict(lambda: '')):
         self.profile = profile
         self.stack = stack
         self.config_file = config_file
         self.disable_rollback = disable_rollback
         self.print_events = print_events
         self.config = self.get_config()
-        self.stack_name = self.get_config_att('stack_name')
-        self.base = self.get_config_att('sync_base')
+        self.stack_name = self.get_config_att('stack_name', required=True)
+        self.base = self.get_config_att('sync_base', '.')
         self.session = Session(profile_name=profile,region_name=self.get_config_att('region'))
         self.repository = self.get_repository()
         self.region = self.session.region_name
         self.commit = self.repository.head.object.hexsha if self.repository else 'null'
         self.origin = self.get_repository_origin() if self.repository else 'null'
         self.release = self.get_config_att('release', self.commit).replace('/','.')
+        self.template = self.get_config_att('template', required=True)
         self.template_url = self.construct_template_url()
         self.template_file = self.get_template_file()
         self.template_body = self.get_template_body()
+        self.timeout = timeout or self.get_config_att('timeout')
+        self._timed_out = False
         self.transforms = self.get_config_att('transforms')
         self.client = self.session.client('cloudformation')
+        self.colors = colors           
         self.sts = self.session.client('sts')
         self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
         self.reload_stack_status()
@@ -464,7 +475,7 @@ class Stack(AbstractCloudFormation):
         # create a array of parameter objects, we have to loop through our array 
         # to ensure we dont already have one of that key.
         for env in ['global', self.stack]:
-            if 'parameters' in self.config[env]:
+            if 'parameters' in self.config.get(env, {}):
                 logger.debug("env {0} has parameters: {1}".format(env, self.config[env]['parameters']))
                 for param_key, param_value in self.config[env]['parameters'].items():
                     count = 0 
@@ -477,7 +488,7 @@ class Stack(AbstractCloudFormation):
                         count += 1
                     if not overwritten:
                         expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_xform })
-            if 'lookup_parameters' in self.config[env]:
+            if 'lookup_parameters' in self.config.get(env, {}):
                 for param_key, lookup_struct in self.config[env]['lookup_parameters'].items():
                     stack = Stack(self.profile, self.config_file, lookup_struct['Stack'])
                     stack.get_outputs()

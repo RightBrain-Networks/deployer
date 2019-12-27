@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deployer Timeout Test
+Resources:
+  WaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    CreationPolicy:
+      ResourceSignal:
+        Count: '1'
+        Timeout: PT3M

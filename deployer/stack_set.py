@@ -4,6 +4,7 @@ import tabulate
 import time
 
 from botocore.exceptions import ClientError
+from collections import defaultdict
 
 from .cloudformation import Stack
 from .logger import logger
@@ -11,8 +12,8 @@ from .logger import logger
 
 class StackSet(Stack):
 
-    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, params=None):
-        super(StackSet, self).__init__(profile, config_file, stack, disable_rollback, print_events, params)
+    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None, colors=defaultdict(lambda: '')):
+        super(StackSet, self).__init__(profile, config_file, stack, disable_rollback, print_events, timeout, params, colors)
         self.account = self.get_config_att('account', None)
         self.accounts = self.get_config_att('accounts', None)
         self.execution_role = self.get_config_att('execution_role', None)

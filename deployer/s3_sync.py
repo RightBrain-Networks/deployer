@@ -10,25 +10,41 @@ from multiprocessing import Process
 from deployer.decorators import retry
 from deployer.logger import logger
 
+import sys, traceback
+
 class s3_sync(object):
-    def __init__(self, profile, config_file, environment, valid=False):
-        self.profile = profile
-        self.environment = environment
-        self.config = self.get_config(config_file)
-        self.session = Session(profile_name=profile, region_name=self.get_config_att('region'))
-        self.region = self.session.region_name
-        self.base = self.get_config_att('sync_base')
-        self.sync_dirs = self.get_config_att('sync_dirs')
-        self.dest_bucket = self.get_sync_dest_bucket()
-        self.repository = self.get_repository()
-        self.commit = self.repository.head.object.hexsha if self.repository else 'null'
-        self.release = self.get_config_att('release', self.commit).replace('/', '.')
-        self.session = Session(profile_name=profile, region_name=self.region)
-        self.client = self.session.client('s3')
-        self.cfn = self.session.client('cloudformation')
-        self.excludes = self.construct_excludes()
-        self.valid = valid
-        self.sync()
+    def __init__(self, profile, config_file, environment, valid=False, debug=False):
+        try:
+            self.profile = profile
+            self.debug = debug
+            self.environment = environment
+            self.config_file = config_file
+            self.config = self.get_config(config_file)
+            self.region = self.get_config_att('region')
+            self.base = self.get_config_att('sync_base', '.')
+            self.sync_dirs = self.get_config_att('sync_dirs', [])
+            self.dest_bucket = self.get_config_att('sync_dest_bucket', required=True)
+            self.repository = self.get_repository()
+            self.commit = self.repository.head.object.hexsha if self.repository else 'null'
+            self.release = self.get_config_att('release', self.commit).replace('/', '.')
+            self.session = Session(profile_name=profile, region_name=self.region)
+            self.client = self.session.client('s3')
+            self.cfn = self.session.client('cloudformation')
+            self.excludes = self.construct_excludes()
+            self.valid = valid
+
+            if not isinstance(self.sync_dirs, list):
+                logger.error("Attribute 'sync_dirs' must be a list.")
+                exit(4)
+            elif not self.sync_dirs:
+                logger.warning("Sync requested but no directories specified with the 'sync_dirs' attribute")
+
+            self.sync()
+        except (Exception) as e:
+            logger.error(e)
+            if self.debug:
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)
 
     def get_sync_dest_bucket(self):
         bucket = self.get_config_att('sync_dest_bucket')
@@ -44,7 +60,7 @@ class s3_sync(object):
 
     def get_repository(self):
         try:
-            return git.Repo(self.base or '.', search_parent_directories=True)
+            return git.Repo(self.base, search_parent_directories=True)
         except git.exc.InvalidGitRepositoryError:
             return None
 
@@ -53,12 +69,12 @@ class s3_sync(object):
             data = yaml.safe_load(f)
         return data
 
-    def get_config_att(self, key, default=None):
-        base = None
-        if key in self.config['global']:
-            base = self.config['global'][key]
-        if key in self.config[self.environment]:
-            base = self.config[self.environment][key]
+    def get_config_att(self, key, default=None, required=False):
+        base = self.config.get('global', {}).get(key, None)
+        base = self.config.get(self.environment).get(key, base)
+        if required and base is None:
+            logger.error("Required attribute '{}' not found in config '{}'.".format(key, self.config_file))
+            exit(3)
         return base if base is not None else default
 
     def construct_excludes(self):
@@ -67,12 +83,14 @@ class s3_sync(object):
             excludes = ["*%s*" % exclude for exclude in excludes]
         return excludes
 
+
     def generate_etag(self,fname):
         md5s = []
         with open(fname, 'rb') as f:
-            count = 0
             for chunk in iter(lambda: f.read(8388608), b""):
                 md5s.append(hashlib.md5(chunk))
+            if len(md5s) == 0:
+                md5s.append(hashlib.md5(f.read(8388608)))
         if len(md5s) > 1:
             digests = b"".join(m.digest() for m in md5s)
             new_md5 = hashlib.md5(digests)
@@ -126,12 +144,24 @@ class s3_sync(object):
     def skip_or_send(self, fname, dest_key):
         try:
             etag = self.generate_etag(fname)
-            self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+            if etag:
+                self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+            else:
+                logger.error("%s has no etag!" % (fname))
             logger.debug("Skipped: %s" % (fname))
-        except Exception as e:
+            return
+        except ClientError:
+            logger.debug("Uploading: %s" % (fname))
+
+        try:
             self.client.upload_file(fname, self.dest_bucket, dest_key)
             logger.info("Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key))
-
+        except (Exception) as e:
+            logger.error(e)
+            if self.debug:
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)
+                
     def upload(self):
         if self.sync_dirs:
             for sync_dir in self.sync_dirs:
@@ -141,22 +171,20 @@ class s3_sync(object):
                     fileList = [os.path.join(dirName,filename) for filename in fileList]
                     if self.excludes:
                         for ignore in self.excludes:
-                            fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)] 
-                    count = 0
+                            fileList = [n for n in fileList if not fnmatch.fnmatch(n,ignore)]
+                    procs = []
                     for fname in fileList:
                         dest_key = self.generate_dest_key(fname, thisdir)
                         if os.name != 'nt':
-                            rv = Process(target=self.skip_or_send, args=(fname, dest_key))
-                            rv.deamon = True
-                            rv.start()
-                            if count % 20 == 0:
-                                rv.join()
+                            procs.append(Process(target=self.skip_or_send, args=(fname, dest_key)))
+                            procs[-1].deamon = True
+                            procs[-1].start()
+                            if len(procs) >= 20:
+                                list(map(lambda x: x.join(), procs))
+                                procs = []
                         else:
                             self.skip_or_send(fname, dest_key)
-                        count += 1
-                    if 'rv' in vars():
-                        rv.join()
-
+                    list(map(lambda x: x.join(), procs))
     def test(self):
         logger.info("Validating Templates")
         if self.sync_dirs:
