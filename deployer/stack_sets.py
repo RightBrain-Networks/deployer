@@ -1,13 +1,15 @@
 #!/usr/bin/python
 
 import tabulate
-import time
+import time, pytz
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, WaiterError
 from collections import defaultdict
 
 from .cloudformation import Stack
 from .logger import logger
+
+from datetime import datetime
 
 
 class StackSet(Stack):
@@ -25,10 +27,10 @@ class StackSet(Stack):
 
     @property
     def current_instances(self):
-        result = self.client.list_stack_instances(StackSetId=self.stack_name)
+        result = self.client.list_stack_instances(StackSetName=self.stack_name)
         current = result['Summaries']
         while 'NextToken' in result:
-            result = self.client.list_stack_instances(StackSetId=self.stack_name, NextToken=result['NextToken'])
+            result = self.client.list_stack_instances(StackSetName=self.stack_name, NextToken=result['NextToken'])
             current = current + result['Summaries']
         return current
 
@@ -76,7 +78,6 @@ class StackSet(Stack):
             exit(1)
 
     def create(self):
-
         if not self.accounts or not self.regions:
             return super(StackSet, self).create()
 
@@ -90,38 +91,43 @@ class StackSet(Stack):
             'StackSetName': self.stack_name,
             "Tags": self.construct_tags()
         }
+        if self.template_body:
+            logger.info("Using local template due to null template bucket")
 
+        # Add conditional arguements
         args.update({'AdministrationRoleARN': self.administration_role} if self.administration_role else {})
         args.update({'ExecutionRoleName': self.execution_role} if self.execution_role else {})
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
 
-        if self.template_body:
-            logger.info("Using local template due to null template bucket")
-
+        # Create stack set
         result = self.client.create_stack_set(**args)
         self.stack_set_id = result['StackSetId']
-        self.update()
+
+        self.stack_set_waiter(self.create_stack_instances(None, self.accounts, self.regions), "Creation")
+        
 
     def upsert(self):
-
         if not self.accounts or not self.regions:
             return super(StackSet, self).upsert()
-
+        # Update the stack if it already exists,otherwise, create it
         self.update() if self.stack_status == 'ACTIVE' else self.create()
 
     def delete_stack(self):
-
         if not self.accounts or not self.regions:
             return super(StackSet, self).delete_stack()
 
-        args = {
-            'StackSetName': self.stack_name
-        }
+        # Delete existing stack instances
+        if(len(self.current_accounts) > 0):
+            self.stack_set_waiter(self.delete_stack_instances(None, list(self.current_accounts), list(self.current_regions)), "Deletion")
 
+        # Delete stack set
+        args = {'StackSetName': self.stack_name}
         self.client.delete_stack_set(**args)
 
-    def stack_set_waiter(self, operation_id):
-        logger.info("Stack Set Update Started")
+        logger.info("Delete complete!")
+
+    def stack_set_waiter(self, operation_id, verb = "Update"):
+        logger.info("Stack Set " + verb + " Started")
 
         args = {
             "StackSetName": self.stack_name,
@@ -135,9 +141,10 @@ class StackSet(Stack):
             time.sleep(5)
             operation = self.client.describe_stack_set_operation(**args)
 
+        # Print result
         results = self.client.list_stack_set_operation_results(**args)
         headers = ['Account', 'Region', 'Status', 'Reason']
-        table = [[x['Account'], x['Region'], x['Status'], x['StatusReason']] for x in results['Summaries']]
+        table = [[x['Account'], x['Region'], x['Status'], x.get('StatusReason', '')] for x in results['Summaries']]
         if self.print_events:
             print(tabulate.tabulate(table, headers, tablefmt='simple'))
 
@@ -147,14 +154,12 @@ class StackSet(Stack):
             return super(StackSet, self).update()
 
         args = {
-            "Accounts": self.accounts,
             "Capabilities": [
                 'CAPABILITY_IAM',
                 'CAPABILITY_NAMED_IAM',
                 'CAPABILITY_AUTO_EXPAND'
             ],
             "Parameters": self.build_params(),
-            "Regions": self.regions,
             'StackSetName': self.stack_name,
             "Tags": self.construct_tags(),
         }
@@ -166,17 +171,21 @@ class StackSet(Stack):
         if self.template_body:
             logger.info("Using local template due to null template bucket")
 
+
+        # Generate API calls based upon what is currently deployed
+        api_calls = self.generate_instance_calls()
+
+        # Run update on existing stacks
         result = self.client.update_stack_set(**args)
         operation_id = result.get('OperationId')
         self.stack_set_waiter(operation_id)
 
-        for call in self.generate_instance_calls():
+        # Delete or create as needed
+        for call in api_calls:
             if call['type'] == "create":
-                self.create_stack_instances(operation_id, call['accounts'], call['regions'])
-            if call['type'] == "update":
-                self.update_stack_instances(operation_id, call['accounts'], call['regions'])
+                self.stack_set_waiter(self.create_stack_instances(None, call['accounts'], call['regions']))
             if call['type'] == "delete":
-                self.delete_stack_instances(operation_id, call['accounts'], call['regions'])
+                self.stack_set_waiter(self.delete_stack_instances(None, call['accounts'], call['regions']))
 
 
     def generate_instance_calls(self):
@@ -188,12 +197,15 @@ class StackSet(Stack):
             graph.append([])
             for region in range(0, len(self.regions)):
                 graph[account].append([])
-                if region not in self.current_regions or account not in self.current_accounts:
+                if self.regions[region] not in self.current_regions or self.accounts[account] not in self.current_accounts:
                     graph[account][region] = "create"
-                elif (region not in self.regions and region in self.current_regions) or (account not in self.accounts and account in self.current_accounts):
+                    logger.debug(self.accounts[account] + ", " + self.regions[region] + " marked for creation")
+                elif (self.regions[region] not in self.regions and self.regions[region] in self.current_regions) or (self.accounts[account] not in self.accounts and self.accounts[account] in self.current_accounts):
                     graph[account][region] = "delete"
+                    logger.debug(self.accounts[account] + ", " + self.regions[region] + " marked for deletion")
                 else:
                     graph[account][region] = "update"
+                    logger.debug(self.accounts[account] + ", " + self.regions[region] + " marked for update")
 
         for call_type in ["create", "update", "delete"]:
             type_calls = []
@@ -209,7 +221,8 @@ class StackSet(Stack):
                     if graph[account][region] == call_type:
                         api_call['regions'].append(self.regions[region])
                         graph[account][region] = "done"
-                type_calls.append(api_call)
+                if len(api_call['regions']) > 0:
+                    type_calls.append(api_call)
             
             # Get all region based calls
             for region in range(0, len(self.regions)):
@@ -222,7 +235,8 @@ class StackSet(Stack):
                     if graph[account][region] == call_type:
                         api_call['accounts'].append(self.accounts[account])
                         graph[account][region] = "done"
-                type_calls.append(api_call)
+                if len(api_call['accounts']) > 0:
+                    type_calls.append(api_call)
 
             # Merge account based calls
             for call in type_calls:
@@ -245,12 +259,10 @@ class StackSet(Stack):
 
     def create_stack_instances(self, operation_id, accounts, regions):
         logger.info("Creating " + str(len(accounts) * len(regions)) + " stack instances...")
-        self.client.create_stack_instances(StackSetName=self.stack_name, Accounts=accounts, Regions=regions, OperationId=operation_id)
-
-    def update_stack_instances(self, operation_id, accounts, regions):
-        logger.info("Updating " + str(len(accounts) * len(regions)) + " stack instances...")
-        self.client.update_stack_instances(StackSetName=self.stack_name, Accounts=accounts, Regions=regions, OperationId=operation_id)
+        result = self.client.create_stack_instances(StackSetName=self.stack_name, Accounts=accounts, Regions=regions)
+        return result['OperationId']
 
     def delete_stack_instances(self, operation_id, accounts, regions):
         logger.info("Deleting " + str(len(accounts) * len(regions)) + " stack instances...")
-        self.client.delete_stack_instances(StackSetName=self.stack_name, Accounts=accounts, Regions=regions, OperationId=operation_id, RetainStacks=False)
+        result = self.client.delete_stack_instances(StackSetName=self.stack_name, Accounts=accounts, Regions=regions, RetainStacks=False)
+        return result['OperationId']

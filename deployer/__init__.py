@@ -138,7 +138,7 @@ def main():
                 elif args.execute == 'delete':
                     env_stack.delete_stack()
                 elif args.execute == 'upsert':
-                    env_stack.update() if env_stack.check_stack_exists() else env_stack.create()
+                    env_stack.upsert()
                 elif args.execute == 'describe':
                     print(json.dumps(env_stack.describe(),
                                     sort_keys=True,
