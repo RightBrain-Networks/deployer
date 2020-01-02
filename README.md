@@ -177,6 +177,25 @@ When using this script to delete it simply looks up the stack variable you've pr
   * `./deployer -c prototype-us-east-1.yml -p profileName -s Dev -x create`
 4. Follow up by watching the CloudFormation console. 
 
+## Working with Stack Sets
+To run a stack as a stack set, add `administration_role` and `execution_role` as elements inside of the deployer config file. You will also need to add `accounts` and `regions` as properties of your stack.
+
+Example:
+```yaml
+global:
+    administration_role: StackSetAdminRole
+    execution_role: RemoteAccount-DeploymentRole
+...
+
+ExampleStackSet:
+    accounts:
+      - '000000000'
+      - '000000000'
+    regions:
+      - 'us-east-1'
+      - 'us-west-2'
+...
+```
 
 ## Code
 __init__.py is the main script. This contains the arguments and options for the scirpt and a main method. This file imports cloudformation.py and s3_sync.py.

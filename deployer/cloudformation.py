@@ -55,6 +55,9 @@ class AbstractCloudFormation(object):
         else:
             return None
 
+    def upsert(self):
+        self.update() if self.check_stack_exists() else self.create()
+
     def create(self):
         signal.signal(signal.SIGINT, self.cancel_create)
         if not self.transforms:

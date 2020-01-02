@@ -7,6 +7,7 @@ from deployer.cloudformation import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
+from deployer.stack_sets import StackSet
 from distutils.dir_util import copy_tree
 from collections import defaultdict
 from deployer.logger import update_colors
@@ -14,7 +15,7 @@ from deployer.logger import update_colors
 import ruamel.yaml
 import sys, traceback
 
-__version__ = 'develop'
+__version__ = '0.0.0'
 
 
 def main():
@@ -121,7 +122,7 @@ def main():
                     logger.info("Running " + str(args.execute) + " on stack: " + stack)
                 else:
                     logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
-                env_stack = Stack(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params, colors=colors)
+                env_stack = StackSet(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params, colors=colors)
                 if args.execute == 'create':
                     try:
                         env_stack.create()
@@ -137,7 +138,7 @@ def main():
                 elif args.execute == 'delete':
                     env_stack.delete_stack()
                 elif args.execute == 'upsert':
-                    env_stack.update() if env_stack.check_stack_exists() else env_stack.create()
+                    env_stack.upsert()
                 elif args.execute == 'describe':
                     print(json.dumps(env_stack.describe(),
                                     sort_keys=True,
