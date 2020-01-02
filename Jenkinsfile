@@ -85,7 +85,6 @@ pipeline {
         
         //Copy tar.gz file to s3 bucket
         sh "aws s3 cp dist/${env.SERVICE}-*.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${env.SEMVER_RESOLVED_VERSION}.tar.gz"
-        //}
       }
     }
     stage('GitHub Release')
@@ -100,19 +99,8 @@ pipeline {
         echo "New version deteced!"
         script
         {
-
-          //Needs to releaseToken from Secrets Manager
-          releaseToken = sh(returnStdout : true, script: "aws secretsmanager get-secret-value --secret-id deployer/gitHub/releaseKey --region us-east-1 --output text --query SecretString").trim()
-
-          releaseId = sh(returnStdout : true, script : """
-          curl -XPOST -H 'Authorization:token ${releaseToken}' --data '{"tag_name": "${env.SEMVER_RESOLVED_VERSION}", "target_commitish": "development", "name": "v${env.SEMVER_RESOLVED_VERSION}", "draft": false, "prerelease": false}' https://api.github.com/repos/RightBrain-Networks/deployer/releases |  jq -r ."id"
-          """).trim()
-
-          echo("Uploading artifacts...")
-          sh("""
-              chmod 777 dist/${env.SERVICE}-*.tar.gz
-              curl -XPOST -H "Authorization:token ${releaseToken}" -H "Content-Type:application/octet-stream" --data-binary @\$(echo dist/${env.SERVICE}-*.tar.gz) https://uploads.github.com/repos/RightBrain-Networks/deployer/releases/${releaseId}/assets?name=deployer.tar.gz
-        """)
+          createGitHubRelease('rbn-opsGitHubToken', 'RightBrain-Networks/deployer', "${env.SEMVER_RESOLVED_VERSION}",
+          "${env.SEMVER_RESOLVED_VERSION}", ["deployer.tar.gz" : "dist/deployer-${env.SEMVER_NEW_VERSION}.tar.gz"])
         }
       }
     }
