@@ -223,7 +223,17 @@ class AbstractCloudFormation(object):
         if self.template_body:
             logger.info("Using local template due to null template bucket")
         self.client.create_stack(**args)
-        self.create_waiter(start_time)
+        try:
+            self.create_waiter(start_time)
+        except Exception as e:
+            if isinstance(e, RuntimeError):
+                if self.reload_stack_status() in ["ROLLBACK_IN_PROGRESS", "ROLLBACK_COMPLETE"]:
+                    logger.info("Stack failed to create. Deleting empty stack.")
+                    self.delete_stack()
+                else:
+                    raise e
+            else:
+                raise e
         
 
     def create_waiter(self, start_time):
@@ -456,7 +466,7 @@ class Stack(AbstractCloudFormation):
         self.template_file = self.get_template_file()
         self.template_body = self.get_template_body()
         self.timeout = timeout or self.get_config_att('timeout')
-        self._timed_out = False
+        self.timed_out = False
         self.transforms = self.get_config_att('transforms')
         self.client = self.session.client('cloudformation')
         self.colors = colors           
