@@ -12,10 +12,7 @@ pipeline {
   stages {
     stage('Version') {
       steps {
-        withEcr
-        {
-          runAutoSemver()
-        }
+        runAutoSemver("rightbrainnetworks/auto-semver:latest")
       }
       post{
         // Update Git with status of version stage.
