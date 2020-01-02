@@ -139,6 +139,23 @@ These are mainly used for pulling data from the Network Stacks like SNS topics o
 ```
 In this case, VPC is a parameter to this stack, the code will pull output data from the Network Stack and look for the OutputKey of VPC. The Value of the OutputKey VPC in the Network Stack will be used for the parameter VPC of this stack. 
 
+## Dependencies
+
+Deployer uses a depdency graph to find the depedencies of the `lookup_parameters`. This makes it easy to run stacks with the `--all` flag.
+
+You can also use the `depends_on` value to manually override the dependency graph.
+
+Example:
+
+```yaml
+test:
+    stack_name: test
+    depends_on: [ other_stack ]
+
+other_stack:
+    stack_name: test-two
+```
+
 ## Tags
 Tags are key value pairs of tags to be applied to the Top level stack. This will tag every resouce within the stack with these tags as well as all resouces in child stacks. Use this for things like Environment, Release, Project, etc tags. 
 ```
