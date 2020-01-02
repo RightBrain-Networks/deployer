@@ -166,6 +166,10 @@ def find_deploy_path(stackConfig, checkStack, resolved = []):
                     edge = stack[1]['lookup_parameters'][param]
                     if edge['Stack'] not in edges:
                         edges.append(edge['Stack'])
+            if 'depends_on' in stack[1]:
+                for edge in stack[1]['depends_on']:
+                    if edge not in edges:
+                        edges.append(edge)
             graph[stack[0]] = edges
 
     #Find dependency order
