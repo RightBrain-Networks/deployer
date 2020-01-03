@@ -10,9 +10,10 @@ except NameError:
     pass
 
 class CloudtoolsBucket():
-    def __init__(self, session, override_bucket = None):
+    def __init__(self, session, override_bucket = None, project = None):
 
         self.override_bucket = override_bucket
+        self.project = project
 
         # Create boto3 objects
         self.session = session
@@ -37,16 +38,17 @@ class CloudtoolsBucket():
     def name(self):
         if self.override_bucket:
             return self.override_bucket
-        bucket = None
-        parameter_name = '/deployerBucket/' + self.session.region_name
-        try:
-            result = self.ssm.get_parameter(Name=parameter_name)
-            bucket = result['Parameter']['Value']
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'ParameterNotFound':
-                account = self.sts.get_caller_identity().get('Account')
-                return "cloudtools-" + str(account) + "-" + self.session.region_name
-        return bucket
+        parameter_name = '/global/' + self.session.region_name
+        for parameter_name in ['/' + self.session.region_name,'/global']:
+            try:
+                result = self.ssm.get_parameter(Name=parameter_name + "/buckets/cloudtools/name")
+                return result['Parameter']['Value']
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ParameterNotFound':
+                    account = self.sts.get_caller_identity().get('Account')
+                else:
+                    raise e
+        return "cloudtools-" + str(account) + "-" + self.session.region_name
 
 
     @property
