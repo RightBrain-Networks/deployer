@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError
 from multiprocessing import Process
 from deployer.decorators import retry
 from deployer.logger import logger
+from deployer.cloudtools_bucket import CloudtoolsBucket
 
 import sys, traceback
 
@@ -23,7 +24,6 @@ class s3_sync(object):
             self.region = self.get_config_att('region')
             self.base = self.get_config_att('sync_base', '.')
             self.sync_dirs = self.get_config_att('sync_dirs', [])
-            self.dest_bucket = self.get_config_att('sync_dest_bucket', required=True)
             self.repository = self.get_repository()
             self.commit = self.repository.head.object.hexsha if self.repository else 'null'
             self.release = self.get_config_att('release', self.commit).replace('/', '.')
@@ -32,6 +32,9 @@ class s3_sync(object):
             self.cfn = self.session.client('cloudformation')
             self.excludes = self.construct_excludes()
             self.valid = valid
+
+            self.cloudtools_bucket = CloudtoolsBucket(self.session, self.get_config_att('sync_dest_bucket', None))
+
 
             if not isinstance(self.sync_dirs, list):
                 logger.error("Attribute 'sync_dirs' must be a list.")
@@ -104,19 +107,19 @@ class s3_sync(object):
         if re.match(".*cloudformation.*\.(json|yml)$", fname):
             try:
                 etag = self.generate_etag(fname)
-                s3_obj = self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+                s3_obj = self.client.get_object(Bucket=self.cloudtools_bucket.name, IfMatch=etag, Key=dest_key)
             except:
                 filesize = os.stat(fname).st_size
                 validate_path = "deployer_validate/%s" % dest_key
                 if self.region != 'us-east-1':
-                    validate_url = "https://s3-%s.amazonaws.com/%s/%s" % (self.region, self.dest_bucket, validate_path)
+                    validate_url = "https://s3-%s.amazonaws.com/%s/%s" % (self.region, self.cloudtools_bucket.name, validate_path)
                 else:
-                    validate_url = "https://s3.amazonaws.com/%s/%s" % (self.dest_bucket, validate_path)
+                    validate_url = "https://s3.amazonaws.com/%s/%s" % (self.cloudtools_bucket.name, validate_path)
                 try: 
                     if filesize > 51200:
-                        self.client.upload_file(fname, self.dest_bucket, validate_path)
+                        self.client.upload_file(fname, self.cloudtools_bucket.name, validate_path)
                         self.cfn.validate_template(TemplateURL=validate_url)
-                        self.client.delete_object(Bucket=self.dest_bucket, Key=validate_path)
+                        self.client.delete_object(Bucket=self.cloudtools_bucket.name, Key=validate_path)
                     else:
                         with open(fname, 'r') as f:
                             resp = self.cfn.validate_template(TemplateBody=f.read())
@@ -126,7 +129,7 @@ class s3_sync(object):
     def validate_failed(self, fname, validate_url, message):
         try:
             logger.critical("Failed to Validate: %s\n%s" % (fname, message))
-            self.client.delete_object(Bucket=self.dest_bucket, Key=validate_path)
+            self.client.delete_object(Bucket=self.cloudtools_bucket.name, Key=validate_path)
             exit(1)
         except:
             exit(1)
@@ -145,7 +148,7 @@ class s3_sync(object):
         try:
             etag = self.generate_etag(fname)
             if etag:
-                self.client.get_object(Bucket=self.dest_bucket, IfMatch=etag, Key=dest_key)
+                self.client.get_object(Bucket=self.cloudtools_bucket.name, IfMatch=etag, Key=dest_key)
             else:
                 logger.error("%s has no etag!" % (fname))
             logger.debug("Skipped: %s" % (fname))
@@ -154,8 +157,8 @@ class s3_sync(object):
             logger.debug("Uploading: %s" % (fname))
 
         try:
-            self.client.upload_file(fname, self.dest_bucket, dest_key)
-            logger.info("Uploaded: %s to s3://%s/%s" % (fname, self.dest_bucket, dest_key))
+            self.client.upload_file(fname, self.cloudtools_bucket.name, dest_key)
+            logger.info("Uploaded: %s to s3://%s/%s" % (fname, self.cloudtools_bucket.name, dest_key))
         except (Exception) as e:
             logger.error(e)
             if self.debug:
