@@ -95,21 +95,19 @@ class AbstractCloudFormation(object):
     def cancel_update(self, signal, frame):
         logger.critical('Process Interupt')
         logger.critical('Cancelling Stack Update: %s' % self.stack_name)
-        self.client.cancel_update_stack(StackName=self.stack_name)
+        self.client.cancel_update_stack(RoleARN=self.role, StackName=self.stack_name)
         exit(1)
 
     @retry(ClientError,logger=logger)
     def get_outputs(self):
-        resp = self.client.describe_stacks(
-                   StackName=self.stack_name)
+        resp = self.client.describe_stacks(RoleARN=self.role, StackName=self.stack_name)
         self.outputs = resp['Stacks'][0]['Outputs']
         return self.outputs
 
     @retry(ClientError,tries=6,logger=logger)
     def reload_stack_status(self): 
         try:
-            resp = self.client.describe_stacks(
-                StackName=self.stack_name)
+            resp = self.client.describe_stacks(RoleARN=self.role, StackName=self.stack_name)
             self.stack_status = resp['Stacks'][0]['StackStatus']
         except Exception as e:
             self.stack_status = 'False'
@@ -118,6 +116,7 @@ class AbstractCloudFormation(object):
     def reload_change_set_status(self, change_set_name): 
         try:
             resp = self.client.describe_change_set(
+                RoleARN=self.role, 
                 ChangeSetName=change_set_name,
                 StackName=self.stack_name
             )
@@ -218,8 +217,10 @@ class AbstractCloudFormation(object):
                 'CAPABILITY_AUTO_EXPAND'
             ]
         }
+        args.update({"RoleARN": self.role}) if self.role else logger.debug("Not using deployment role!")
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
-        args.update({'TimeoutInMinutes': self.timeout} if self.timeout else {})
+
+        args.update({'TimeoutInMinutes': self.timeout}) if self.timeout else logger.debug("Not using timeout!")
         if self.template_body:
             logger.info("Using local template due to null template bucket")
         self.client.create_stack(**args)
@@ -242,7 +243,7 @@ class AbstractCloudFormation(object):
                     raise e
         else:
             try:
-                waiter.wait(StackName=self.stack_name)
+                waiter.wait(RoleARN=self.role, StackName=self.stack_name)
             except WaiterError as e:
                 status = self.reload_stack_status()
                 logger.info(status)
@@ -264,6 +265,7 @@ class AbstractCloudFormation(object):
                 'CAPABILITY_AUTO_EXPAND'
             ]
         }
+        args.update({"RoleARN": self.role}) if self.role else logger.debug("Not using deployment role!")
         args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
         if self.template_body:
             logger.info("Using local template due to null template bucket")
@@ -288,7 +290,7 @@ class AbstractCloudFormation(object):
             self.output_events(start_time, 'update')
         else:
             try:
-                waiter.wait(StackName=self.stack_name)
+                waiter.wait(RoleARN=self.role, StackName=self.stack_name)
             except WaiterError as e:
                 status = self.reload_stack_status()
                 logger.info(status)
@@ -307,7 +309,7 @@ class AbstractCloudFormation(object):
             status = self.reload_stack_status()
             table = []
             sleep(15)
-            events = self.client.describe_stack_events(StackName=self.stack_name)
+            events = self.client.describe_stack_events(RoleARN=self.role, StackName=self.stack_name)
             events = events['StackEvents']
             events.reverse()
             for event in events:
@@ -337,7 +339,9 @@ class AbstractCloudFormation(object):
             count += 1
 
     def delete_stack(self):
-        self.client.delete_stack(StackName=self.stack_name)
+        args = { "StackName" : self.stack_name }
+        args.update({"RoleARN": self.role}) if self.role else logger.debug("Not using deployment role!")
+        self.client.delete_stack(**args)
         logger.info(self.colors['error'] + "Sent delete request to stack" + self.colors['reset'])
         return True
 
@@ -347,11 +351,13 @@ class AbstractCloudFormation(object):
         while 'NextToken' in resp or latest == None:
             if 'NextToken' in resp:
                 resp = self.client.list_change_sets(
+                    RoleARN=self.role, 
                     StackName=self.stack_name,
                     NextToken=resp['NextToken']
                 )
             else:
                 resp = self.client.list_change_sets(
+                    RoleARN=self.role, 
                     StackName=self.stack_name
                 )
             for change in resp['Summaries']:
@@ -367,6 +373,7 @@ class AbstractCloudFormation(object):
         # create the change set
         if self.stack_status: 
             resp = self.client.create_change_set(
+                RoleARN=self.role, 
                 StackName=self.stack_name,
                 TemplateURL=self.template_url,
                 Parameters=self.build_params(),
@@ -394,12 +401,14 @@ class AbstractCloudFormation(object):
 
     def execute_change_set(self, change_set_name):
         resp = self.client.execute_change_set(
+            RoleARN=self.role, 
             ChangeSetName=change_set_name,
             StackName=self.stack_name
         )
     
     def print_change_set(self, change_set_name, change_set_description):    
         resp = self.client.describe_change_set(
+            RoleARN=self.role, 
             ChangeSetName=change_set_name,
             StackName=self.stack_name
         )
@@ -421,14 +430,14 @@ class AbstractCloudFormation(object):
 
     def check_stack_exists(self):
         try:
-            self.client.describe_stacks(StackName=self.stack_name)
+            self.client.describe_stacks(RoleARN=self.role, StackName=self.stack_name)
             return True
         except ClientError:
             return False
 
     def describe(self):
         try:
-            return self.client.describe_stacks(StackName=self.stack_name)['Stacks'][0]
+            return self.client.describe_stacks(RoleARN=self.role, StackName=self.stack_name)['Stacks'][0]
         except ClientError:
             return {}
             
@@ -446,6 +455,7 @@ class Stack(AbstractCloudFormation):
         self.stack_name = self.get_config_att('stack_name', required=True)
         self.base = self.get_config_att('sync_base', '.')
         self.session = Session(profile_name=profile,region_name=self.get_config_att('region'))
+        self.role = self.get_config_att('deployment_role')
         self.repository = self.get_repository()
         self.region = self.session.region_name
         self.commit = self.repository.head.object.hexsha if self.repository else 'null'
