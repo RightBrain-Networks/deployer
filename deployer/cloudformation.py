@@ -309,7 +309,7 @@ class AbstractCloudFormation(object):
             status = self.reload_stack_status()
             table = []
             sleep(15)
-            events = self.client.describe_stack_events(RoleARN=self.role, StackName=self.stack_name)
+            events = self.client.describe_stack_events(StackName=self.stack_name)
             events = events['StackEvents']
             events.reverse()
             for event in events:
