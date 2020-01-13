@@ -243,7 +243,7 @@ class AbstractCloudFormation(object):
                     raise e
         else:
             try:
-                waiter.wait(RoleARN=self.role, StackName=self.stack_name)
+                waiter.wait(StackName=self.stack_name)
             except WaiterError as e:
                 status = self.reload_stack_status()
                 logger.info(status)
