@@ -107,7 +107,7 @@ class AbstractCloudFormation(object):
     @retry(ClientError,tries=6,logger=logger)
     def reload_stack_status(self): 
         try:
-            resp = self.client.describe_stacks(RoleARN=self.role, StackName=self.stack_name)
+            resp = self.client.describe_stacks(StackName=self.stack_name)
             self.stack_status = resp['Stacks'][0]['StackStatus']
         except Exception as e:
             self.stack_status = 'False'
@@ -309,7 +309,7 @@ class AbstractCloudFormation(object):
             status = self.reload_stack_status()
             table = []
             sleep(15)
-            events = self.client.describe_stack_events(RoleARN=self.role, StackName=self.stack_name)
+            events = self.client.describe_stack_events(StackName=self.stack_name)
             events = events['StackEvents']
             events.reverse()
             for event in events:
