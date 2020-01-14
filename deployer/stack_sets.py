@@ -23,6 +23,9 @@ class StackSet(Stack):
 
         self.validate_account()
 
+        if not self.accounts or not self.regions:
+            return super(StackSet, self).wait_for_complete()
+
     @property
     def current_instances(self):
         result = self.client.list_stack_instances(StackSetName=self.stack_name)
@@ -68,6 +71,22 @@ class StackSet(Stack):
             return current if current in ['ACTIVE'] else None
         except ClientError:
             return None
+
+    def wait_for_complete(self):
+        NextToken = None
+        response = self.client.list_stack_set_operations(StackSetName=self.stack_name)
+        for operation in response['Summaries']:
+            if operation['Status'] in ['RUNNING', 'STOPPING']:
+                self.stack_set_waiter(operation['OperationId'], "Waiting...")
+
+        while 'NextToken' in response:
+            response = self.client.list_stack_set_operations(StackSetName=self.stack_name, NextToken=NextToken)
+            NextToken = response['NextToken ']
+            for operation in response['Summaries']:
+                if operation['Status'] in ['RUNNING', 'STOPPING']:
+                    self.stack_set_waiter(operation['OperationId'], "Waiting...")
+                    
+        
 
     def validate_account(self):
         current = self.current_account

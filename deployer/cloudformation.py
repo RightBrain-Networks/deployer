@@ -225,6 +225,8 @@ class AbstractCloudFormation(object):
         self.client.create_stack(**args)
         self.create_waiter(start_time)
         
+    def wait_for_complete(self):
+        self.create_waiter(datetime.now(pytz.utc))
 
     def create_waiter(self, start_time):
         waiter = self.client.get_waiter('stack_create_complete')
