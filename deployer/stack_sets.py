@@ -81,8 +81,8 @@ class StackSet(Stack):
 
         while 'NextToken' in response:
             response = self.client.list_stack_set_operations(StackSetName=self.stack_name, NextToken=NextToken)
-            NextToken = response['NextToken ']
-            for operation in response['Summaries']:
+            NextToken = response['NextToken']
+            for operation in response['Summaries']: 
                 if operation['Status'] in ['RUNNING', 'STOPPING']:
                     self.stack_set_waiter(operation['OperationId'], "Waiting...")
                     
