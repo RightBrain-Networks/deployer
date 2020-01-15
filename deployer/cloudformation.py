@@ -56,7 +56,7 @@ class AbstractCloudFormation(object):
             return None
 
     def upsert_stack(self):
-        self.update() if self.check_stack_exists() else self.create_stack()
+        self.update_stack() if self.check_stack_exists() else self.create_stack()
 
     def create_stack(self):
         signal.signal(signal.SIGINT, self.cancel_create)
@@ -87,7 +87,7 @@ class AbstractCloudFormation(object):
             self.execute_change_set(change_set_name)
             self.create_waiter(start_time)
 
-    def update(self):
+    def update_stack(self):
         signal.signal(signal.SIGINT, self.cancel_update)
         if not self.transforms:
             # update the stack 

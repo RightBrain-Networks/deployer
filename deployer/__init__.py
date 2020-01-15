@@ -133,7 +133,7 @@ def main():
                     elif args.execute == 'change':
                         env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
                     else:
-                        operation = getattr(env_stack, args.execute + "_stack", None)
+                        operation = getattr(env_stack, (args.execute + "_stack"), None)
                         if callable(operation):
                             operation()
                         else:
