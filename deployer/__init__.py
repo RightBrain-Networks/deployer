@@ -102,6 +102,7 @@ def main():
         with open(args.config) as f:
             config = ruamel.yaml.safe_load(f)
 
+        # Load stacks into queue
         stackQueue = []
         if not args.all:
             stackQueue = [args.stack]
@@ -110,45 +111,52 @@ def main():
                 if stack[0] != "global":
                     stackQueue = find_deploy_path(config, stack[0], stackQueue)
 
-        if args.timeout and args.execute not in ['create', 'upsert']:
-            logger.warning("Timeout specified but action is not 'create'. Timeout will be ignored.")
-
         # Create or update all Environments
         for stack in stackQueue:
             if stack != 'global' and (args.all or stack == args.stack):
-                if args.sync:
-                    s3_sync(args.profile, args.config, stack, args.assume_valid)
-                if args.no_color:
-                    logger.info("Running " + str(args.execute) + " on stack: " + stack)
-                else:
-                    logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
+
+                logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
+
+                
                 env_stack = StackSet(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params, colors=colors)
-                if args.execute == 'create':
-                    try:
-                        env_stack.create()
-                    except ClientError as e:
+                try:
+                    # Sync files to S3
+                    if args.sync or args.execute == 'sync':
+                        s3_sync(args.profile, args.config, args.stack, args.assume_valid, args.debug
+
+
+                    if args.execute == "describe":
+                        print(json.dumps(env_stack.describe(),
+                                        sort_keys=True,
+                                        indent=4,
+                                        separators=(',', ': '),
+                                        default=lambda x: x.isoformat()))
+                    elif args.execute == 'change':
+                        env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
+                    else:
+                        getattr(env_stack, args.execute)()
+                    # if args.execute == 'create':
+                    #     env_stack.create()    
+                    # elif args.execute == 'update':
+                    #     env_stack.update()
+                    # elif args.execute == 'delete':
+                    #     env_stack.delete_stack()
+                    # elif args.execute == 'upsert':
+                    #     env_stack.upsert()
+                    # elif args.execute == 'describe':
+                    #     print(json.dumps(env_stack.describe(),
+                    #                     sort_keys=True,
+                    #                     indent=4,
+                    #                     separators=(',', ': '),
+                    #                     default=lambda x: x.isoformat()))
+
+                except ClientError as e:
                         if not args.all:
                             raise e
                         elif e.response['Error']['Code'] == 'AlreadyExistsException':
                             logger.info("Stack, " + stack + ", already exists.")
                         else:
                             raise e
-                elif args.execute == 'update':
-                    env_stack.update()
-                elif args.execute == 'delete':
-                    env_stack.delete_stack()
-                elif args.execute == 'upsert':
-                    env_stack.upsert()
-                elif args.execute == 'describe':
-                    print(json.dumps(env_stack.describe(),
-                                    sort_keys=True,
-                                    indent=4,
-                                    separators=(',', ': '),
-                                    default=lambda x: x.isoformat()))
-                elif args.execute == 'change':
-                    env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
-                elif args.sync or args.execute == 'sync':
-                    s3_sync(args.profile, args.config, args.stack, args.assume_valid, args.debug)
     except (Exception) as e:
         logger.error(e)
         if args.debug:
