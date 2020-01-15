@@ -122,7 +122,7 @@ def main():
                 try:
                     # Sync files to S3
                     if args.sync or args.execute == 'sync':
-                        s3_sync(args.profile, args.config, args.stack, args.assume_valid, args.debug
+                        s3_sync(args.profile, args.config, args.stack, args.assume_valid, args.debug)
 
 
                     if args.execute == "describe":
