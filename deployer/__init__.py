@@ -133,7 +133,11 @@ def main():
                     elif args.execute == 'change':
                         env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
                     else:
-                        getattr(env_stack, args.execute + "_stack")()
+                        operation = getattr(env_stack, args.execute + "_stack", None)
+                        if callable(operation):
+                            operation()
+                        else:
+                            logger.warning(args.execute + " is not a valid method!")
                     # if args.execute == 'create':
                     #     env_stack.create()    
                     # elif args.execute == 'update':
