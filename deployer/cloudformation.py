@@ -36,7 +36,7 @@ class AbstractCloudFormation(object):
         pass
 
     @abstractmethod
-    def delete_stack(self):
+    def delete(self):
         pass
 
     def get_repository(self):
@@ -89,7 +89,7 @@ class AbstractCloudFormation(object):
     def cancel_create(self, signal, frame):
         logger.critical('Process Interupt')
         logger.critical('Deleteing Stack: %s' % self.stack_name)
-        self.delete_stack()
+        self.delete()
         exit(1)
 
     def cancel_update(self, signal, frame):
@@ -336,8 +336,8 @@ class AbstractCloudFormation(object):
                     raise RuntimeError("Update stack Failed")
             count += 1
 
-    def delete_stack(self):
-        self.client.delete_stack(StackName=self.stack_name)
+    def delete(self):
+        self.client.delete(StackName=self.stack_name)
         logger.info(self.colors['error'] + "Sent delete request to stack" + self.colors['reset'])
         return True
 
