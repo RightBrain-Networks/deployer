@@ -36,7 +36,7 @@ class AbstractCloudFormation(object):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete_stack(self):
         pass
 
     def get_repository(self):
@@ -55,13 +55,31 @@ class AbstractCloudFormation(object):
         else:
             return None
 
-    def upsert(self):
-        self.update() if self.check_stack_exists() else self.create()
+    def upsert_stack(self):
+        self.update() if self.check_stack_exists() else self.create_stack()
 
-    def create(self):
+    def create_stack(self):
         signal.signal(signal.SIGINT, self.cancel_create)
         if not self.transforms:
-            self.create_stack()
+            # create the stack 
+            start_time = datetime.now(pytz.utc)
+            args = {
+                "StackName": self.stack_name,
+                "Parameters": self.build_params(),
+                "DisableRollback": self.disable_rollback,
+                "Tags": self.construct_tags(),
+                "Capabilities": [
+                    'CAPABILITY_IAM',
+                    'CAPABILITY_NAMED_IAM',
+                    'CAPABILITY_AUTO_EXPAND'
+                ]
+            }
+            args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
+            args.update({'TimeoutInMinutes': self.timeout} if self.timeout else {})
+            if self.template_body:
+                logger.info("Using local template due to null template bucket")
+            self.client.create_stack(**args)
+            self.create_waiter(start_time)
         else:
             start_time = datetime.now(pytz.utc)
             change_set_name = "{0}-1".format(self.get_config_att('change_prefix'))
@@ -72,7 +90,33 @@ class AbstractCloudFormation(object):
     def update(self):
         signal.signal(signal.SIGINT, self.cancel_update)
         if not self.transforms:
-            self.update_stack()
+            # update the stack 
+            waiter = self.client.get_waiter('stack_update_complete')
+            start_time = datetime.now(pytz.utc)
+            args = {
+                "StackName": self.stack_name,
+                "Parameters": self.build_params(),
+                "Tags": self.construct_tags(),
+                "Capabilities": [
+                    'CAPABILITY_IAM',
+                    'CAPABILITY_NAMED_IAM',
+                    'CAPABILITY_AUTO_EXPAND'
+                ]
+            }
+            args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
+            if self.template_body:
+                logger.info("Using local template due to null template bucket")
+            if self.stack_status:
+                try:
+                    self.client.update_stack(**args)
+                    self.update_waiter(start_time)
+                except ClientError as e:
+                    if 'No updates are to be performed' in e.response['Error']['Message']:
+                        logger.warning('No updates are to be performed')
+                    else:
+                        raise e
+            else:
+                raise RuntimeError("Stack does not exist")
         else:
             latest_change = self.get_latest_change_set_name()
             if latest_change:
@@ -89,7 +133,7 @@ class AbstractCloudFormation(object):
     def cancel_create(self, signal, frame):
         logger.critical('Process Interupt')
         logger.critical('Deleteing Stack: %s' % self.stack_name)
-        self.delete()
+        self.delete_stack()
         exit(1)
 
     def cancel_update(self, signal, frame):
@@ -203,27 +247,6 @@ class AbstractCloudFormation(object):
         tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
         tags.append({'Key': 'deployer:config', 'Value': self.config_file.replace('\\', '/')})
         return tags
-
-    def create_stack(self):
-        # create the stack 
-        start_time = datetime.now(pytz.utc)
-        args = {
-            "StackName": self.stack_name,
-            "Parameters": self.build_params(),
-            "DisableRollback": self.disable_rollback,
-            "Tags": self.construct_tags(),
-            "Capabilities": [
-                'CAPABILITY_IAM',
-                'CAPABILITY_NAMED_IAM',
-                'CAPABILITY_AUTO_EXPAND'
-            ]
-        }
-        args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
-        args.update({'TimeoutInMinutes': self.timeout} if self.timeout else {})
-        if self.template_body:
-            logger.info("Using local template due to null template bucket")
-        self.client.create_stack(**args)
-        self.create_waiter(start_time)
         
 
     def create_waiter(self, start_time):
@@ -248,36 +271,6 @@ class AbstractCloudFormation(object):
                 logger.info(status)
                 self.output_events(start_time, 'create')
         logger.info(self.reload_stack_status())
-           
-    
-    def update_stack(self):
-        # update the stack 
-        waiter = self.client.get_waiter('stack_update_complete')
-        start_time = datetime.now(pytz.utc)
-        args = {
-            "StackName": self.stack_name,
-            "Parameters": self.build_params(),
-            "Tags": self.construct_tags(),
-            "Capabilities": [
-                'CAPABILITY_IAM',
-                'CAPABILITY_NAMED_IAM',
-                'CAPABILITY_AUTO_EXPAND'
-            ]
-        }
-        args.update({'TemplateBody': self.template_body} if self.template_body else {"TemplateURL": self.template_url})
-        if self.template_body:
-            logger.info("Using local template due to null template bucket")
-        if self.stack_status:
-            try:
-                self.client.update_stack(**args)
-                self.update_waiter(start_time)
-            except ClientError as e:
-                if 'No updates are to be performed' in e.response['Error']['Message']:
-                    logger.warning('No updates are to be performed')
-                else:
-                    raise e
-        else:
-            raise RuntimeError("Stack does not exist")
 
     def update_waiter(self, start_time):
         waiter = self.client.get_waiter('stack_update_complete')
@@ -336,8 +329,8 @@ class AbstractCloudFormation(object):
                     raise RuntimeError("Update stack Failed")
             count += 1
 
-    def delete(self):
-        self.client.delete(StackName=self.stack_name)
+    def delete_stack(self):
+        self.client.delete_stack(StackName=self.stack_name)
         logger.info(self.colors['error'] + "Sent delete request to stack" + self.colors['reset'])
         return True
 

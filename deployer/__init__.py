@@ -117,7 +117,6 @@ def main():
 
                 logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
 
-                
                 env_stack = StackSet(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params, colors=colors)
                 try:
                     # Sync files to S3
@@ -134,7 +133,7 @@ def main():
                     elif args.execute == 'change':
                         env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
                     else:
-                        getattr(env_stack, args.execute)()
+                        getattr(env_stack, args.execute + "_stack")()
                     # if args.execute == 'create':
                     #     env_stack.create()    
                     # elif args.execute == 'update':
