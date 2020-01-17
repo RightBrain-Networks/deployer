@@ -34,7 +34,6 @@ class s3_sync(object):
 
             # Get excludes from method
             self.excludes = self.construct_excludes()
-            
 
             if not isinstance(self.sync_dirs, list):
                 logger.error("Attribute 'sync_dirs' must be a list.")
