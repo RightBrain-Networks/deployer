@@ -1,22 +1,21 @@
 import fnmatch, git, hashlib, os, re, yaml
 from boto3.session import Session
 from botocore.exceptions import ClientError
-from multiprocessing import Process
+
 from deployer.decorators import retry
 from deployer.logger import logger
-from deployer.cloudtools_bucket import CloudtoolsBucket
 
 import sys, traceback
 
 class s3_sync(object):
-    def __init__(self, session, config, environment, valid=False, debug=False):
+    def __init__(self, session, config, bucket, valid=False, debug=False):
         try:
             # Pass parameters
             self.session = session
             self.debug = debug
-            self.environment = environment
             self.config = config
             self.valid = valid
+            self.cloudtools_bucket = bucket
 
             # Pull values from config
             self.region = self.config.get_config_att('region')
@@ -36,9 +35,6 @@ class s3_sync(object):
             # Get excludes from method
             self.excludes = self.construct_excludes()
 
-            self.cloudtools_bucket = CloudtoolsBucket(self.session, self.get_config_att('sync_dest_bucket', None))
-
-
             if not isinstance(self.sync_dirs, list):
                 logger.error("Attribute 'sync_dirs' must be a list.")
                 exit(4)
@@ -49,20 +45,8 @@ class s3_sync(object):
         except (Exception) as e:
             logger.error(e)
             if self.debug:
-                ex_type, ex, tb = sys.exc_info()
+                tb = sys.exc_info()[2]
                 traceback.print_tb(tb)
-
-    def get_sync_dest_bucket(self):
-        bucket = self.config.get_config_att('sync_dest_bucket')
-        if not bucket:
-            ssm = self.session.client('ssm')
-            try:
-                name = '/global/buckets/cloudtools/name'
-                return ssm.get_parameter(Name=name).get('Parameter', {}).get('Value', None)
-            except ClientError:
-                return None
-        else:
-            return bucket
 
     def get_repository(self):
         try:
@@ -75,7 +59,6 @@ class s3_sync(object):
         if excludes:
             excludes = ["*%s*" % exclude for exclude in excludes]
         return excludes
-
 
     def generate_etag(self,fname):
         md5s = []
@@ -97,7 +80,6 @@ class s3_sync(object):
         if re.match(".*cloudformation.*\.(json|yml)$", fname):
             try:
                 etag = self.generate_etag(fname)
-                s3_obj = self.client.get_object(Bucket=self.cloudtools_bucket.name, IfMatch=etag, Key=dest_key)
             except:
                 filesize = os.stat(fname).st_size
                 validate_path = "deployer_validate/%s" % dest_key
@@ -112,9 +94,9 @@ class s3_sync(object):
                         self.client.delete_object(Bucket=self.cloudtools_bucket.name, Key=validate_path)
                     else:
                         with open(fname, 'r') as f:
-                            resp = self.cfn.validate_template(TemplateBody=f.read())
+                            self.cfn.validate_template(TemplateBody=f.read())
                 except Exception as e:
-                    self.validate_failed(fname, validate_url, e.message)
+                    self.validate_failed(fname, validate_url, str(e))
 
     def validate_failed(self, fname, validate_url, message):
         try:
@@ -152,7 +134,7 @@ class s3_sync(object):
         except (Exception) as e:
             logger.error(e)
             if self.debug:
-                ex_type, ex, tb = sys.exc_info()
+                tb = sys.exc_info()[2]
                 traceback.print_tb(tb)
                 
     def upload(self):
@@ -169,12 +151,7 @@ class s3_sync(object):
                     for fname in fileList:
                         dest_key = self.generate_dest_key(fname, thisdir)
                         if os.name != 'nt':
-                            procs.append(Process(target=self.skip_or_send, args=(fname, dest_key)))
-                            procs[-1].deamon = True
-                            procs[-1].start()
-                            if len(procs) >= 20:
-                                list(map(lambda x: x.join(), procs))
-                                procs = []
+                            self.skip_or_send(fname, dest_key)
                         else:
                             self.skip_or_send(fname, dest_key)
                     list(map(lambda x: x.join(), procs))
@@ -194,11 +171,7 @@ class s3_sync(object):
                     for fname in fileList:
                         dest_key = self.generate_dest_key(fname, thisdir)
                         if os.name != 'nt':
-                            processes.append(Process(target=self.validate, args=(fname, dest_key)))
-                            processes[count].deamon = True
-                            processes[count].start()
-                            if count % 5 == 0:
-                                processes[count].join()
+                            self.validate(fname, dest_key)
                         else:
                             self.validate(fname,dest_key)
                         count += 1

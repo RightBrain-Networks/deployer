@@ -11,6 +11,9 @@ from deployer.stack_sets import StackSet
 from distutils.dir_util import copy_tree
 from collections import defaultdict
 from deployer.logger import update_colors
+from deployer.configuration import Config
+from deployer.cloudtools_bucket import CloudtoolsBucket
+from boto3.session import Session
 
 import ruamel.yaml
 import sys, traceback
@@ -19,6 +22,7 @@ __version__ = '0.0.0'
 
 
 def main():
+    # Build arguement parser
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
     parser.add_argument("-c", "--config", help="Path to config file.")
     parser.add_argument("-s", "--stack", help="Stack Name.")
@@ -39,10 +43,10 @@ def main():
     parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
     parser.add_argument("--disable-color", help='Disables color output', action='store_true', dest='no_color')
 
-
     args = parser.parse_args()
 
 
+    # Load colors into logger
     colors = defaultdict(lambda: '')
     if not args.no_color:
         update_colors(colors)
@@ -52,16 +56,19 @@ def main():
         logging.addLevelName( logging.WARNING, colors['warning'] + "%s" % logging.getLevelName(logging.WARNING) + colors['reset'])
         logging.addLevelName( logging.ERROR, colors['error'] + "%s" % logging.getLevelName(logging.ERROR) + colors['reset'])
 
+    # Output version `-v`
     if args.version:
         print(__version__)
         exit(0)
 
+    # Build skeleton environment at target directory
     if args.init is not None:
         script_dir = os.path.dirname(__file__)
         skel_dir = os.path.join(script_dir, 'skel')
         copy_tree(skel_dir, args.init)
         exit(0)
 
+    # Validate arguements and parameters
     options_broken = False
     params = {}
     if not args.config:
@@ -82,20 +89,19 @@ def main():
                 print(colors['warning'] + "Invalid format for parameter '{}'".format(param) + colors['reset'])
                 options_broken = True
 
+    # Print help output
     if options_broken:
         parser.print_help()
         exit(1)
 
     if args.debug:
         console_logger.setLevel(logging.DEBUG)
-
     if args.execute == 'describe':
         console_logger.setLevel(logging.ERROR)
 
+    # Build lambdas on `-z`
     if args.zip_lambdas:
         LambdaPrep(args.config, args.stack).zip_lambdas()
-
-
 
     try:
         # Read Environment Config
@@ -117,13 +123,39 @@ def main():
 
                 logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
 
-                env_stack = StackSet(args.profile, args.config, stack, args.rollback, args.events, args.timeout, params, colors=colors)
+                # Create deployer config object
+                config_object = Config(args.config, stack)
+
+                # AWS Session object
+                session = Session(profile_name=args.profile, region_name=config_object.get_config_att('region'))
+
+                # Pass arguements as dictionary
+                arguements = {
+                    'disable_rollback' : args.rollback,
+                    'print_events' : args.events,
+                    'timeout' : args.timeout,
+                    'colors' : colors,
+                    'params' : params
+                }
+                
+                # S3 bucket to sync to
+                bucket = CloudtoolsBucket(session, config_object.get_config_att('sync_dest_bucket', None))
+
+                # Check whether stack is a stack set or not and assign corresponding object
+                if(len(config_object.get_config_att('regions', [])) > 0 or len(config_object.get_config_att('accounts', [])) > 0):
+                    env_stack = StackSet(session, stack, config_object, bucket, arguements)
+                else:
+                    if args.timeout and args.execute not in ['create', 'upsert']:
+                        logger.warning("Timeout specified but action is not 'create'. Timeout will be ignored.")
+                    env_stack = Stack(session, stack, config_object, bucket, arguements)
+
                 try:
+
                     # Sync files to S3
                     if args.sync or args.execute == 'sync':
-                        s3_sync(args.profile, args.config, args.stack, args.assume_valid, args.debug)
+                        s3_sync(session, config_object, bucket, args.assume_valid, args.debug)
 
-
+                    # Check which action to execute
                     if args.execute == "describe":
                         print(json.dumps(env_stack.describe(),
                                         sort_keys=True,
@@ -133,6 +165,7 @@ def main():
                     elif args.execute == 'change':
                         env_stack.get_change_set(args.change_set_name, args.change_set_description, 'UPDATE')
                     else:
+                        # Check stack object for supported action
                         operation = getattr(env_stack, (args.execute + "_stack"), None)
                         if callable(operation):
                             operation()
@@ -149,7 +182,7 @@ def main():
     except (Exception) as e:
         logger.error(e)
         if args.debug:
-            ex_type, ex, tb = sys.exc_info()
+            tb = sys.exc_info()[2]
             traceback.print_tb(tb)
 
 def find_deploy_path(stackConfig, checkStack, resolved = []):

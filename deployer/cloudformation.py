@@ -24,11 +24,6 @@ class AbstractCloudFormation(object):
         pass
 
     @abstractmethod
-    def build_params(self):
-        # Method to build parameters file
-        pass
-
-    @abstractmethod
     def create_stack(self):
         pass
 
@@ -42,10 +37,6 @@ class AbstractCloudFormation(object):
 
     @abstractmethod
     def delete_stack(self):
-        pass
-
-    @abstractmethod
-    def wait_for_state(self, state):
         pass
 
     @abstractmethod
@@ -67,7 +58,6 @@ class AbstractCloudFormation(object):
         except git.exc.InvalidGitRepositoryError:
             return None
 
-    # Pass a GIT repository object
     def get_repository_origin(self, repository):
         try:
             origin = repository.remotes.origin.url
@@ -86,3 +76,11 @@ class AbstractCloudFormation(object):
                 return None
         else:
             return None
+
+    def validate_account(self, session, config):
+        # Check if account in config matches the authorized account
+        current = session.client('sts').get_caller_identity().get('Account', None)
+        configured = config.get_config_att('account', None)
+        if configured is not None and current != configured:
+            logger.error("Account validation failed. Expected '{}' but received '{}'".format(configured, current))
+            exit(1)

@@ -1,6 +1,7 @@
 from deployer.cloudformation import AbstractCloudFormation
 from deployer.decorators import retry
 from deployer.logger import logger
+from deployer.cloudtools_bucket import CloudtoolsBucket
 
 import signal, pytz
 
@@ -12,17 +13,18 @@ from datetime import datetime
 from parse import parse
 
 class Stack(AbstractCloudFormation):
-    def __init___(self, session, stack, config, args = {}):
+    def __init__(self, session, stack, config, bucket, args = {}):
 
         # Save important parameters
         self.session = session
         self.stack = stack
         self.config = config
+        self.bucket = bucket
 
         # Load values from args
         self.disable_rollback = args.get('disable_rollback', False)
         self.print_events = args.get('print_events', False)
-        self.timeout = args.get('timeout', None)
+        self.timed_out = args.get('timeout', None)
         self.colors = args.get('colors', defaultdict(lambda: ''))
         self.params = args.get('params', {})
 
@@ -47,14 +49,14 @@ class Stack(AbstractCloudFormation):
         # Load values from methods
         self.origin = self.get_repository_origin(self.repository) if self.repository else 'null'
         self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
-        self.template_url = None # self.construct_template_url()
-        self.template_file = None # self.get_template_file()
-        self.template_body = None # self.get_template_body()
+        self.template_url = self.bucket.construct_template_url(self.config, self.stack, self.release, self.template) # self.construct_template_url()
+        self.template_file = self.bucket.get_template_file(self.config, self.stack)
+        self.template_body = self.bucket.get_template_body(self.config, self.template)
 
         # Set state values
         self._timed_out = False
 
-
+        self.validate_account(self.session, self.config)
         self.reload_stack_status()
 
 
@@ -198,7 +200,7 @@ class Stack(AbstractCloudFormation):
             resp = self.client.create_change_set(
                 StackName=self.stack_name,
                 TemplateURL=self.template_url,
-                Parameters=self.build_params(),
+                Parameters=self.config.build_params(self.session, self.stack, self.release, self.params, self.template_file),
                 Capabilities=[
                     'CAPABILITY_IAM',
                     'CAPABILITY_NAMED_IAM',
@@ -271,7 +273,7 @@ class Stack(AbstractCloudFormation):
             start_time = datetime.now(pytz.utc)
             args = {
                 "StackName": self.stack_name,
-                "Parameters": self.build_params(),
+                "Parameters": self.config.build_params(self.session, self.stack, self.release, self.params, self.template_file),
                 "DisableRollback": self.disable_rollback,
                 "Tags": self.construct_tags(),
                 "Capabilities": [
@@ -299,7 +301,7 @@ class Stack(AbstractCloudFormation):
             start_time = datetime.now(pytz.utc)
             args = {
                 "StackName": self.stack_name,
-                "Parameters": self.build_params(),
+                "Parameters": self.config.build_params(self.session, self.stack, self.release, self.params, self.template_file),
                 "Tags": self.construct_tags(),
                 "Capabilities": [
                     'CAPABILITY_IAM',

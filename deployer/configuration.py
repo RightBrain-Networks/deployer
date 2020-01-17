@@ -4,13 +4,12 @@ from deployer.stack import Stack
 import ruamel.yaml, json, re
 
 class Config(object):
-    def __init__(self, session, file_name, master_stack):
+    def __init__(self, file_name, master_stack):
         self.file_name = file_name
-        self.session = session
         self.config = self.get_config()
         self.stack = master_stack
 
-    def build_params(self, stack_name, release, params):
+    def build_params(self, session, stack_name, release, params, temp_file):
         # create parameters from the config.yml file
         self.parameter_file = "%s-params.json" % stack_name
         expanded_params = []
@@ -35,7 +34,7 @@ class Config(object):
                         expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_xform })
             if 'lookup_parameters' in self.config.get(env, {}):
                 for param_key, lookup_struct in self.config[env]['lookup_parameters'].items():
-                    stack = Stack(self.session, lookup_struct['Stack'], self)
+                    stack = Stack(session, lookup_struct['Stack'], self)
                     stack.get_outputs()
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:
@@ -52,10 +51,10 @@ class Config(object):
         # the item in question from return_params
         logger.debug("expanded_params: {0}".format(expanded_params))
         return_params = list(expanded_params)
-        with open(self.file_name, 'r') as template_file:
-            if re.match(".*\.json",self.file_name):
+        with open(temp_file, 'r') as template_file:
+            if re.match(".*\.json",temp_file):
                 parsed_template_file = json.load(template_file)
-            elif re.match(".*\.ya?ml",self.file_name):
+            elif re.match(".*\.ya?ml",temp_file):
                 parsed_template_file = ruamel.yaml.safe_load(template_file)
             else:
                 logger.info("Filename does not end in json/yml/yaml")
