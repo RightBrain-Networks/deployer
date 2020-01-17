@@ -6,11 +6,26 @@ import time
 from botocore.exceptions import ClientError
 from collections import defaultdict
 
-from .cloudformation import Stack
-from .logger import logger
+from deployer.cloudformation import AbstractCloudFormation
+from deployer.logger import logger
 
 
-class StackSet(Stack):
+class StackSet(AbstractCloudFormation):
+    def __init___(self, session, stack, config, args = {}):
+
+        # Save important parameters
+        self.session = session
+        self.stack = stack
+        self.config = config
+
+        self.account = self.config.get_config_att('account', None)
+        self.accounts = self.config.get_config_att('accounts', None)
+        self.execution_role = self.config.get_config_att('execution_role', None)
+        self.regions = self.config.get_config_att('regions', None)
+
+        self.stack_set_id = None
+        self.stack_status = self.stack_set_status
+
 
     def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None, colors=defaultdict(lambda: '')):
         super(StackSet, self).__init__(profile, config_file, stack, disable_rollback, print_events, timeout, params, colors)

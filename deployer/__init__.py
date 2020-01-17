@@ -3,7 +3,7 @@ import argparse
 import json
 import os
 from botocore.exceptions import ClientError
-from deployer.cloudformation import Stack
+from deployer.stack import Stack
 from deployer.s3_sync import s3_sync
 from deployer.lambda_prep import LambdaPrep
 from deployer.logger import logging, logger, console_logger
@@ -138,20 +138,6 @@ def main():
                             operation()
                         else:
                             logger.warning(args.execute + " is not a valid method!")
-                    # if args.execute == 'create':
-                    #     env_stack.create()    
-                    # elif args.execute == 'update':
-                    #     env_stack.update()
-                    # elif args.execute == 'delete':
-                    #     env_stack.delete_stack()
-                    # elif args.execute == 'upsert':
-                    #     env_stack.upsert()
-                    # elif args.execute == 'describe':
-                    #     print(json.dumps(env_stack.describe(),
-                    #                     sort_keys=True,
-                    #                     indent=4,
-                    #                     separators=(',', ': '),
-                    #                     default=lambda x: x.isoformat()))
 
                 except ClientError as e:
                         if not args.all:

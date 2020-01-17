@@ -1,9 +1,4 @@
-import fnmatch
-import git
-import hashlib
-import os
-import re
-import yaml
+import fnmatch, git, hashlib, os, re, yaml
 from boto3.session import Session
 from botocore.exceptions import ClientError
 from multiprocessing import Process
@@ -13,25 +8,33 @@ from deployer.logger import logger
 import sys, traceback
 
 class s3_sync(object):
-    def __init__(self, profile, config_file, environment, valid=False, debug=False):
+    def __init__(self, session, config, environment, valid=False, debug=False):
         try:
-            self.profile = profile
+            # Pass parameters
+            self.session = session
             self.debug = debug
             self.environment = environment
-            self.config_file = config_file
-            self.config = self.get_config(config_file)
-            self.region = self.get_config_att('region')
-            self.base = self.get_config_att('sync_base', '.')
-            self.sync_dirs = self.get_config_att('sync_dirs', [])
-            self.dest_bucket = self.get_config_att('sync_dest_bucket', required=True)
+            self.config = config
+            self.valid = valid
+
+            # Pull values from config
+            self.region = self.config.get_config_att('region')
+            self.base = self.config.get_config_att('sync_base', '.')
+            self.sync_dirs = self.config.get_config_att('sync_dirs', [])
+            self.dest_bucket = self.config.get_config_att('sync_dest_bucket', required=True)
+
+            # Repo based values
             self.repository = self.get_repository()
             self.commit = self.repository.head.object.hexsha if self.repository else 'null'
-            self.release = self.get_config_att('release', self.commit).replace('/', '.')
-            self.session = Session(profile_name=profile, region_name=self.region)
+            self.release = self.config.get_config_att('release', self.commit).replace('/', '.')
+            
+            # AWS Clients
             self.client = self.session.client('s3')
             self.cfn = self.session.client('cloudformation')
+
+            # Get excludes from method
             self.excludes = self.construct_excludes()
-            self.valid = valid
+            
 
             if not isinstance(self.sync_dirs, list):
                 logger.error("Attribute 'sync_dirs' must be a list.")
@@ -47,7 +50,7 @@ class s3_sync(object):
                 traceback.print_tb(tb)
 
     def get_sync_dest_bucket(self):
-        bucket = self.get_config_att('sync_dest_bucket')
+        bucket = self.config.get_config_att('sync_dest_bucket')
         if not bucket:
             ssm = self.session.client('ssm')
             try:
@@ -64,21 +67,8 @@ class s3_sync(object):
         except git.exc.InvalidGitRepositoryError:
             return None
 
-    def get_config(self, config):
-        with open(config) as f:
-            data = yaml.safe_load(f)
-        return data
-
-    def get_config_att(self, key, default=None, required=False):
-        base = self.config.get('global', {}).get(key, None)
-        base = self.config.get(self.environment).get(key, base)
-        if required and base is None:
-            logger.error("Required attribute '{}' not found in config '{}'.".format(key, self.config_file))
-            exit(3)
-        return base if base is not None else default
-
     def construct_excludes(self):
-        excludes = self.get_config_att('sync_exclude')
+        excludes = self.config.get_config_att('sync_exclude')
         if excludes:
             excludes = ["*%s*" % exclude for exclude in excludes]
         return excludes
