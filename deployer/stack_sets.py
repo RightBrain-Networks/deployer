@@ -6,21 +6,52 @@ import time
 from botocore.exceptions import ClientError
 from collections import defaultdict
 
-from .cloudformation import Stack
-from .logger import logger
+from deployer.cloudformation import AbstractCloudFormation
+from deployer.logger import logger
 
 
-class StackSet(Stack):
+class StackSet(AbstractCloudFormation):
+    def __init__(self, session, stack, config, bucket, args = {}):
 
-    def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None, colors=defaultdict(lambda: '')):
-        super(StackSet, self).__init__(profile, config_file, stack, disable_rollback, print_events, timeout, params, colors)
-        self.account = self.get_config_att('account', None)
-        self.accounts = self.get_config_att('accounts', None)
-        self.execution_role = self.get_config_att('execution_role', None)
-        self.regions = self.get_config_att('regions', None)
+        # Save important parameters
+        self.session = session
+        self.stack = stack
+        self.config = config
+        self.bucket = bucket
         self.stack_set_id = None
-        self.stack_status = self.stack_set_status
+        
 
+
+        self.params = args.get('params', {})
+
+        self.print_events = args.get('print_events', False)
+
+        # Load values from methods for config lookup
+        self.base = self.config.get_config_att('sync_base', '.')
+        self.repository = self.get_repository(self.base)
+        self.commit = self.repository.head.object.hexsha if self.repository else 'null'
+
+        # Load values from config
+        self.release = self.config.get_config_att('release', self.commit).replace('/','.')
+        self.template = self.config.get_config_att('template', required=True)
+        self.account = self.config.get_config_att('account', None)
+        self.accounts = self.config.get_config_att('accounts', None)
+        self.execution_role = self.config.get_config_att('execution_role', None)
+        self.regions = self.config.get_config_att('regions', None)
+        self.stack_name = self.config.get_config_att('stack_name', required=True)
+
+        # Intialize objects
+        self.client = self.session.client('cloudformation')
+        self.sts = self.session.client('sts')
+
+        # Load values from methods
+        self.origin = self.get_repository_origin(self.repository) if self.repository else 'null'
+        self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
+        self.template_url = self.bucket.construct_template_url(self.config, self.stack, self.release, self.template) # self.construct_template_url()
+        self.template_file = self.bucket.get_template_file(self.config, self.stack)
+        self.template_body = self.bucket.get_template_body(self.config, self.template)
+
+        self.stack_status = self.stack_set_status
         self.validate_account()
 
     @property
@@ -42,7 +73,7 @@ class StackSet(Stack):
 
     @property
     def administration_role(self):
-        config_value = self.get_config_att('administration_role', None)
+        config_value = self.config.get_config_att('administration_role', None)
         if config_value is None or config_value.startswith('arn:'):
             return config_value
         else:
@@ -56,6 +87,12 @@ class StackSet(Stack):
     def stack_instances(self):
         if not self.accounts or not self.regions:
             return None
+
+    def exists(self):
+        return self.stack_set_status() == 'ACTIVE'
+
+    def reload_stack_status(self):
+        pass
 
     @property
     def stack_set_status(self):
@@ -75,9 +112,7 @@ class StackSet(Stack):
             logger.error("Account validation failed. Expected '{}' but received '{}'".format(self.account, current))
             exit(1)
 
-    def create(self):
-        if not self.accounts or not self.regions:
-            return super(StackSet, self).create()
+    def create_stack(self):
 
         args = {
             "Capabilities": [
@@ -85,7 +120,7 @@ class StackSet(Stack):
                 'CAPABILITY_NAMED_IAM',
                 'CAPABILITY_AUTO_EXPAND'
             ],
-            "Parameters": self.build_params(),
+            "Parameters": self.config.build_params(self.session, self.stack, self.release, self.params, self.template_file),
             'StackSetName': self.stack_name,
             "Tags": self.construct_tags()
         }
@@ -103,15 +138,11 @@ class StackSet(Stack):
 
         self.stack_set_waiter(self.create_stack_instances(self.accounts, self.regions), "Creation")
 
-    def upsert(self):
-        if not self.accounts or not self.regions:
-            return super(StackSet, self).upsert()
+    def upsert_stack(self):
         # Update the stack if it already exists,otherwise, create it
-        self.update() if self.stack_status == 'ACTIVE' else self.create()
+        self.update_stack() if self.stack_status == 'ACTIVE' else self.create_stack()
 
     def delete_stack(self):
-        if not self.accounts or not self.regions:
-            return super(StackSet, self).delete_stack()
 
         # Delete existing stack instances
         if len(self.current_accounts) > 0:
@@ -145,10 +176,8 @@ class StackSet(Stack):
         if self.print_events:
             print(tabulate.tabulate(table, headers, tablefmt='simple'))
 
-    def update(self):
+    def update_stack(self):
 
-        if not self.accounts or not self.regions:
-            return super(StackSet, self).update()
 
         args = {
             "Capabilities": [
@@ -156,7 +185,7 @@ class StackSet(Stack):
                 'CAPABILITY_NAMED_IAM',
                 'CAPABILITY_AUTO_EXPAND'
             ],
-            "Parameters": self.build_params(),
+            "Parameters": self.config.build_params(self.session, self.stack, self.release, self.params, self.template_file),
             'StackSetName': self.stack_name,
             "Tags": self.construct_tags(),
         }
@@ -261,3 +290,18 @@ class StackSet(Stack):
         logger.info("Deleting " + str(len(accounts) * len(regions)) + " stack instances...")
         result = self.client.delete_stack_instances(StackSetName=self.stack_name, Accounts=accounts, Regions=regions, RetainStacks=False)
         return result['OperationId']
+
+    def construct_tags(self): 
+        tags = self.config.get_config_att('tags')
+        if tags:
+            tags = [ { 'Key': key, 'Value': value } for key, value in tags.items() ] 
+            if len(tags) > 47:
+                raise ValueError('Resources tag limit is 50, you have provided more than 47 tags. Please limit your tagging, save room for name and deployer tags.')
+        else:
+            tags = []
+        tags.append({'Key': 'deployer:stack', 'Value': self.stack})
+        tags.append({'Key': 'deployer:caller', 'Value': self.identity_arn})
+        tags.append({'Key': 'deployer:git:commit', 'Value': self.commit})
+        tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
+        tags.append({'Key': 'deployer:config', 'Value': self.config.file_name.replace('\\', '/')})
+        return tags
