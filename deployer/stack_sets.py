@@ -157,23 +157,24 @@ class StackSet(AbstractCloudFormation):
     def stack_set_waiter(self, operation_id, verb="Update"):
         logger.info("Stack Set " + verb + " Started")
 
-        args = {
-            "StackSetName": self.stack_name,
-            "OperationId": operation_id
-        }
-
-        operation = self.client.describe_stack_set_operation(**args)
-        time.sleep(5)
-
-        while operation['StackSetOperation']['Status'] not in ['SUCCEEDED', 'FAILED', 'STOPPED']:
-            time.sleep(5)
-            operation = self.client.describe_stack_set_operation(**args)
-
-        # Print result
-        results = self.client.list_stack_set_operation_results(**args)
-        headers = ['Account', 'Region', 'Status', 'Reason']
-        table = [[x['Account'], x['Region'], x['Status'], x.get('StatusReason', '')] for x in results['Summaries']]
         if self.print_events:
+            args = {
+                "StackSetName": self.stack_name,
+                "OperationId": operation_id
+            }
+
+            operation = self.client.describe_stack_set_operation(**args)
+            time.sleep(5)
+
+            while operation['StackSetOperation']['Status'] not in ['SUCCEEDED', 'FAILED', 'STOPPED']:
+                time.sleep(5)
+                operation = self.client.describe_stack_set_operation(**args)
+
+            # Print result
+            results = self.client.list_stack_set_operation_results(**args)
+            headers = ['Account', 'Region', 'Status', 'Reason']
+            table = [[x['Account'], x['Region'], x['Status'], x.get('StatusReason', '')] for x in results['Summaries']]
+        
             print(tabulate.tabulate(table, headers, tablefmt='simple'))
 
     def update_stack(self):
