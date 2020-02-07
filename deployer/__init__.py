@@ -92,10 +92,6 @@ def main():
     if args.execute == 'describe':
         console_logger.setLevel(logging.ERROR)
 
-    if args.zip_lambdas:
-        LambdaPrep(args.config, args.stack).zip_lambdas()
-
-
 
     try:
         # Read Environment Config
@@ -118,6 +114,8 @@ def main():
             if stack != 'global' and (args.all or stack == args.stack):
                 if args.sync:
                     s3_sync(args.profile, args.config, stack, args.assume_valid)
+                if args.zip_lambdas:
+                    LambdaPrep(args.config, stack).zip_lambdas()
                 if args.no_color:
                     logger.info("Running " + str(args.execute) + " on stack: " + stack)
                 else:
