@@ -99,10 +99,6 @@ def main():
     if args.execute == 'describe':
         console_logger.setLevel(logging.ERROR)
 
-    # Build lambdas on `-z`
-    if args.zip_lambdas:
-        LambdaPrep(args.config, args.stack).zip_lambdas()
-
     try:
         # Read Environment Config
         with open(args.config) as f:
@@ -122,6 +118,11 @@ def main():
             if stack != 'global' and (args.all or stack == args.stack):
 
                 logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
+
+                # Build lambdas on `-z`
+                if args.zip_lambdas:
+                    logger.info("Building lambdas for stack: " + stack)
+                    LambdaPrep(args.config, args.stack).zip_lambdas()
 
                 # Create deployer config object
                 config_object = Config(args.config, stack)
