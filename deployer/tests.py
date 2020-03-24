@@ -205,7 +205,19 @@ class DeployerTestCase(unittest.TestCase):
         result = subprocess.call(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s', 'timeout', '-T', '1'])
         self.assertEqual(result, 2)
 
-#Used for UTC time
+
+class IntegrationTestCase(unittest.TestCase):
+
+    def test_create_stack(self):
+        print('Testing')
+        with open('kltest.out', 'w') as f:
+            with open('kltest.err', 'w')  as e:
+                #result = subprocess.call(['pwd'], stdout=f, stderr=e, cwd='tests')
+                result = subprocess.call(['deployer', '-x', 'create', '-c', 'config/test.yaml', '-s' 'create', '-y'], stdout=f, stderr=e, cwd='tests')
+        print(result)
+
+
+# Used for UTC time
 ZERO = timedelta(0)
 class UTC(tzinfo):
   def utcoffset(self, dt):
@@ -216,12 +228,12 @@ class UTC(tzinfo):
     return ZERO
 
 
-#Returns the status of a stack by name
+# Returns the status of a stack by name
 def get_stack_status(stack):
     try:
         result = cloudformation.describe_stacks(StackName=stack)
         if 'Stacks' in result:
-            if(len(result['Stacks']) > 0):
+            if len(result['Stacks']) > 0:
                 if result['Stacks'][0]['StackStatus'] == "DELETE_COMPLETE":
                     return "NULL"
                 return result['Stacks'][0]['StackStatus']
@@ -230,6 +242,7 @@ def get_stack_status(stack):
             raise e
         else:
             return "NULL"
+
 
 def get_stack_tag(stack, tag):
     cfnStack = cloudformation.describe_stacks(StackName=stack)['Stacks'][0]

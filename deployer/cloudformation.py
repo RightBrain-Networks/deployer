@@ -50,7 +50,7 @@ class AbstractCloudFormation(object):
             try:
                 origin = self.repository.remotes.origin.url
                 return origin.split('@', 1)[-1] if origin else None
-            except (StopIteration, ValueError):
+            except (AttributeError, StopIteration, ValueError):
                 return None
         else:
             return None
@@ -431,9 +431,7 @@ class AbstractCloudFormation(object):
             return self.client.describe_stacks(StackName=self.stack_name)['Stacks'][0]
         except ClientError:
             return {}
-            
 
-import pdb
 
 class Stack(AbstractCloudFormation):
     def __init__(self, profile, config_file, stack, disable_rollback=False, print_events=False, timeout=None, params=None, colors= defaultdict(lambda: '')):
@@ -449,7 +447,7 @@ class Stack(AbstractCloudFormation):
         self.repository = self.get_repository()
         self.region = self.session.region_name
         self.commit = self.repository.head.object.hexsha if self.repository else 'null'
-        self.origin = self.get_repository_origin() if self.repository else 'null'
+        self.origin = (self.get_repository_origin() if self.repository else 'null') or 'null'
         self.release = self.get_config_att('release', self.commit).replace('/','.')
         self.template = self.get_config_att('template', required=True)
         self.template_url = self.construct_template_url()

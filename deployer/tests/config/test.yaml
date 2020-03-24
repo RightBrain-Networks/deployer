@@ -1,0 +1,48 @@
+global:
+  account: '356438515751'
+  sync_dest_bucket: cloudtools-us-east-1-356438515751
+  template_bucket: cloudtools-us-east-1-356438515751
+  sync_base: ./
+  sync_exclude:
+    - .swp
+    - .git
+    - .DS_Store
+    - README.md
+  parameters:
+    Global: global-create
+    Override: global
+  tags:
+    Global: global-create
+    Override: global
+
+create:
+  release: prod
+  stack_name: deployer-test
+  template: cloudformation/top.yaml
+  sync_dirs:
+    - cloudformation/stack
+  parameters:
+    Invalid: invalid
+    Local: create
+    Override: create
+  tags:
+    Local: create
+    Override: create
+
+update:
+  release: prod
+  stack_name: deployer-test
+  template: cloudformation/top.yaml
+  sync_dirs:
+    - cloudformation/stack
+  parameters:
+    Invalid: invalid
+    Local: update
+    Override: update
+  lookup_parameters:
+    Lookup:
+      Stack: create
+      OutputKey: Resource
+  tags:
+    Local: update
+    Override: update
