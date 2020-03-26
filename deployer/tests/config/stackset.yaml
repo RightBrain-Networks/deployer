@@ -16,8 +16,12 @@ global:
 
 create:
   release: prod
-  stack_name: deployer-test
+  stack_name: deployer-stackset-test
   template: tests/cloudformation/stack/top.yaml
+  accounts:
+    - '356438515751'
+  regions:
+    - us-east-1
   sync_dirs:
     - tests/cloudformation/stack
   parameters:
@@ -31,8 +35,13 @@ create:
 
 update:
   release: prod
-  stack_name: deployer-test
+  stack_name: deployer-stackset-test
   template: tests/cloudformation/stack/top.yaml
+  accounts:
+    - '356438515751'
+  regions:
+    - us-east-1
+    - us-west-2
   sync_dirs:
     - tests/cloudformation/stack
   parameters:
@@ -40,10 +49,6 @@ update:
     Invalid: invalid
     Local: update
     Override: update
-  lookup_parameters:
-    Lookup:
-      Stack: create
-      OutputKey: Resource
   tags:
     Local: update
     Override: update

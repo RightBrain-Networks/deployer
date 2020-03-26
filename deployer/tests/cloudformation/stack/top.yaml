@@ -1,6 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Configures an internal bucket to be used accross an organization
 Parameters:
+  Cli:
+    Description: This is set using the cli override command
+    Type: String
   Global:
     Description: This parameter is set in the global section
     Type: String
@@ -21,6 +24,9 @@ Resources:
   Resource:
     Type: AWS::SNS::Topic
 Outputs:
+  Cli:
+    Description: This is the value of the cli parameter
+    Value: !Ref 'Cli'
   Global:
     Description: This is the value of the global parameter
     Value: !Ref 'Global'
