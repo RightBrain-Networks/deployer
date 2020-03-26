@@ -58,7 +58,7 @@ class DeployerTestCase(unittest.TestCase):
     def test_version(self):
         # Checks if -v returns the version stored in the python file
         v = ""
-        from . import __version__
+        from __init__ import __version__
         try:
             v = subprocess.check_output(['python', deployerExecutor, '-v']).rstrip()
         except SystemExit as e:
@@ -236,7 +236,7 @@ class IntegrationLambdaTestCase(unittest.TestCase):
                 self.client.delete_stack(StackName=self.stack_name)
                 self.stack_wait()
         except ClientError as e:
-            self.assertIn('does not exist', e.message)
+            self.assertIn('does not exist', str(e))
 
     def stack_wait(self):
         waiter = self.client.get_waiter('stack_delete_complete')
@@ -289,7 +289,7 @@ class IntegrationStackTestCase(unittest.TestCase):
             self.assertEquals(stack['Stacks'][0].get('StackStatus', ''), 'DELETE_IN_PROGRESS')
             self.stack_wait()
         except ClientError as e:
-            self.assertIn('does not exist', e.message)
+            self.assertIn('does not exist', str(e))
 
     def stack_reset(self):
         try:
@@ -298,7 +298,7 @@ class IntegrationStackTestCase(unittest.TestCase):
                 self.client.delete_stack(StackName=self.stack_name)
                 self.stack_wait()
         except ClientError as e:
-            self.assertIn('does not exist', e.message)
+            self.assertIn('does not exist', str(e))
 
     def stack_update(self):
         result = subprocess.call(['deployer', '-x', 'update', '-c', 'tests/config/test.yaml', '-s' 'update', '-P', 'Cli=update', '-D'])
@@ -404,7 +404,7 @@ class IntegrationStackSetTestCase(unittest.TestCase):
 
             self.client.delete_stack_set(StackSetName=self.stackset_name)
         except ClientError as e:
-            self.assertIn('StackSetNotFoundException', e.message)
+            self.assertIn('StackSetNotFoundException', str(e))
 
     def stackset_update(self):
         result = subprocess.call(['deployer', '-x', 'update', '-c', 'tests/config/stackset.yaml', '-s' 'update', '-P', 'Cli=update', '-D'])

@@ -26,8 +26,6 @@ pipeline {
     }
     stage('Build') {
       steps {
-
-
         echo "Building ${env.SERVICE} docker image"
 
         // Docker build flags are set via the getDockerBuildFlags() shared library.
