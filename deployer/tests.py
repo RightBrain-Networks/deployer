@@ -229,6 +229,19 @@ class IntegrationLambdaTestCase(unittest.TestCase):
         payload = json.loads(resp['Payload'].read())
         self.assertEquals(payload.get("message", ''), "hello world")
 
+    def stack_delete(self):
+        result = subprocess.call(['deployer', '-x', 'delete', '-c', 'tests/config/test.yaml', '-s' 'update', '-D'])
+        self.assertEqual(result, 0)
+
+        try:
+            stack = self.client.describe_stacks(StackName=self.stack_name)
+            self.assertIn('Stacks', stack.keys())
+            self.assertEquals(len(stack['Stacks']), 1)
+            self.assertEquals(stack['Stacks'][0].get('StackStatus', ''), 'DELETE_IN_PROGRESS')
+            self.stack_wait()
+        except ClientError as e:
+            self.assertIn('does not exist', str(e))
+
     def stack_reset(self):
         try:
             stack = self.client.describe_stacks(StackName=self.stack_name)
@@ -245,6 +258,7 @@ class IntegrationLambdaTestCase(unittest.TestCase):
     def test_stack(self):
         self.stack_reset()
         self.stack_create()
+        self.stack_delete()
 
 
 class IntegrationStackTestCase(unittest.TestCase):
