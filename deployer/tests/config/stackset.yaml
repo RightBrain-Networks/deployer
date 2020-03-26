@@ -1,0 +1,54 @@
+global:
+  account: '356438515751'
+  sync_base: ./
+  sync_exclude:
+    - .swp
+    - .git
+    - .DS_Store
+    - README.md
+  parameters:
+    Cli: global
+    Global: global
+    Override: global
+  tags:
+    Global: global
+    Override: global
+
+create:
+  release: prod
+  stack_name: deployer-stackset-test
+  template: tests/cloudformation/stack/top.yaml
+  accounts:
+    - '356438515751'
+  regions:
+    - us-east-1
+  sync_dirs:
+    - tests/cloudformation/stack
+  parameters:
+    Cli: local
+    Invalid: invalid
+    Local: create
+    Override: create
+  tags:
+    Local: create
+    Override: create
+
+update:
+  release: prod
+  stack_name: deployer-stackset-test
+  template: tests/cloudformation/stack/top.yaml
+  accounts:
+    - '356438515751'
+  regions:
+    - us-east-1
+    - us-west-2
+  sync_dirs:
+    - tests/cloudformation/stack
+  parameters:
+    Cli: local
+    Invalid: invalid
+    Local: update
+    Override: update
+  tags:
+    Local: update
+    Override: update

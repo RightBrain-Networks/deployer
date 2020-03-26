@@ -6,8 +6,8 @@ from botocore.exceptions import ClientError
 import yaml
 from datetime import tzinfo, timedelta, datetime
 
-deployerExecutor = "./deployer/__init__.py"
-configUpdateExecutor = "./deployer/config_updater.py"
+deployerExecutor = "./__init__.py"
+configUpdateExecutor = "./config_updater.py"
 
 apiHitRate = 0.25
 
@@ -15,14 +15,14 @@ apiHitRate = 0.25
 # CFN Testing Parameters #
 #------------------------#
 testStackName = "deployer-test-case"
-testStackConfig = "deployer/tests/config.yaml"
-testStackCloudFormation = "deployer/tests/cloudformation.yaml"
+testStackConfig = "./tests/config.yaml"
+testStackCloudFormation = "./tests/cloudformation.yaml"
 
 testBucket = "deployer-testing-us-east-1"
 
 testStackConfig_data = """
 global:
-  sync_base: ./deployer/
+  sync_base: ./
   sync_dest_bucket: deployer-testing-us-east-1
   sync_dirs: [tests]
   region: us-east-1
@@ -39,35 +39,35 @@ global:
     Environment: stack-updated
 test:
   stack_name: deployer-test-case
-  template: deployer/tests/cloudformation.yaml
+  template: tests/cloudformation.yaml
 lambda:
   stack_name: deployer-test-case
-  template: deployer/tests/cloudformation.yaml
-  lambda_dirs: [ deployer/tests/lambda ]
+  template: tests/cloudformation.yaml
+  lambda_dirs: [ tests/lambda ]
 timeout:
   stack_name: deployer-test-case
-  template: deployer/tests/timeout.yaml
+  template: tests/timeout.yaml
 """
-
 
 
 cloudformation = boto3.client('cloudformation', region_name="us-east-1")
 simplestorageservice = boto3.client('s3', region_name="us-east-1")
 
+
 class DeployerTestCase(unittest.TestCase):
     def test_version(self):
-        #Checks if -v returns the version stored in the python file
+        # Checks if -v returns the version stored in the python file
         v = ""
-        from __init__ import __version__ 
+        from __init__ import __version__
         try:
             v = subprocess.check_output(['python', deployerExecutor, '-v']).rstrip()
-        except SystemExit as exit:
-            if exit.code != 0:
-                raise exit
+        except SystemExit as e:
+            if e.code != 0:
+                raise e
         self.assertEqual(__version__, v.decode())
 
     def test_help(self):
-        #Checks if -h returns the help message
+        # Checks if -h returns the help message
         output = ""
         try:
             output = subprocess.check_output(['python', deployerExecutor, '-h'])
@@ -77,7 +77,7 @@ class DeployerTestCase(unittest.TestCase):
         self.assertTrue("show this help message and exit" in str(output))
 
     def test_intialize(self):
-        #Checks if --init creates a config & cloudformation folder
+        # Checks if --init creates a config & cloudformation folder
         try:
             output = subprocess.check_output(['python', deployerExecutor, '--init', 'temp'])
         except SystemExit as exit:
@@ -98,7 +98,7 @@ class DeployerTestCase(unittest.TestCase):
 
         #Run deployer -x create
         try:
-            output = subprocess.check_output(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s','test', '-D'])
+            subprocess.check_output(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s','test', '-D'])
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
@@ -160,52 +160,307 @@ class DeployerTestCase(unittest.TestCase):
     def test_lambda(self):
         reset_config()
         print("You are here: " + str(os.getcwd()))
-        print(subprocess.check_output(['ls', 'deployer/tests']))
+        print(subprocess.check_output(['ls', 'tests']))
         try:
-            output = subprocess.check_output(['python', deployerExecutor,'-s', 'lambda', '-c', 'deployer/tests/config.yaml', '-x', 'sync', '-z', '-D'])
+            output = subprocess.check_output(['python', deployerExecutor,'-s', 'lambda', '-c', 'tests/config.yaml', '-x', 'sync', '-z', '-D'])
         except SystemExit as exit:
             if exit.code != 0:
                 raise exit
 
-       
-        self.assertTrue(os.path.exists('deployer/tests/lambda.zip'))
+        self.assertTrue(os.path.exists('tests/lambda.zip'))
        
 
     def test_sync(self):
         reset_config()
 
-        #Delete possible odd file
+        # Delete possible odd file
         simplestorageservice.delete_object(Bucket=testBucket, Key="deployer-test/tests/cloudformation.yaml")
 
-        #Try to sync
+        # Try to sync
         try:
-            output = subprocess.check_output(['python', deployerExecutor, '-x', 'sync', '-c', testStackConfig, '-s','test', '-D'])
-        except SystemExit as exit:
-            if exit.code != 0:
-                raise exit
+            subprocess.check_output(['python', deployerExecutor, '-x', 'sync', '-c', testStackConfig, '-s','test', '-D'])
+        except SystemExit as e:
+            if e.code != 0:
+                raise e
 
         s3obj = simplestorageservice.get_object(Bucket=testBucket, Key="deployer-test/tests/cloudformation.yaml")
-        fullfillsCriteria = False
-        if(s3obj['LastModified'] > datetime.now(UTC()) - timedelta(seconds=10)):
-            fullfillsCriteria = True
-
-        self.assertTrue(fullfillsCriteria)
+        self.assertTrue(s3obj['LastModified'] > datetime.now(UTC()) - timedelta(seconds=10))
 
     # Checks if a basic stack can be created
     def test_timeout(self):
         reset_config()
 
         # Make sure no stack exists
-        if (get_stack_status(testStackName) != "NULL"):
+        if get_stack_status(testStackName) != "NULL":
             cloudformation.delete_stack(StackName=testStackName)
-        while (get_stack_status(testStackName) != "NULL"):
+        while get_stack_status(testStackName) != "NULL":
             time.sleep(apiHitRate)
 
         # Run deployer -x create with timeout
         result = subprocess.call(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s', 'timeout', '-T', '1'])
         self.assertEqual(result, 2)
 
-#Used for UTC time
+
+class IntegrationLambdaTestCase(unittest.TestCase):
+
+    def __init__(self, *args, **kwargs):
+        super(IntegrationLambdaTestCase, self).__init__(*args, **kwargs)
+        self.client = boto3.client('cloudformation')
+        self.stack_name = 'deployer-lambda-test'
+
+    def stack_create(self):
+        result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/lambda.yaml', '-s' 'create', '-P', 'Cli=create', '-yzD'])
+        self.assertEqual(result, 0)
+
+        stack = self.client.describe_stacks(StackName=self.stack_name)
+        self.assertIn('Stacks', stack.keys())
+        self.assertEqual(len(stack['Stacks']), 1)
+
+        outputs = stack['Stacks'][0].get('Outputs', [])
+        self.assertEqual(len(outputs), 1)
+
+        func = [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Function']
+        self.assertEqual(len(func), 1)
+
+        client = boto3.client('lambda')
+        resp = client.invoke(FunctionName=func[0])
+
+        self.assertNotEquals(resp.get("Payload", None), None)
+        payload = json.loads(resp['Payload'].read())
+        self.assertEqual(payload.get("message", ''), "hello world")
+
+    def stack_delete(self):
+        result = subprocess.call(['deployer', '-x', 'delete', '-c', 'tests/config/lambda.yaml', '-s' 'create', '-D'])
+        self.assertEqual(result, 0)
+        time.sleep(10)
+
+        try:
+            stack = self.client.describe_stacks(StackName=self.stack_name)
+            self.assertIn('Stacks', stack.keys())
+            self.assertEqual(len(stack['Stacks']), 1)
+            self.assertEqual(stack['Stacks'][0].get('StackStatus', ''), 'DELETE_IN_PROGRESS')
+            self.stack_wait()
+        except ClientError as e:
+            self.assertIn('does not exist', str(e))
+
+    def stack_reset(self):
+        try:
+            stack = self.client.describe_stacks(StackName=self.stack_name)
+            if len(stack.get('Stacks', [])) > 0:
+                self.client.delete_stack(StackName=self.stack_name)
+                self.stack_wait()
+        except ClientError as e:
+            self.assertIn('does not exist', str(e))
+
+    def stack_wait(self):
+        waiter = self.client.get_waiter('stack_delete_complete')
+        waiter.wait(StackName=self.stack_name)
+
+    def test_stack(self):
+        self.stack_reset()
+        self.stack_create()
+        self.stack_delete()
+
+
+class IntegrationStackTestCase(unittest.TestCase):
+
+    def __init__(self, *args, **kwargs):
+        super(IntegrationStackTestCase, self).__init__(*args, **kwargs)
+        self.client = boto3.client('cloudformation')
+        self.stack_name = 'deployer-test'
+
+    def stack_create(self):
+        result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/test.yaml', '-s' 'create', '-P', 'Cli=create', '-D'])
+        self.assertEqual(result, 0)
+
+        stack = self.client.describe_stacks(StackName=self.stack_name)
+        self.assertIn('Stacks', stack.keys())
+        self.assertEquals(len(stack['Stacks']), 1)
+
+        outputs = stack['Stacks'][0].get('Outputs', [])
+        self.assertIn('create', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Cli'])
+        self.assertIn('global', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Global'])
+        self.assertIn('create', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Local'])
+        self.assertIn('create', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Override'])
+        self.assertIn('prod', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Release'])
+
+        tags = stack['Stacks'][0].get('Tags', [])
+        self.assertIn('create', [x['Value'] for x in tags if x['Key'] == 'Local'])
+        self.assertIn('create', [x['Value'] for x in tags if x['Key'] == 'Override'])
+        self.assertIn('deployer:caller', [x['Key'] for x in tags])
+        self.assertIn('deployer:config', [x['Key'] for x in tags])
+        self.assertIn('deployer:git:commit', [x['Key'] for x in tags])
+        self.assertIn('deployer:git:origin', [x['Key'] for x in tags])
+        self.assertIn('deployer:stack', [x['Key'] for x in tags])
+
+    def stack_delete(self):
+        result = subprocess.call(['deployer', '-x', 'delete', '-c', 'tests/config/test.yaml', '-s' 'update', '-D'])
+        self.assertEqual(result, 0)
+
+        try:
+            stack = self.client.describe_stacks(StackName=self.stack_name)
+            self.assertIn('Stacks', stack.keys())
+            self.assertEquals(len(stack['Stacks']), 1)
+            self.assertEquals(stack['Stacks'][0].get('StackStatus', ''), 'DELETE_IN_PROGRESS')
+            self.stack_wait()
+        except ClientError as e:
+            self.assertIn('does not exist', str(e))
+
+    def stack_reset(self):
+        try:
+            stack = self.client.describe_stacks(StackName=self.stack_name)
+            if len(stack.get('Stacks', [])) > 0:
+                self.client.delete_stack(StackName=self.stack_name)
+                self.stack_wait()
+        except ClientError as e:
+            self.assertIn('does not exist', str(e))
+
+    def stack_update(self):
+        result = subprocess.call(['deployer', '-x', 'update', '-c', 'tests/config/test.yaml', '-s' 'update', '-P', 'Cli=update', '-D'])
+        self.assertEqual(result, 0)
+
+        stack = self.client.describe_stacks(StackName=self.stack_name)
+        self.assertIn('Stacks', stack.keys())
+        self.assertEquals(len(stack['Stacks']), 1)
+
+        outputs = stack['Stacks'][0].get('Outputs', [])
+        self.assertIn('update', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Cli'])
+        self.assertIn('global', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Global'])
+        self.assertIn('update', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Local'])
+        self.assertIn('update', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Override'])
+        self.assertIn('prod', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Release'])
+
+        tags = stack['Stacks'][0].get('Tags', [])
+        self.assertIn('update', [x['Value'] for x in tags if x['Key'] == 'Local'])
+        self.assertIn('update', [x['Value'] for x in tags if x['Key'] == 'Override'])
+        self.assertIn('deployer:caller', [x['Key'] for x in tags])
+        self.assertIn('deployer:config', [x['Key'] for x in tags])
+        self.assertIn('deployer:git:commit', [x['Key'] for x in tags])
+        self.assertIn('deployer:git:origin', [x['Key'] for x in tags])
+        self.assertIn('deployer:stack', [x['Key'] for x in tags])
+
+    def stack_wait(self):
+        waiter = self.client.get_waiter('stack_delete_complete')
+        waiter.wait(StackName=self.stack_name)
+
+    def test_stack(self):
+        self.stack_reset()
+        self.stack_create()
+        self.stack_update()
+        self.stack_delete()
+
+
+class IntegrationStackSetTestCase(unittest.TestCase):
+
+    def __init__(self, *args, **kwargs):
+        super(IntegrationStackSetTestCase, self).__init__(*args, **kwargs)
+        self.client = boto3.client('cloudformation')
+        self.stackset_name = 'deployer-stackset-test'
+
+    def stackset_create(self):
+        result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/stackset.yaml', '-s' 'create', '-P', 'Cli=create', '-D'])
+        self.assertEqual(result, 0)
+
+        instances = self.client.list_stack_instances(StackSetName=self.stackset_name)
+        accounts = set([x['Account'] for x in instances.get('Summaries', [])])
+        regions = set([x['Region'] for x in instances.get('Summaries', [])])
+        self.assertEquals(len(accounts), 1)
+        self.assertEquals(len(regions), 1)
+
+        for instance in [x for x in instances.get('Summaries', [])]:
+            client = boto3.client('cloudformation', region_name=instance['Region'])
+            stack = client.describe_stacks(StackName=instance['StackId'])
+            self.assertIn('Stacks', stack.keys())
+            self.assertEquals(len(stack['Stacks']), 1)
+
+            outputs = stack['Stacks'][0].get('Outputs', [])
+            self.assertIn('create', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Cli'])
+            self.assertIn('global', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Global'])
+            self.assertIn('create', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Local'])
+            self.assertIn('create', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Override'])
+            self.assertIn('prod', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Release'])
+
+            tags = stack['Stacks'][0].get('Tags', [])
+            self.assertIn('create', [x['Value'] for x in tags if x['Key'] == 'Local'])
+            self.assertIn('create', [x['Value'] for x in tags if x['Key'] == 'Override'])
+            self.assertIn('deployer:caller', [x['Key'] for x in tags])
+            self.assertIn('deployer:config', [x['Key'] for x in tags])
+            self.assertIn('deployer:git:commit', [x['Key'] for x in tags])
+            self.assertIn('deployer:git:origin', [x['Key'] for x in tags])
+            self.assertIn('deployer:stack', [x['Key'] for x in tags])
+
+    def stackset_delete(self):
+        result = subprocess.call(['deployer', '-x', 'delete', '-c', 'tests/config/stackset.yaml', '-s' 'update', '-D'])
+        self.assertEqual(result, 0)
+
+        self.assertRaises(ClientError, self.client.describe_stack_set, StackSetName=self.stackset_name)
+
+    def stackset_reset(self):
+        try:
+            instances = self.client.list_stack_instances(StackSetName=self.stackset_name)
+            accounts = list(set([x['Account'] for x in instances.get('Summaries', [])]))
+            regions = list(set([x['Region'] for x in instances.get('Summaries', [])]))
+
+            if regions and accounts:
+                op = self.client.delete_stack_instances(
+                    StackSetName=self.stackset_name,
+                    Accounts=accounts,
+                    Regions=regions,
+                    RetainStacks=False
+                ).get('OperationId', None)
+
+                desired = ['SUCCEEDED', 'FAILED', 'STOPPED']
+                status = self.client.describe_stack_set_operation(StackSetName=self.stackset_name, OperationId=op)
+                while status['StackSetOperation']['Status'] not in desired:
+                    time.sleep(5)
+                    status = self.client.describe_stack_set_operation(StackSetName=self.stackset_name, OperationId=op)
+
+                self.assertEquals(status['StackSetOperation']['Status'], 'SUCCEEDED')
+
+            self.client.delete_stack_set(StackSetName=self.stackset_name)
+        except ClientError as e:
+            self.assertIn('StackSetNotFoundException', str(e))
+
+    def stackset_update(self):
+        result = subprocess.call(['deployer', '-x', 'update', '-c', 'tests/config/stackset.yaml', '-s' 'update', '-P', 'Cli=update', '-D'])
+        self.assertEqual(result, 0)
+
+        instances = self.client.list_stack_instances(StackSetName=self.stackset_name)
+        accounts = set([x['Account'] for x in instances.get('Summaries', [])])
+        regions = set([x['Region'] for x in instances.get('Summaries', [])])
+        self.assertEquals(len(accounts), 1)
+        self.assertEquals(len(regions), 2)
+
+        for instance in [x for x in instances.get('Summaries', [])]:
+            client = boto3.client('cloudformation', region_name=instance['Region'])
+            stack = client.describe_stacks(StackName=instance['StackId'])
+            self.assertIn('Stacks', stack.keys())
+            self.assertEquals(len(stack['Stacks']), 1)
+
+            outputs = stack['Stacks'][0].get('Outputs', [])
+            self.assertIn('update', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Cli'])
+            self.assertIn('global', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Global'])
+            self.assertIn('update', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Local'])
+            self.assertIn('update', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Override'])
+            self.assertIn('prod', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Release'])
+
+            tags = stack['Stacks'][0].get('Tags', [])
+            self.assertIn('update', [x['Value'] for x in tags if x['Key'] == 'Local'])
+            self.assertIn('update', [x['Value'] for x in tags if x['Key'] == 'Override'])
+            self.assertIn('deployer:caller', [x['Key'] for x in tags])
+            self.assertIn('deployer:config', [x['Key'] for x in tags])
+            self.assertIn('deployer:git:commit', [x['Key'] for x in tags])
+            self.assertIn('deployer:git:origin', [x['Key'] for x in tags])
+            self.assertIn('deployer:stack', [x['Key'] for x in tags])
+
+    def test_stackset(self):
+        self.stackset_reset()
+        self.stackset_create()
+        self.stackset_update()
+        self.stackset_delete()
+
+
+# Used for UTC time
 ZERO = timedelta(0)
 class UTC(tzinfo):
   def utcoffset(self, dt):
@@ -216,12 +471,12 @@ class UTC(tzinfo):
     return ZERO
 
 
-#Returns the status of a stack by name
+# Returns the status of a stack by name
 def get_stack_status(stack):
     try:
         result = cloudformation.describe_stacks(StackName=stack)
         if 'Stacks' in result:
-            if(len(result['Stacks']) > 0):
+            if len(result['Stacks']) > 0:
                 if result['Stacks'][0]['StackStatus'] == "DELETE_COMPLETE":
                     return "NULL"
                 return result['Stacks'][0]['StackStatus']
@@ -230,6 +485,7 @@ def get_stack_status(stack):
             raise e
         else:
             return "NULL"
+
 
 def get_stack_tag(stack, tag):
     cfnStack = cloudformation.describe_stacks(StackName=stack)['Stacks'][0]
