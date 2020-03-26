@@ -26,6 +26,8 @@ pipeline {
     }
     stage('Build') {
       steps {
+
+
         echo "Building ${env.SERVICE} docker image"
 
         // Docker build flags are set via the getDockerBuildFlags() shared library.
@@ -51,7 +53,9 @@ pipeline {
       }
       steps
       {
-        sh 'python deployer/tests.py'
+        dir('deployer') {
+          sh 'python ./tests.py'
+        }
       }
       post{
         // Update Git with status of test stage.
