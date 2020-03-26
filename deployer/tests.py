@@ -206,7 +206,7 @@ class IntegrationLambdaTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(IntegrationLambdaTestCase, self).__init__(*args, **kwargs)
         self.client = boto3.client('cloudformation')
-        self.stack_name = 'deployer-lambda'
+        self.stack_name = 'deployer-lambda-test'
 
     def stack_create(self):
         result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/lambda.yaml', '-s' 'create', '-P', 'Cli=create', '-yzD'])
@@ -214,30 +214,31 @@ class IntegrationLambdaTestCase(unittest.TestCase):
 
         stack = self.client.describe_stacks(StackName=self.stack_name)
         self.assertIn('Stacks', stack.keys())
-        self.assertEquals(len(stack['Stacks']), 1)
+        self.assertEqual(len(stack['Stacks']), 1)
 
         outputs = stack['Stacks'][0].get('Outputs', [])
-        self.assertEquals(len(outputs), 1)
+        self.assertEqual(len(outputs), 1)
 
         func = [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Function']
-        self.assertEquals(len(func), 1)
+        self.assertEqual(len(func), 1)
 
         client = boto3.client('lambda')
         resp = client.invoke(FunctionName=func[0])
 
         self.assertNotEquals(resp.get("Payload", None), None)
         payload = json.loads(resp['Payload'].read())
-        self.assertEquals(payload.get("message", ''), "hello world")
+        self.assertEqual(payload.get("message", ''), "hello world")
 
     def stack_delete(self):
         result = subprocess.call(['deployer', '-x', 'delete', '-c', 'tests/config/test.yaml', '-s' 'create', '-D'])
         self.assertEqual(result, 0)
+        time.sleep(10)
 
         try:
             stack = self.client.describe_stacks(StackName=self.stack_name)
             self.assertIn('Stacks', stack.keys())
-            self.assertEquals(len(stack['Stacks']), 1)
-            self.assertEquals(stack['Stacks'][0].get('StackStatus', ''), 'DELETE_IN_PROGRESS')
+            self.assertEqual(len(stack['Stacks']), 1)
+            self.assertEqual(stack['Stacks'][0].get('StackStatus', ''), 'DELETE_IN_PROGRESS')
             self.stack_wait()
         except ClientError as e:
             self.assertIn('does not exist', str(e))
