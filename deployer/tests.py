@@ -230,7 +230,7 @@ class IntegrationLambdaTestCase(unittest.TestCase):
         self.assertEqual(payload.get("message", ''), "hello world")
 
     def stack_delete(self):
-        result = subprocess.call(['deployer', '-x', 'delete', '-c', 'tests/config/test.yaml', '-s' 'create', '-D'])
+        result = subprocess.call(['deployer', '-x', 'delete', '-c', 'tests/config/lambda.yaml', '-s' 'create', '-D'])
         self.assertEqual(result, 0)
         time.sleep(10)
 

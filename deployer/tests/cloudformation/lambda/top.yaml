@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Configures an internal bucket to be used accross an organization
+Description: Deployer test case
 Parameters:
   Bucket:
     Description: The bucket where function code is uploaded
