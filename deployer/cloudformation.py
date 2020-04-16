@@ -225,6 +225,26 @@ class AbstractCloudFormation(object):
         self.client.create_stack(**args)
         self.create_waiter(start_time)
         
+    def wait_for_complete(self):
+        try:
+            cloudformation = self.session.resource('cloudformation')
+            stack = cloudformation.Stack(self.stack_name)
+            stack.load()
+
+            if stack.stack_status == "CREATE_IN_PROGRESS":
+                self.create_waiter(datetime.now(pytz.utc))
+            elif stack.stack_status == "UPDATE_IN_PROGRESS":
+                self.update_waiter(datetime.now(pytz.utc))
+            elif stack.stack_status == "DELETE_IN_PROGRESS":
+                logger.info("Waiting for 'DELETE_COMPLETE'")
+                while stack.stack_status == "DELETE_IN_PROGRESS":
+                    time.sleep(1)
+                    stack.reload()
+                    logger.debug(stack.stack_status)
+        except ClientError as e:
+            if e.response['Error']['Code'] != "ValidationError":
+                raise e
+
 
     def create_waiter(self, start_time):
         waiter = self.client.get_waiter('stack_create_complete')
