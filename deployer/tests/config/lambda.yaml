@@ -1,0 +1,23 @@
+global:
+  account: '356438515751'
+  sync_dest_bucket: cloudtools-us-east-1
+  template_bucket: cloudtools-us-east-1
+  sync_base: ./
+  sync_exclude:
+    - .swp
+    - .git
+    - .DS_Store
+    - README.md
+  parameters: {}
+
+create:
+  release: prod
+  stack_name: deployer-lambda-test
+  template: tests/cloudformation/lambda/top.yaml
+  lambda_dirs:
+    - tests/lambda/test
+  sync_dirs:
+    - tests/cloudformation/lambda
+    - tests/lambda
+  parameters:
+    Bucket: cloudtools-us-east-1

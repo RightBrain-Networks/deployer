@@ -53,7 +53,9 @@ pipeline {
       }
       steps
       {
-        sh 'python deployer/tests.py'
+        dir('deployer') {
+          sh 'python ./tests.py'
+        }
       }
       post{
         // Update Git with status of test stage.

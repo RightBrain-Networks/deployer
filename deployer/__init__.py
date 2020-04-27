@@ -145,7 +145,6 @@ def main():
                 # Check whether stack is a stack set or not and assign corresponding object
                 if(len(config_object.get_config_att('regions', [])) > 0 or len(config_object.get_config_att('accounts', [])) > 0):
                     env_stack = StackSet(session, stack, config_object, bucket, arguements)
-
                 else:
                     if args.timeout and args.execute not in ['create', 'upsert']:
                         logger.warning("Timeout specified but action is not 'create'. Timeout will be ignored.")
