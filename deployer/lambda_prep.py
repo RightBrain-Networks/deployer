@@ -46,12 +46,13 @@ class LambdaPrep:
                     temp_dir = dir + "_temp"
                     logger.debug('Creating ' + temp_dir)
                     shutil.copytree(dir, temp_dir)
+                    # NodeJs
                     if os.path.exists("/".join([temp_dir, "package.json"])):
                         req_txt = temp_dir + "/package.json"
                         logger.debug('Found ' + req_txt)
-                        # Nodejs
                         subprocess.call(["npm","install"], cwd=temp_dir)
                         subprocess.call(["npm","run","build"], cwd=temp_dir)
+                    # Python
                     if os.path.exists("/".join([temp_dir, "requirements.txt"])):
                         req_txt = "/".join([temp_dir, "requirements.txt"])
                         logger.debug('Found ' + req_txt)
