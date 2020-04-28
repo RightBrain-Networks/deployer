@@ -2,12 +2,80 @@
 from deployer.logger import logger
 from deployer.stack import Stack
 import ruamel.yaml, json, re
+from collections import MutableMapping
 
 class Config(object):
-    def __init__(self, file_name, master_stack):
-        self.file_name = file_name
-        self.config = self.get_config()
+    def __init__(self, master_stack, profile, file_name=None):
+        self.config = self._get_config(file_name)
+        self.profile = profile
         self.stack = master_stack
+        
+        self.region = "us-east-1"
+        self.table_name = "CFN-Deployer"
+        
+    def _get_config(self, file_name=None): 
+        
+        #Create session
+        try:
+            session = Session(profile_name=self.profile, region_name=self.region)
+            dynamo = session.client('dynamo')
+            
+            #Check for Dynamo state table
+            resp_tables = dynamo.list_tables()
+            if not self.table_name in resp_tables['TableNames']:
+                #Since it doesn't exist, create it
+                self._create_state_table(dynamo)
+            
+            #Retrieve data from table and format it
+            scan_resp = dynamo.scan(TableName=self.table_name)
+            
+            data = {}
+            for item in scan_resp['Items']:
+                #Each item represents a stack with map (M) type
+                for stackname in item:
+                    values = item[stackname]
+                    data[stackname] = values['M']
+            
+        except Exception as e:
+            msg = str(e)
+            logger.error("Failed to retrieve data from dynamo state table {}: {}".format(self.table_name,msg))
+            exit(3)
+        
+        #Check for file_name
+        if file_name:
+            try:
+                with open(file_name) as f:
+                    file_data = ruamel.yaml.safe_load(f)
+            except Exception as e:
+                msg = str(e)
+                logger.error("Failed to retrieve data from config file {}: {}".format(file_name,msg))
+                exit(3)
+            
+            #Compare data from state table and file, update state table data with file data if different
+            finalstate = self._dict_merge(data, file_data)
+            data = finalstate
+            
+            #Update Dynamo table if necessary
+                
+        
+        return data
+
+    def _create_state_table(self, dynamo):
+        #Create Dynamo DB state table
+        
+        return
+        
+    def _dict_merge(self, old, new):
+        #Recursively go through the nested dictionaries, with values in
+        # 'new' overwriting the values in 'old' for the same key
+        
+        for k, v in old.items():
+            if k in new:
+                if all(isinstance(e, MutableMapping) for e in (v, new[k])):
+                    new[k] = self._dict_merge(v, new[k])
+        merged = old.copy()
+        merged.update(new)
+        return merged
 
     def build_params(self, session, stack_name, release, params, temp_file):
         # create parameters from the config.yml file
@@ -67,15 +135,10 @@ class Config(object):
         logger.info("Parameters Created")
         return return_params
 
-    def get_config(self): 
-        with open(self.file_name) as f:
-            data = ruamel.yaml.safe_load(f)
-        return data
-
     def get_config_att(self, key, default=None, required=False):
         base = self.config.get('global', {}).get(key, None)
         base = self.config.get(self.stack).get(key, base)
         if required and base is None:
-            logger.error("Required attribute '{}' not found in config '{}'.".format(key, self.file_name))
+            logger.error("Required attribute '{}' not found in config.".format(key))
             exit(3)
         return base if base is not None else default
