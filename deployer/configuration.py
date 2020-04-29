@@ -31,10 +31,10 @@ class Config(object):
             
             data = {}
             for item in scan_resp['Items']:
-                #Each item represents a stack with map (M) type
-                for stackname in item:
-                    values = item[stackname]
-                    data[stackname] = values['M']
+                #Each item represents a stack
+                stackname = item['stackname']['S']
+                stackconfig = item['stackconfig']['M']
+                data[stackname] = stackconfig
             
         except Exception as e:
             msg = str(e)
@@ -55,15 +55,76 @@ class Config(object):
             finalstate = self._dict_merge(data, file_data)
             data = finalstate
             
-            #Update Dynamo table if necessary
-                
+            #Update Dynamo table
+            self._update_state_table(dynamo, data)
         
         return data
 
     def _create_state_table(self, dynamo):
+        
+        #Set up the arguments
+        kwargs = {
+            'AttributeDefinitions':[
+                {
+                    'AttributeName': 'stackname',
+                    'AttributeType': 'S'
+                },
+                {
+                    'AttributeName': 'stackconfig',
+                    'AttributeType': 'M'
+                },
+            ],
+            'TableName': self.table_name,
+            'KeySchema':[
+                {
+                    'AttributeName': 'stackname',
+                    'KeyType': 'HASH'
+                },
+            ]
+        }
+        
         #Create Dynamo DB state table
+        try:
+            response = dynamo.create_table(**kwargs)
+        except Exception as e:
+            msg = str(e)
+            logger.error("Failed to retrieve data from dynamo state table {}: {}".format(self.table_name,msg))
+            exit(3)
         
         return
+        
+    def _update_state_table(self, dynamo, data):
+        
+        #Loop over stacks
+        for stackname in data.keys():
+            stackconfig = data[stackname]
+        
+            #Set up the arguments
+            kwargs = {
+                "TableName": self.table_name,
+                "Key": {
+                    "stackname": {
+                        "S": stackname
+                    }
+                },
+                "UpdateExpression": "set stackconfig = :val",
+                "ExpressionAttributeValues": {
+                    ":val": {"M": stackconfig}
+                }
+            }
+            
+            try:
+                response = dynamo.update_item(**kwargs)
+            except Exception as e:
+                msg = str(e)
+                logger.error("Failed to update data to dynamo state table {}: {}".format(self.table_name,msg))
+                exit(3)
+        
+        return
+        
+    def list_stacks(self):
+        #This includes global settings as a stack
+        return self.config.keys()
         
     def _dict_merge(self, old, new):
         #Recursively go through the nested dictionaries, with values in
