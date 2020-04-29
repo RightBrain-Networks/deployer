@@ -5,10 +5,9 @@ import ruamel.yaml, json, re
 from collections import MutableMapping
 
 class Config(object):
-    def __init__(self, master_stack, profile, file_name=None):
+    def __init__(self, profile, file_name=None):
         self.config = self._get_config(file_name)
         self.profile = profile
-        self.stack = master_stack
         
         self.region = "us-east-1"
         self.table_name = "CFN-Deployer"
@@ -203,3 +202,10 @@ class Config(object):
             logger.error("Required attribute '{}' not found in config.".format(key))
             exit(3)
         return base if base is not None else default
+
+    def get_config(self):
+        return self.config
+        
+    def set_master_stack(self, master_stack):
+        self.stack = master_stack
+        return 

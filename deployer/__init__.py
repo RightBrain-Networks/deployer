@@ -24,7 +24,7 @@ __version__ = '0.0.0'
 def main():
     # Build arguement parser
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
-    parser.add_argument("-c", "--config", help="Path to config file.")
+    parser.add_argument("-c", "--config", help="Path to config file.",default=None)
     parser.add_argument("-s", "--stack", help="Stack Name.")
     parser.add_argument("-x", "--execute", help="Execute ( create | update | delete | upsert | sync | change ) of stack.")
     parser.add_argument("-P", "--param", action='append', help='An override for a parameter')
@@ -71,8 +71,6 @@ def main():
     # Validate arguements and parameters
     options_broken = False
     params = {}
-    if not args.config:
-        args.config = 'config.yml'
     if not args.all:
         if not args.execute:
             print(colors['warning'] + "Must Specify execute flag!" + colors['reset'])
@@ -100,33 +98,32 @@ def main():
         console_logger.setLevel(logging.ERROR)
 
     try:
-        # Read Environment Config
-        with open(args.config) as f:
-            config = ruamel.yaml.safe_load(f)
+        # Create deployer config object
+        config_object = Config(args.profile, args.config)
 
         # Load stacks into queue
         stackQueue = []
         if not args.all:
             stackQueue = [args.stack]
         else:
-            for stack in config.items():
+            for stack in config_object.list_stacks():
                 if stack[0] != "global":
-                    stackQueue = find_deploy_path(config, stack[0], stackQueue)
+                    stackQueue = find_deploy_path(config_object.get_config(), stack[0], stackQueue)
 
         # Create or update all Environments
         for stack in stackQueue:
             if stack != 'global' and (args.all or stack == args.stack):
 
                 logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
+                
+                #Setting the stack context for config object
+                config_object.set_master_stack(stack)
 
                 # Build lambdas on `-z`
                 if args.zip_lambdas:
                     logger.info("Building lambdas for stack: " + stack)
                     LambdaPrep(args.config, args.stack).zip_lambdas()
-
-                # Create deployer config object
-                config_object = Config(args.config, stack)
-
+                
                 # AWS Session object
                 session = Session(profile_name=args.profile, region_name=config_object.get_config_att('region'))
 
