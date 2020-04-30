@@ -11,6 +11,7 @@ class Config(object):
         self.region = "us-east-1"
         self.table_name = "CFN-Deployer"
         self.profile = profile
+        self.file_name = file_name
         
         #Create boto3 session and dynamo client
         self.session = Session(profile_name=self.profile, region_name=self.region)
@@ -117,7 +118,10 @@ class Config(object):
         
         #Loop over stacks
         for stackname in data.keys():
-            stackconfig = data[stackname]
+            logger.info("Updating stack: {}".format(stackname))
+            #stackconfig = data[stackname]
+            stackconfig = self._recursive_dynamo_conversion(data[stackname])
+            logger.info(stackconfig)
         
             #Set up the arguments
             kwargs = {
@@ -129,7 +133,8 @@ class Config(object):
                 },
                 "UpdateExpression": "set stackconfig = :val",
                 "ExpressionAttributeValues": {
-                    ":val": {"M": stackconfig}
+                    #":val": {"M": stackconfig}
+                    ":val": stackconfig
                 }
             }
             
@@ -141,6 +146,21 @@ class Config(object):
                 exit(3)
         
         return
+        
+    def _recursive_dynamo_conversion(self, param):
+        
+        if isinstance(param, dict):
+            paramdict = {}
+            for key in param.keys():
+                paramdict[key] = self._recursive_dynamo_conversion(param[key])
+            return {'M': paramdict}
+        elif isinstance(param, list):
+            #paramlist = self._recursive_dynamo_conversion(item) for item in param 
+            return {'L': [ self._recursive_dynamo_conversion(item) for item in param ] }
+        
+        #For everything else, force it to be a string type for Dynamo
+        
+        return {'S': param}
         
     def list_stacks(self):
         #This includes global settings as a stack
