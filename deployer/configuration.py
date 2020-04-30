@@ -5,6 +5,7 @@ import ruamel.yaml, json, re
 from collections import MutableMapping
 from time import sleep
 from boto3.session import Session
+from copy import deepcopy
 
 class Config(object):
     def __init__(self, profile, file_name=None):
@@ -117,11 +118,10 @@ class Config(object):
     def _update_state_table(self, data):
         
         #Loop over stacks
+        stackdata = deepcopy(data)
         for stackname in data.keys():
-            logger.info("Updating stack: {}".format(stackname))
-            #stackconfig = data[stackname]
-            stackconfig = self._recursive_dynamo_conversion(data[stackname])
-            logger.info(stackconfig)
+            
+            stackconfig = self._recursive_dynamo_conversion(stackdata[stackname])
         
             #Set up the arguments
             kwargs = {
