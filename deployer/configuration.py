@@ -3,30 +3,33 @@ from deployer.logger import logger
 from deployer.stack import Stack
 import ruamel.yaml, json, re
 from collections import MutableMapping
+from time import sleep
+from boto3.session import Session
 
 class Config(object):
     def __init__(self, profile, file_name=None):
-        self.config = self._get_config(file_name)
-        self.profile = profile
-        
         self.region = "us-east-1"
         self.table_name = "CFN-Deployer"
+        self.profile = profile
+        
+        #Create boto3 session and dynamo client
+        self.session = Session(profile_name=self.profile, region_name=self.region)
+        self.dynamo = self.session.client('dynamodb')
+        
+        self.config = self._get_config(file_name)
         
     def _get_config(self, file_name=None): 
         
         #Create session
         try:
-            session = Session(profile_name=self.profile, region_name=self.region)
-            dynamo = session.client('dynamo')
             
             #Check for Dynamo state table
-            resp_tables = dynamo.list_tables()
-            if not self.table_name in resp_tables['TableNames']:
+            if not self._table_exists():
                 #Since it doesn't exist, create it
-                self._create_state_table(dynamo)
+                self._create_state_table()
             
             #Retrieve data from table and format it
-            scan_resp = dynamo.scan(TableName=self.table_name)
+            scan_resp = self.dynamo.scan(TableName=self.table_name)
             
             data = {}
             for item in scan_resp['Items']:
@@ -55,11 +58,19 @@ class Config(object):
             data = finalstate
             
             #Update Dynamo table
-            self._update_state_table(dynamo, data)
+            self._update_state_table(data)
         
         return data
 
-    def _create_state_table(self, dynamo):
+    def _table_exists(self):
+        resp_tables = self.dynamo.list_tables()
+        if self.table_name in resp_tables['TableNames']:
+            resp_table = self.dynamo.describe_table(TableName=self.table_name)
+            if resp_table['Table']['TableStatus'] == 'ACTIVE': 
+                return True
+        return False
+
+    def _create_state_table(self):
         
         #Set up the arguments
         kwargs = {
@@ -67,11 +78,7 @@ class Config(object):
                 {
                     'AttributeName': 'stackname',
                     'AttributeType': 'S'
-                },
-                {
-                    'AttributeName': 'stackconfig',
-                    'AttributeType': 'M'
-                },
+                }
             ],
             'TableName': self.table_name,
             'KeySchema':[
@@ -79,12 +86,26 @@ class Config(object):
                     'AttributeName': 'stackname',
                     'KeyType': 'HASH'
                 },
-            ]
+            ],
+            'BillingMode': 'PAY_PER_REQUEST'
         }
         
         #Create Dynamo DB state table
         try:
-            response = dynamo.create_table(**kwargs)
+            logger.info("Attempting to create table")
+            response = self.dynamo.create_table(**kwargs)
+            
+            #Waiting for the table to exist
+            counter = 0
+            limit = 10
+            while counter < limit:
+                sleep(1)
+                if self._table_exists():
+                    return
+                counter+=1
+                
+            raise Exception("Timeout occurred while waiting for Dynamo table creation")
+            
         except Exception as e:
             msg = str(e)
             logger.error("Failed to retrieve data from dynamo state table {}: {}".format(self.table_name,msg))
@@ -92,7 +113,7 @@ class Config(object):
         
         return
         
-    def _update_state_table(self, dynamo, data):
+    def _update_state_table(self, data):
         
         #Loop over stacks
         for stackname in data.keys():
@@ -113,7 +134,7 @@ class Config(object):
             }
             
             try:
-                response = dynamo.update_item(**kwargs)
+                response = self.dynamo.update_item(**kwargs)
             except Exception as e:
                 msg = str(e)
                 logger.error("Failed to update data to dynamo state table {}: {}".format(self.table_name,msg))
