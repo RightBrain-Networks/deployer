@@ -138,7 +138,7 @@ def main():
                 
                 # S3 bucket to sync to
                 bucket = CloudtoolsBucket(session, config_object.get_config_att('sync_dest_bucket', None))
-
+                
                 # Check whether stack is a stack set or not and assign corresponding object
                 if(len(config_object.get_config_att('regions', [])) > 0 or len(config_object.get_config_att('accounts', [])) > 0):
                     env_stack = StackSet(session, stack, config_object, bucket, arguements)
@@ -146,7 +146,6 @@ def main():
                     if args.timeout and args.execute not in ['create', 'upsert']:
                         logger.warning("Timeout specified but action is not 'create'. Timeout will be ignored.")
                     env_stack = Stack(session, stack, config_object, bucket, arguements)
-
                 try:
 
                     # Sync files to S3

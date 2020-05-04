@@ -30,15 +30,16 @@ class Config(object):
                 #Since it doesn't exist, create it
                 self._create_state_table()
             
-            #Retrieve data from table and format it
+            #Retrieve data from table
             scan_resp = self.dynamo.scan(TableName=self.table_name)
             
+            #Format the data
             data = {}
             for item in scan_resp['Items']:
                 #Each item represents a stack
                 stackname = item['stackname']['S']
                 stackconfig = item['stackconfig']['M']
-                data[stackname] = stackconfig
+                data[stackname] = self._recursive_dynamo_to_data(stackconfig)
             
         except Exception as e:
             msg = str(e)
@@ -94,7 +95,7 @@ class Config(object):
         
         #Create Dynamo DB state table
         try:
-            logger.info("Attempting to create table")
+            logger.info("Attempting to create state table")
             response = self.dynamo.create_table(**kwargs)
             
             #Waiting for the table to exist
@@ -121,7 +122,7 @@ class Config(object):
         stackdata = deepcopy(data)
         for stackname in data.keys():
             
-            stackconfig = self._recursive_dynamo_conversion(stackdata[stackname])
+            stackconfig = self._recursive_data_to_dynamo(stackdata[stackname])
         
             #Set up the arguments
             kwargs = {
@@ -133,7 +134,6 @@ class Config(object):
                 },
                 "UpdateExpression": "set stackconfig = :val",
                 "ExpressionAttributeValues": {
-                    #":val": {"M": stackconfig}
                     ":val": stackconfig
                 }
             }
@@ -147,20 +147,36 @@ class Config(object):
         
         return
         
-    def _recursive_dynamo_conversion(self, param):
+    def _recursive_data_to_dynamo(self, param):
         
         if isinstance(param, dict):
             paramdict = {}
             for key in param.keys():
-                paramdict[key] = self._recursive_dynamo_conversion(param[key])
+                paramdict[key] = self._recursive_data_to_dynamo(param[key])
             return {'M': paramdict}
         elif isinstance(param, list):
-            #paramlist = self._recursive_dynamo_conversion(item) for item in param 
-            return {'L': [ self._recursive_dynamo_conversion(item) for item in param ] }
+            return {'L': [ self._recursive_data_to_dynamo(item) for item in param ] }
         
         #For everything else, force it to be a string type for Dynamo
         
         return {'S': param}
+        
+    def _recursive_dynamo_to_data(self, param):
+        if isinstance(param, dict):
+            paramdict = {}
+            for key in param.keys():
+                if key == 'S':
+                    return param[key]
+                elif key == 'L':
+                    newlist = [self._recursive_dynamo_to_data(item) for item in param[key]]
+                    return newlist
+                elif key == 'M':
+                    return self._recursive_dynamo_to_data(param[key])
+                else:
+                    paramdict[key] = self._recursive_dynamo_to_data(param[key])
+            return paramdict        
+        
+        return param
         
     def list_stacks(self):
         #This includes global settings as a stack
