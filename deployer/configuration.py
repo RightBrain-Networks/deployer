@@ -193,6 +193,11 @@ class Config(object):
         merged = old.copy()
         merged.update(new)
         return merged
+        
+    def merge_params(self, params):
+        logger.info("Params:")
+        logger.info(params)
+        return
 
     def build_params(self, session, stack_name, release, params, temp_file):
         # create parameters from the config.yml file

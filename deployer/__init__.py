@@ -118,11 +118,14 @@ def main():
                 
                 #Setting the stack context for config object
                 config_object.set_master_stack(stack)
+                config_object.merge_params(params)
 
                 # Build lambdas on `-z`
                 if args.zip_lambdas:
                     logger.info("Building lambdas for stack: " + stack)
-                    LambdaPrep(args.config, args.stack).zip_lambdas()
+                    lambda_dirs = config_object.get_config_att('lambda_dirs', [])
+                    sync_base = config_object.get_config_att('sync_base', '.')
+                    LambdaPrep(sync_base, lambda_dirs).zip_lambdas()
                 
                 # AWS Session object
                 session = Session(profile_name=args.profile, region_name=config_object.get_config_att('region'))
