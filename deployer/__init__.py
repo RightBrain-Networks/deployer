@@ -118,7 +118,8 @@ def main():
                 
                 #Setting the stack context for config object
                 config_object.set_master_stack(stack)
-                config_object.merge_params(params)
+                if args.param:
+                    config_object.merge_params(params)
 
                 # Build lambdas on `-z`
                 if args.zip_lambdas:

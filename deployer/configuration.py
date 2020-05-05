@@ -195,8 +195,20 @@ class Config(object):
         return merged
         
     def merge_params(self, params):
-        logger.info("Params:")
-        logger.info(params)
+        
+        param_data = {
+            self.stack: {
+                "parameters": params
+            }
+        }
+        
+        #Compare data from state table and file, update state table data with file data if different
+        updated_config = self._dict_merge(self.config, param_data)
+            
+        #Update Dynamo table
+        self._update_state_table(updated_config)
+        self.config = updated_config
+        
         return
 
     def build_params(self, session, stack_name, release, params, temp_file):
