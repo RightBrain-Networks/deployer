@@ -152,7 +152,8 @@ class Config(object):
         if isinstance(param, dict):
             paramdict = {}
             for key in param.keys():
-                paramdict[key] = self._recursive_data_to_dynamo(param[key])
+                if param[key] != '':
+                    paramdict[key] = self._recursive_data_to_dynamo(param[key])
             return {'M': paramdict}
         elif isinstance(param, list):
             return {'L': [ self._recursive_data_to_dynamo(item) for item in param ] }
