@@ -6,16 +6,16 @@ from collections import MutableMapping
 from time import sleep
 from boto3.session import Session
 from copy import deepcopy
+from datetime import datetime
 
 class Config(object):
     def __init__(self, profile, file_name=None):
-        self.region = "us-east-1"
-        self.table_name = "CFN-Deployer"
+        self.table_name = "CloudFormation-Deployer"
         self.profile = profile
         self.file_name = file_name
         
         #Create boto3 session and dynamo client
-        self.session = Session(profile_name=self.profile, region_name=self.region)
+        self.session = Session(profile_name=self.profile)
         self.dynamo = self.session.client('dynamodb')
         
         self.config = self._get_config(file_name)
@@ -27,6 +27,12 @@ class Config(object):
             
             #Check for Dynamo state table
             if not self._table_exists():
+                
+                #We must have a config file to populate the table
+                if not self.file_name:
+                    logger.error("When creating a new state table, --config option is required")
+                    exit(3)
+                
                 #Since it doesn't exist, create it
                 self._create_state_table()
             
