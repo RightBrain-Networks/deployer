@@ -117,10 +117,11 @@ def main():
                 logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
                 
                 #Setting the stack context for config object
-                config_object.set_master_stack(stack)
                 if args.param:
-                    config_object.merge_params(params)
-
+                    config_object.get_stack_config(stack, params)
+                else:
+                    config_object.get_stack_config(stack)
+                
                 # Build lambdas on `-z`
                 if args.zip_lambdas:
                     logger.info("Building lambdas for stack: " + stack)

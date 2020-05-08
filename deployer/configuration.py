@@ -13,46 +13,33 @@ class Config(object):
         self.table_name = "CloudFormation-Deployer"
         self.profile = profile
         self.file_name = file_name
+        self.file_data = self._get_file_data(file_name)
         
         #Create boto3 session and dynamo client
         self.session = Session(profile_name=self.profile)
         self.dynamo = self.session.client('dynamodb')
         
-        self.config = self._get_config(file_name)
+        #Create state table if necessary
+        if not self._table_exists():
+            
+            #We must have a config file to populate the table
+            if not self.file_name:
+                logger.error("When creating a new state table, --config option is required")
+                exit(3)
+            
+            #Since it doesn't exist, create it
+            self._create_state_table()
         
-    def _get_config(self, file_name=None): 
+        self.config = {}
         
-        #Create session
-        try:
-            
-            #Check for Dynamo state table
-            if not self._table_exists():
-                
-                #We must have a config file to populate the table
-                if not self.file_name:
-                    logger.error("When creating a new state table, --config option is required")
-                    exit(3)
-                
-                #Since it doesn't exist, create it
-                self._create_state_table()
-            
-            #Retrieve data from table
-            scan_resp = self.dynamo.scan(TableName=self.table_name)
-            
-            #Format the data
-            data = {}
-            for item in scan_resp['Items']:
-                #Each item represents a stack
-                stackname = item['stackname']['S']
-                stackconfig = item['stackconfig']['M']
-                data[stackname] = self._recursive_dynamo_to_data(stackconfig)
-            
-        except Exception as e:
-            msg = str(e)
-            logger.error("Failed to retrieve data from dynamo state table {}: {}".format(self.table_name,msg))
-            exit(3)
+        self.stack_list = self._get_stacks()
         
-        #Check for file_name
+        ### WARNING - THE FOLLOWING DOESN'T HANDLE OVERRIDE PARAMS FOR GLOBAL ###
+        self.get_stack_config("global")
+    
+    def _get_file_data(self, file_name=None):
+        file_data = None
+        
         if file_name:
             try:
                 with open(file_name) as f:
@@ -61,16 +48,92 @@ class Config(object):
                 msg = str(e)
                 logger.error("Failed to retrieve data from config file {}: {}".format(file_name,msg))
                 exit(3)
-            
-            #Compare data from state table and file, update state table data with file data if different
-            finalstate = self._dict_merge(data, file_data)
-            data = finalstate
-            
-            #Update Dynamo table
-            self._update_state_table(data)
         
-        return data
-
+        return file_data
+    
+    def _get_stacks(self):
+        
+        file_list = []
+        dynamo_list = []
+        
+        if self.file_data:
+            file_list = [ key for key in self.file_data.keys() ]
+        
+        try:
+            #Need to get the distinct stacks in the table
+            #Since Dynamo isn't set up to handle this natively, we need
+            # to read the whole table and filter the results ourselves
+            dynamo_args = {
+                'TableName': self.table_name,
+                'ProjectionExpression': "stackname"
+            }
+            scan_resp = self.dynamo.scan(**dynamo_args)
+            dynamo_list = [ item['stackname']['S'] for item in scan_resp['Items'] ]
+            
+            #Get unique items
+            dynamo_list = list(set(dynamo_list))
+            
+        except Exception as e:
+            msg = str(e)
+            logger.error("Failed to retrieve stacks from dynamo state table {}: {}".format(self.table_name,msg))
+            exit(3)
+        
+        #Merge the lists
+        stacklist = list(set(file_list+dynamo_list))
+        
+        return stacklist
+        
+    def get_stack_config(self, stack_context, params=None):
+        #Set the stack context
+        self.stack = stack_context
+        
+        #Get the most recent stack config from Dynamo
+        try:
+            dynamo_args = {
+                'TableName': self.table_name,
+                'KeyConditionExpression': "#sn = :sn",
+                'ExpressionAttributeNames': {
+                    '#sn': 'stackname'
+                },
+                'ExpressionAttributeValues': {
+                    ':sn': {
+                        'S': self.stack
+                    }
+                },
+                'ScanIndexForward'=False,
+                'Limit': 1
+            }
+            
+            query_resp = self.dynamo.query(**dynamo_args)
+            item = query_resp['Items'][0]
+        except Exception as e:
+            msg = str(e)
+            logger.error("Failed to retrieve data from dynamo state table {} for stack {}: {}".format(self.table_name, stack_context, msg))
+            exit(3)
+        
+        #Format the stack config data
+        data = self._recursive_dynamo_to_data(stackconfig)
+        
+        if params:
+            #Merge the override params for the stack if applicable
+            param_data = {
+                "parameters": params
+            }
+            merged_params = self._dict_merge(data, param_data)
+            data = merged_params
+        
+        if self.file_data:
+            #Merge the file data for the stack if applicable            
+            merged_file = self._dict_merge(data, self.file_data[stackname])
+            data = merged_file
+                        
+        if params or self.file_data:
+            self._update_state_table(stackname, data)
+            
+        self.config[stackname] = data
+        
+        return finalstate
+        
     def _table_exists(self):
         resp_tables = self.dynamo.list_tables()
         if self.table_name in resp_tables['TableNames']:
@@ -87,6 +150,10 @@ class Config(object):
                 {
                     'AttributeName': 'stackname',
                     'AttributeType': 'S'
+                },
+                {
+                    'AttributeName': 'timestamp',
+                    'AttributeType': 'S'
                 }
             ],
             'TableName': self.table_name,
@@ -95,6 +162,10 @@ class Config(object):
                     'AttributeName': 'stackname',
                     'KeyType': 'HASH'
                 },
+                {
+                    'AttributeName': 'timestamp',
+                    'KeyType': 'RANGE'
+                }
             ],
             'BillingMode': 'PAY_PER_REQUEST'
         }
@@ -122,35 +193,31 @@ class Config(object):
         
         return
         
-    def _update_state_table(self, data):
+    def _update_state_table(self, stack, data):
         
-        #Loop over stacks
+        #Convert to Dynamo params
         stackdata = deepcopy(data)
-        for stackname in data.keys():
-            
-            stackconfig = self._recursive_data_to_dynamo(stackdata[stackname])
+        stack_config = self._recursive_data_to_dynamo(stackdata)
+        timestamp = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%S.%f")
+        item = {
+            "stackname":   { "S": stack },
+            "timestamp":   { "S": timestamp},
+            "stackconfig": { "M": stackconfig}
+        }
         
-            #Set up the arguments
-            kwargs = {
-                "TableName": self.table_name,
-                "Key": {
-                    "stackname": {
-                        "S": stackname
-                    }
-                },
-                "UpdateExpression": "set stackconfig = :val",
-                "ExpressionAttributeValues": {
-                    ":val": stackconfig
-                }
-            }
-            
-            try:
-                response = self.dynamo.update_item(**kwargs)
-            except Exception as e:
-                msg = str(e)
-                logger.error("Failed to update data to dynamo state table {}: {}".format(self.table_name,msg))
-                exit(3)
+        #Set up the API arguments
+        kwargs = {
+            "TableName": self.table_name,
+            "Item": item
+        }
         
+        try:
+            response = self.dynamo.put_item(**kwargs)
+        except Exception as e:
+            msg = str(e)
+            logger.error("Failed to update data to dynamo state table {}: {}".format(self.table_name,msg))
+            exit(3)
+                
         return
         
     def _recursive_data_to_dynamo(self, param):
@@ -187,7 +254,7 @@ class Config(object):
         
     def list_stacks(self):
         #This includes global settings as a stack
-        return self.config.keys()
+        return self.stack_list
         
     def _dict_merge(self, old, new):
         #Recursively go through the nested dictionaries, with values in
@@ -201,23 +268,6 @@ class Config(object):
         merged.update(new)
         return merged
         
-    def merge_params(self, params):
-        
-        param_data = {
-            self.stack: {
-                "parameters": params
-            }
-        }
-        
-        #Compare data from state table and file, update state table data with file data if different
-        updated_config = self._dict_merge(self.config, param_data)
-            
-        #Update Dynamo table
-        self._update_state_table(updated_config)
-        self.config = updated_config
-        
-        return
-
     def build_params(self, session, stack_name, release, params, temp_file):
         # create parameters from the config.yml file
         self.parameter_file = "%s-params.json" % stack_name
@@ -287,6 +337,3 @@ class Config(object):
     def get_config(self):
         return self.config
         
-    def set_master_stack(self, master_stack):
-        self.stack = master_stack
-        return 
