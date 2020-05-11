@@ -9,10 +9,12 @@ from copy import deepcopy
 from datetime import datetime
 
 class Config(object):
-    def __init__(self, profile, file_name=None):
+    def __init__(self, profile, stack_name, file_name=None, override_params=None):
         self.table_name = "CloudFormation-Deployer"
         self.profile = profile
+        self.stack = stack_name
         self.file_name = file_name
+        
         self.file_data = self._get_file_data(file_name)
         
         #Create boto3 session and dynamo client
@@ -31,11 +33,7 @@ class Config(object):
             self._create_state_table()
         
         self.config = {}
-        
-        self.stack_list = self._get_stacks()
-        
-        ### WARNING - THE FOLLOWING DOESN'T HANDLE OVERRIDE PARAMS FOR GLOBAL ###
-        self.get_stack_config("global")
+        self._get_stack_config()
     
     def _get_file_data(self, file_name=None):
         file_data = None
@@ -51,41 +49,7 @@ class Config(object):
         
         return file_data
     
-    def _get_stacks(self):
-        
-        file_list = []
-        dynamo_list = []
-        
-        if self.file_data:
-            file_list = [ key for key in self.file_data.keys() ]
-        
-        try:
-            #Need to get the distinct stacks in the table
-            #Since Dynamo isn't set up to handle this natively, we need
-            # to read the whole table and filter the results ourselves
-            dynamo_args = {
-                'TableName': self.table_name,
-                'ProjectionExpression': "stackname"
-            }
-            scan_resp = self.dynamo.scan(**dynamo_args)
-            dynamo_list = [ item['stackname']['S'] for item in scan_resp['Items'] ]
-            
-            #Get unique items
-            dynamo_list = list(set(dynamo_list))
-            
-        except Exception as e:
-            msg = str(e)
-            logger.error("Failed to retrieve stacks from dynamo state table {}: {}".format(self.table_name,msg))
-            exit(3)
-        
-        #Merge the lists
-        stacklist = list(set(file_list+dynamo_list))
-        
-        return stacklist
-        
-    def get_stack_config(self, stack_context, params=None):
-        #Set the stack context
-        self.stack = stack_context
+    def _get_stack_config(self, params=None):
         
         #Get the most recent stack config from Dynamo
         try:
@@ -127,9 +91,13 @@ class Config(object):
             data = merged_params
         
         if self.file_data:
-            #Merge the file data for the stack if applicable            
-            merged_file = self._dict_merge(data, self.file_data[self.stack])
-            data = merged_file
+            #Merge the file data for the stack if applicable, global first
+            if 'global' in self.file_data:
+                merged_global = self._dict_merge(data, self.file_data['global'])
+                data = merged_global
+            if self.stack in self.file_data:
+                merged_file = self._dict_merge(data, self.file_data[self.stack])
+                data = merged_file
                         
         if params or self.file_data:
             self._update_state_table(self.stack, data)
@@ -255,10 +223,6 @@ class Config(object):
             return paramdict        
         
         return param
-        
-    def list_stacks(self):
-        #This includes global settings as a stack
-        return self.stack_list
         
     def _dict_merge(self, old, new):
         #Recursively go through the nested dictionaries, with values in

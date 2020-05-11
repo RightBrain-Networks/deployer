@@ -71,6 +71,10 @@ def main():
     # Validate arguements and parameters
     options_broken = False
     params = {}
+    if args.all:
+        if not args.config:
+            print(colors['warning'] + "Must Specify config flag!" + colors['reset'])
+            options_broken = True
     if not args.all:
         if not args.execute:
             print(colors['warning'] + "Must Specify execute flag!" + colors['reset'])
@@ -98,15 +102,22 @@ def main():
         console_logger.setLevel(logging.ERROR)
 
     try:
-        # Create deployer config object
-        config_object = Config(args.profile, args.config)
 
         # Load stacks into queue
         stackQueue = []
         if not args.all:
             stackQueue = [args.stack]
         else:
-            for stack in config_object.list_stacks():
+            #Load config, get stacks
+            try:
+                with open(args.config) as f:
+                    file_data = ruamel.yaml.safe_load(f)
+            except Exception as e:
+                msg = str(e)
+                logger.error("Failed to retrieve data from config file {}: {}".format(file_name,msg))
+                exit(3)
+            
+            for stack in file_data.keys():
                 if stack[0] != "global":
                     stackQueue = find_deploy_path(config_object.get_config(), stack[0], stackQueue)
 
@@ -116,12 +127,19 @@ def main():
 
                 logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
                 
-                #Setting the stack context for config object
+                # Create deployer config object
+                cargs = {
+                  'profile': args.profile,
+                  'stack_name': stack
+                }
+                if args.config:
+                    cargs['file_name'] = args.config
+                    
                 if args.param:
-                    config_object.get_stack_config(stack, params)
-                else:
-                    config_object.get_stack_config(stack)
+                    cargs['override_params'] = params
                 
+                config_object = Config(**cargs)
+        
                 # Build lambdas on `-z`
                 if args.zip_lambdas:
                     logger.info("Building lambdas for stack: " + stack)
