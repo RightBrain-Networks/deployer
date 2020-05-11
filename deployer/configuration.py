@@ -95,10 +95,12 @@ class Config(object):
         if self.file_data:
             #Merge the file data for the stack if applicable, global first
             if 'global' in self.file_data:
-                merged_global = self._dict_merge(data, self.file_data['global'])
+                config_copy = self._handle_use_previous_value(self.file_data['global'])
+                merged_global = self._dict_merge(data, config_copy)
                 data = merged_global
             if self.stack in self.file_data:
-                merged_file = self._dict_merge(data, self.file_data[self.stack])
+                config_copy = self._handle_use_previous_value(self.file_data[self.stack])
+                merged_file = self._dict_merge(data, config_copy)
                 data = merged_file
                         
         sts = self.session.client('sts')
@@ -119,6 +121,16 @@ class Config(object):
         self.config[self.stack] = data
                 
         return data
+        
+    def _handle_use_previous_value(self, paramdict):
+        dict_copy = deepcopy(paramdict)
+        # First look for indicators to use previous value, remove it from the dict if it is true
+        for paramkey in dict_copy['parameters'].keys():
+            if isinstance(dict_copy['parameters'][paramkey],dict):
+                if "UsePreviousValue" in dict_copy['parameters'][paramkey]:
+                    if dict_copy['parameters'][paramkey]["UsePreviousValue"]:
+                        dict_copy['parameters'].pop(paramkey)
+        return dict_copy
         
     def _table_exists(self):
         resp_tables = self.dynamo.list_tables()
