@@ -33,7 +33,7 @@ class Config(object):
             self._create_state_table()
         
         self.config = {}
-        self._get_stack_config()
+        self._get_stack_config(override_params)
     
     def _get_file_data(self, file_name=None):
         file_data = None
