@@ -7,6 +7,7 @@ from time import sleep
 from boto3.session import Session
 from copy import deepcopy
 from datetime import datetime
+import git
 
 class Config(object):
     def __init__(self, profile, stack_name, file_name=None, override_params=None):
@@ -33,6 +34,7 @@ class Config(object):
             self._create_state_table()
         
         self.config = {}
+        
         self._get_stack_config(override_params)
     
     def _get_file_data(self, file_name=None):
@@ -99,6 +101,18 @@ class Config(object):
                 merged_file = self._dict_merge(data, self.file_data[self.stack])
                 data = merged_file
                         
+        sts = self.session.client('sts')
+        self.identity_arn = sts.get_caller_identity().get('Arn', '')
+
+        # Load values from methods for config lookup
+        self.base = data.get('sync_base', '.')
+        self.repository = self.get_repository(self.base)
+        self.commit = self.repository.head.object.hexsha if self.repository else 'null'
+        self.origin = self.get_repository_origin(self.repository) if self.repository else 'null'
+        
+        if not data.get('release', False):
+            data['release'] = self.commit
+        
         if params or self.file_data:
             self._update_state_table(self.stack, data)
             
@@ -174,7 +188,10 @@ class Config(object):
         item = {
             "stackname":   { "S": stack },
             "timestamp":   { "S": timestamp},
-            "stackconfig": stack_config
+            "stackconfig": stack_config,
+            "caller":      { "S": self.identity_arn},
+            "commit":      { "S": self.commit},
+            "origin":      { "S": self.origin},
         }
         
         #Set up the API arguments
@@ -236,6 +253,22 @@ class Config(object):
         merged.update(new)
         return merged
         
+    def construct_tags(self): 
+        tags = self.get_config_att('tags')
+        if tags:
+            tags = [ { 'Key': key, 'Value': value } for key, value in tags.items() ] 
+            if len(tags) > 47:
+                raise ValueError('Resources tag limit is 50, you have provided more than 47 tags. Please limit your tagging, save room for name and deployer tags.')
+        else:
+            tags = []
+        tags.append({'Key': 'deployer:stack', 'Value': self.stack})
+        tags.append({'Key': 'deployer:caller', 'Value': self.identity_arn})
+        tags.append({'Key': 'deployer:git:commit', 'Value': self.commit})
+        tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
+        if self.file_name:
+            tags.append({'Key': 'deployer:config', 'Value': self.file_name.replace('\\', '/')})
+        return tags
+        
     def build_params(self, session, stack_name, release, params, temp_file):
         # create parameters from the config.yml file
         self.parameter_file = "%s-params.json" % stack_name
@@ -293,6 +326,20 @@ class Config(object):
                     return_params.remove(item)
         logger.info("Parameters Created")
         return return_params
+    
+    def get_repository(self, base):
+        try:
+            return git.Repo(base, search_parent_directories=True)
+        except git.exc.InvalidGitRepositoryError:
+            return None
+
+    def get_repository_origin(self, repository):
+        try:
+            origin = repository.remotes.origin.url
+            return origin.split('@', 1)[-1] if origin else None
+        except (StopIteration, ValueError):
+            return None
+        return None
 
     def get_config_att(self, key, default=None, required=False):
         base = self.config.get('global', {}).get(key, None)

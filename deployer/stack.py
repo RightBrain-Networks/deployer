@@ -30,25 +30,17 @@ class Stack(AbstractCloudFormation):
 
         # Load values from config
         self.stack_name = self.config.get_config_att('stack_name', required=True)
-        self.base = self.config.get_config_att('sync_base', '.')
-
-        # Load values from methods for config lookup
-        self.repository = self.get_repository(self.base)
-        self.commit = self.repository.head.object.hexsha if self.repository else 'null'
 
         # Load values from config
-        self.release = self.config.get_config_att('release', self.commit).replace('/','.')
+        self.release = self.config.get_config_att('release').replace('/','.')
         self.template = self.config.get_config_att('template', required=True)
         self.timeout = self.config.get_config_att('timeout') if not self.timed_out else None
         self.transforms = self.config.get_config_att('transforms')
 
         # Intialize objects
         self.client = self.session.client('cloudformation')
-        self.sts = self.session.client('sts')
 
         # Load values from methods
-        self.origin = self.get_repository_origin(self.repository) if self.repository else 'null'
-        self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
         self.template_url = self.bucket.construct_template_url(self.config, self.stack, self.release, self.template) # self.construct_template_url()
         self.template_file = self.bucket.get_template_file(self.config, self.stack)
         self.template_body = self.bucket.get_template_body(self.config, self.template)
@@ -70,22 +62,6 @@ class Stack(AbstractCloudFormation):
         except Exception:
             self.change_set_status = 'False'
         return self.change_set_status
-
-    def construct_tags(self): 
-        tags = self.config.get_config_att('tags')
-        if tags:
-            tags = [ { 'Key': key, 'Value': value } for key, value in tags.items() ] 
-            if len(tags) > 47:
-                raise ValueError('Resources tag limit is 50, you have provided more than 47 tags. Please limit your tagging, save room for name and deployer tags.')
-        else:
-            tags = []
-        tags.append({'Key': 'deployer:stack', 'Value': self.stack})
-        tags.append({'Key': 'deployer:caller', 'Value': self.identity_arn})
-        tags.append({'Key': 'deployer:git:commit', 'Value': self.commit})
-        tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
-        #tags.append({'Key': 'deployer:config', 'Value': self.config.file_name.replace('\\', '/')})
-        return tags
-        
 
     def create_waiter(self, start_time):
         waiter = self.client.get_waiter('stack_create_complete')
@@ -275,7 +251,7 @@ class Stack(AbstractCloudFormation):
                 "StackName": self.stack_name,
                 "Parameters": self.config.build_params(self.session, self.stack, self.release, self.params, self.template_file),
                 "DisableRollback": self.disable_rollback,
-                "Tags": self.construct_tags(),
+                "Tags": self.config.construct_tags(),
                 "Capabilities": [
                     'CAPABILITY_IAM',
                     'CAPABILITY_NAMED_IAM',
@@ -302,7 +278,7 @@ class Stack(AbstractCloudFormation):
             args = {
                 "StackName": self.stack_name,
                 "Parameters": self.config.build_params(self.session, self.stack, self.release, self.params, self.template_file),
-                "Tags": self.construct_tags(),
+                "Tags": self.config.construct_tags(),
                 "Capabilities": [
                     'CAPABILITY_IAM',
                     'CAPABILITY_NAMED_IAM',

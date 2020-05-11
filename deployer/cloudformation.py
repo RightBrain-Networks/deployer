@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import git
 from abc import ABCMeta, abstractmethod
 from deployer.logger import logger
 
@@ -51,20 +50,6 @@ class AbstractCloudFormation(object):
     @abstractmethod
     def status(self):
         pass
-
-    def get_repository(self, base):
-        try:
-            return git.Repo(base, search_parent_directories=True)
-        except git.exc.InvalidGitRepositoryError:
-            return None
-
-    def get_repository_origin(self, repository):
-        try:
-            origin = repository.remotes.origin.url
-            return origin.split('@', 1)[-1] if origin else None
-        except (StopIteration, ValueError):
-            return None
-        return None
 
     def get_template_body(self, bucket, template):
         if not bucket:
