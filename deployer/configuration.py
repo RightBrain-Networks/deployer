@@ -100,19 +100,23 @@ class Config(object):
                         'S': self.stack
                     }
                 },
-                'ScanIndexForward'=False,
+                'ScanIndexForward': False,
                 'Limit': 1
             }
             
             query_resp = self.dynamo.query(**dynamo_args)
-            item = query_resp['Items'][0]
+            
         except Exception as e:
             msg = str(e)
             logger.error("Failed to retrieve data from dynamo state table {} for stack {}: {}".format(self.table_name, stack_context, msg))
             exit(3)
         
-        #Format the stack config data
-        data = self._recursive_dynamo_to_data(stackconfig)
+        data = {}
+        if query_resp['Count'] > 0:
+            #Format the stack config data
+            item = query_resp['Items'][0]
+            data = self._recursive_dynamo_to_data(item)
+            data = data['stackconfig']
         
         if params:
             #Merge the override params for the stack if applicable
@@ -124,15 +128,15 @@ class Config(object):
         
         if self.file_data:
             #Merge the file data for the stack if applicable            
-            merged_file = self._dict_merge(data, self.file_data[stackname])
+            merged_file = self._dict_merge(data, self.file_data[self.stack])
             data = merged_file
                         
         if params or self.file_data:
-            self._update_state_table(stackname, data)
+            self._update_state_table(self.stack, data)
             
-        self.config[stackname] = data
-        
-        return finalstate
+        self.config[self.stack] = data
+                
+        return data
         
     def _table_exists(self):
         resp_tables = self.dynamo.list_tables()
@@ -202,7 +206,7 @@ class Config(object):
         item = {
             "stackname":   { "S": stack },
             "timestamp":   { "S": timestamp},
-            "stackconfig": { "M": stackconfig}
+            "stackconfig": stack_config
         }
         
         #Set up the API arguments
