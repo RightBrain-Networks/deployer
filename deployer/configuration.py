@@ -226,6 +226,83 @@ class Config(object):
                 
         return
         
+    def list_versions(self):
+        
+        try:
+            dynamo_args = {
+                'TableName': self.table_name,
+                'KeyConditionExpression': "#sn = :sn",
+                'ExpressionAttributeNames': {
+                    '#sn': 'stackname',
+                    "#tm": 'timestamp'
+                },
+                'ExpressionAttributeValues': {
+                    ':sn': {
+                        'S': self.stack
+                    }
+                },
+                'ProjectionExpression': "version, #tm",
+                'ScanIndexForward': False
+            }
+            
+            query_resp = self.dynamo.query(**dynamo_args)
+            
+        except Exception as e:
+            msg = str(e)
+            logger.error("Failed to retrieve data from dynamo state table {} for stack {}: {}".format(self.table_name, self.stack, msg))
+            exit(3)
+        
+        if query_resp['Count'] <= 0:
+            logger.error("Failed to retrieve versions from dynamo state table {} for stack {}: No versions exist".format(self.table_name, self.stack))
+            exit(3)
+            
+        #Format the data
+        items = []
+        for item in query_resp['Items']:
+            items.append(self._recursive_dynamo_to_data(item))
+        
+        return items
+        
+    def get_version(self, version):
+        try:
+            dynamo_args = {
+                'TableName': self.table_name,
+                'KeyConditionExpression': "#sn = :sn",
+                'FilterExpression': "#vn = :vn",
+                'ExpressionAttributeNames': {
+                    '#sn': 'stackname',
+                    '#vn': 'version',
+                },
+                'ExpressionAttributeValues': {
+                    ':sn': {
+                        'S': self.stack
+                    },
+                    ':vn': {
+                        'S': version
+                    }
+                },
+                'ScanIndexForward': False,
+            }
+            
+            query_resp = self.dynamo.query(**dynamo_args)
+            
+        except Exception as e:
+            msg = str(e)
+            logger.error("Failed to retrieve data from dynamo state table {} for stack {}: {}".format(self.table_name, self.stack, msg))
+            exit(3)
+        
+        if query_resp['Count'] <= 0:
+            logger.error("Failed to retrieve versions from dynamo state table {} for stack {}: Version '{}' does not exist".format(self.table_name, self.stack, version))
+            exit(3)
+            
+        #Format the data
+        item = self._recursive_dynamo_to_data(query_resp['Items'][0])
+        
+        return item
+        
+    def set_version(self, version):
+        return
+    
     def _recursive_data_to_dynamo(self, param):
         
         if isinstance(param, dict):

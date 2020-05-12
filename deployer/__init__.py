@@ -43,6 +43,8 @@ def main():
     parser.add_argument("-T", "--timeout", type=int, help='Stack create timeout')
     parser.add_argument("-O", "--export-yaml", help="Export stack config to specified YAML file.",default=None)
     parser.add_argument("-o", "--export-json", help="Export stack config to specified JSON file.",default=None)
+    parser.add_argument("-i", "--config-version", help="Execute ( list | get | set ) of stack config.")
+    parser.add_argument("-n", "--config-version-number", help="Specified config version, used with --config-version option.")
     parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
     parser.add_argument("--disable-color", help='Disables color output', action='store_true', dest='no_color')
 
@@ -79,7 +81,14 @@ def main():
             print(colors['warning'] + "Must Specify config flag!" + colors['reset'])
             options_broken = True
     if not args.all:
-        if not args.execute:
+        if args.config_version:
+            if args.config_version != "list" and args.config_version != "set" and args.config_version != "get":
+                print(colors['warning'] + "config-version command '" + args.config_version + "' not recognized. Must be one of: list, set, get "+ colors['reset'])
+                options_broken = True
+            if (args.config_version == 'set' or args.config_version == 'get') and not args.config_version_number:
+                print(colors['warning'] + "config-version " + args.config_version + " requires config-version-number flag!" + colors['reset'])
+                options_broken = True
+        elif not args.execute:
             print(colors['warning'] + "Must Specify execute flag!" + colors['reset'])
             options_broken = True
         if not args.stack:
@@ -142,6 +151,21 @@ def main():
                     cargs['override_params'] = params
                 
                 config_object = Config(**cargs)
+                
+                #Config Version Handling
+                if args.config_version:
+                    if args.config_version == "list":
+                        versions = config_object.list_versions()
+                        for version in versions:
+                            if 'version' in version:
+                                print("Timestamp: {}  Version: {}".format(version['timestamp'], version['version']))
+                    elif args.config_version == "get":
+                        retrieved_config = config_object.get_version(args.config_version_number)
+                        print(yaml.dump(retrieved_config,default_flow_style=False, allow_unicode=True))
+                    elif args.config_version == "set":
+                        config_object.set_version(args.config_version_number)
+                    
+                    continue
                 
                 #Export if specified
                 if args.export_json:
