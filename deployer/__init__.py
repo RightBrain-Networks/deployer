@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import json
+import yaml
 import os
 from botocore.exceptions import ClientError
 from deployer.stack import Stack
@@ -40,6 +41,8 @@ def main():
     parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG & enables traceback", action="store_true", dest="debug", default=False)
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
     parser.add_argument("-T", "--timeout", type=int, help='Stack create timeout')
+    parser.add_argument("-O", "--export-yaml", help="Export stack config to specified YAML file.",default=None)
+    parser.add_argument("-o", "--export-json", help="Export stack config to specified JSON file.",default=None)
     parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
     parser.add_argument("--disable-color", help='Disables color output', action='store_true', dest='no_color')
 
@@ -139,7 +142,31 @@ def main():
                     cargs['override_params'] = params
                 
                 config_object = Config(**cargs)
-        
+                
+                #Export if specified
+                if args.export_json:
+                    config_dict = config_object.get_config()
+                    
+                    try:
+                        with open(args.export_json, 'w') as f:
+                            j = json.dumps(config_dict, indent=4)
+                            f.write(j)
+                    except Exception as e:
+                        msg = str(e)
+                        logger.error("Failed to export data to JSON file {}: {}".format(args.export_json,msg))
+                        exit(3)
+                        
+                if args.export_yaml:
+                    config_dict = config_object.get_config()
+                    
+                    try:
+                        with open(args.export_yaml, 'w') as f:
+                             yaml.dump(config_dict, f, default_flow_style=False, allow_unicode=True)
+                    except Exception as e:
+                        msg = str(e)
+                        logger.error("Failed to export data to YAML file {}: {}".format(args.export_yaml,msg))
+                        exit(3)
+                
                 # Build lambdas on `-z`
                 if args.zip_lambdas:
                     logger.info("Building lambdas for stack: " + stack)

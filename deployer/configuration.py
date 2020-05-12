@@ -241,14 +241,14 @@ class Config(object):
             paramdict = {}
             for key in param.keys():
                 if key == 'S':
-                    return param[key]
+                    return str(param[key])
                 elif key == 'L':
                     newlist = [self._recursive_dynamo_to_data(item) for item in param[key]]
                     return newlist
                 elif key == 'M':
                     return self._recursive_dynamo_to_data(param[key])
                 else:
-                    paramdict[key] = self._recursive_dynamo_to_data(param[key])
+                    paramdict[str(key)] = self._recursive_dynamo_to_data(param[key])
             return paramdict        
         
         return param
