@@ -34,7 +34,7 @@ class Config(object):
             self._create_state_table()
         
         self.config = {}
-        
+        self.version = 0
         self._get_stack_config(override_params)
     
     def _get_file_data(self, file_name=None):
@@ -82,6 +82,8 @@ class Config(object):
             #Format the stack config data
             item = query_resp['Items'][0]
             data = self._recursive_dynamo_to_data(item)
+            if 'version' in data and data['version'].isdigit():
+                self.version = int(data['version'])
             data = data['stackconfig']
         
         if params:
@@ -197,8 +199,11 @@ class Config(object):
         stackdata = deepcopy(data)
         stack_config = self._recursive_data_to_dynamo(stackdata)
         timestamp = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%S.%f")
+        #Increment version
+        self.version+=1
         item = {
             "stackname":   { "S": stack },
+            "version":     { "S": str(self.version)},
             "timestamp":   { "S": timestamp},
             "stackconfig": stack_config,
             "caller":      { "S": self.identity_arn},
