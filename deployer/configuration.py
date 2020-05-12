@@ -301,6 +301,13 @@ class Config(object):
         return item
         
     def set_version(self, version):
+        item = self.get_version(version)
+        
+        stackconfig = item['stackconfig']
+        self._update_state_table(self.stack, stackconfig)
+            
+        self.config[self.stack] = stackconfig
+        
         return
     
     def _recursive_data_to_dynamo(self, param):
