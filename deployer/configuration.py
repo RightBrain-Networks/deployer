@@ -12,6 +12,7 @@ import git
 class Config(object):
     def __init__(self, profile, stack_name, file_name=None, override_params=None):
         self.table_name = "CloudFormation-Deployer"
+        self.index_name = "VersionIndex"
         self.profile = profile
         self.stack = stack_name
         self.file_name = file_name
@@ -132,7 +133,7 @@ class Config(object):
             if isinstance(dict_copy['parameters'][paramkey],dict):
                 if "UsePreviousValue" in dict_copy['parameters'][paramkey]:
                     if dict_copy['parameters'][paramkey]["UsePreviousValue"]:
-                        if paramkey in olddata['parameters']: 
+                        if 'parameters' in olddata and paramkey in olddata['parameters']: 
                             dict_copy['parameters'][paramkey] = olddata['parameters'][paramkey]
                         else:
                             dict_copy['parameters'].pop(paramkey)
@@ -158,6 +159,10 @@ class Config(object):
                 {
                     'AttributeName': 'timestamp',
                     'AttributeType': 'S'
+                },
+                {
+                    'AttributeName': 'version',
+                    'AttributeType': 'S'
                 }
             ],
             'TableName': self.table_name,
@@ -170,6 +175,24 @@ class Config(object):
                     'AttributeName': 'timestamp',
                     'KeyType': 'RANGE'
                 }
+            ],
+            'LocalSecondaryIndexes':[
+                {
+                    'IndexName': self.index_name,
+                    'KeySchema': [
+                        {
+                            'AttributeName': 'stackname',
+                            'KeyType': 'HASH'
+                        },
+                        {
+                            'AttributeName': 'version',
+                            'KeyType': 'RANGE'
+                        }
+                    ],
+                    'Projection': {
+                        'ProjectionType': 'ALL'
+                    }
+                },
             ],
             'BillingMode': 'PAY_PER_REQUEST'
         }
@@ -235,6 +258,8 @@ class Config(object):
         try:
             dynamo_args = {
                 'TableName': self.table_name,
+                'IndexName': self.index_name,
+                'ConsistentRead': True,
                 'KeyConditionExpression': "#sn = :sn",
                 'ExpressionAttributeNames': {
                     '#sn': 'stackname',
@@ -271,8 +296,9 @@ class Config(object):
         try:
             dynamo_args = {
                 'TableName': self.table_name,
-                'KeyConditionExpression': "#sn = :sn",
-                'FilterExpression': "#vn = :vn",
+                'IndexName': self.index_name,
+                'ConsistentRead': True,
+                'KeyConditionExpression': "#sn = :sn AND #vn = :vn",
                 'ExpressionAttributeNames': {
                     '#sn': 'stackname',
                     '#vn': 'version',
