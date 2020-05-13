@@ -86,6 +86,18 @@ class Config(object):
                 self.version = int(data['version'])
             data = data['stackconfig']
         
+        if self.file_data:
+            if self.stack in self.file_data:
+                config_copy = self._handle_use_previous_value(data, self.file_data[self.stack])
+                
+                #Merge the file data for the stack if applicable, global first
+                if 'global' in self.file_data:
+                    global_copy = self._handle_use_previous_value(data, self.file_data['global'])
+                    merged_global = self._dict_merge(global_copy, config_copy)
+                    config_copy = merged_global
+                
+                data = config_copy
+                
         if params:
             #Merge the override params for the stack if applicable
             param_data = {
@@ -93,17 +105,6 @@ class Config(object):
             }
             merged_params = self._dict_merge(data, param_data)
             data = merged_params
-        
-        if self.file_data:
-            #Merge the file data for the stack if applicable, global first
-            if 'global' in self.file_data:
-                config_copy = self._handle_use_previous_value(self.file_data['global'])
-                merged_global = self._dict_merge(data, config_copy)
-                data = merged_global
-            if self.stack in self.file_data:
-                config_copy = self._handle_use_previous_value(self.file_data[self.stack])
-                merged_file = self._dict_merge(data, config_copy)
-                data = merged_file
                         
         sts = self.session.client('sts')
         self.identity_arn = sts.get_caller_identity().get('Arn', '')
@@ -124,14 +125,17 @@ class Config(object):
                 
         return data
         
-    def _handle_use_previous_value(self, paramdict):
+    def _handle_use_previous_value(self, olddata, paramdict):
         dict_copy = deepcopy(paramdict)
         # First look for indicators to use previous value, remove it from the dict if it is true
         for paramkey in dict_copy['parameters'].keys():
             if isinstance(dict_copy['parameters'][paramkey],dict):
                 if "UsePreviousValue" in dict_copy['parameters'][paramkey]:
                     if dict_copy['parameters'][paramkey]["UsePreviousValue"]:
-                        dict_copy['parameters'].pop(paramkey)
+                        if paramkey in olddata['parameters']: 
+                            dict_copy['parameters'][paramkey] = olddata['parameters'][paramkey]
+                        else:
+                            dict_copy['parameters'].pop(paramkey)
         return dict_copy
         
     def _table_exists(self):
