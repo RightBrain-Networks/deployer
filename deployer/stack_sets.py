@@ -33,7 +33,7 @@ class StackSet(AbstractCloudFormation):
         self.accounts = self.config.get_config_att('accounts', None)
         self.execution_role = self.config.get_config_att('execution_role', None)
         self.regions = self.config.get_config_att('regions', None)
-        self.stack_name = self.config.get_config_att('stack_name', required=True)
+        self.stack_name = stack
 
         # Intialize objects
         self.client = self.session.client('cloudformation')

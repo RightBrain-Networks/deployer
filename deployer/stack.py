@@ -29,7 +29,7 @@ class Stack(AbstractCloudFormation):
         self.params = args.get('params', {})
 
         # Load values from config
-        self.stack_name = self.config.get_config_att('stack_name', required=True)
+        self.stack_name = stack
 
         # Load values from config
         self.release = self.config.get_config_att('release').replace('/','.')
