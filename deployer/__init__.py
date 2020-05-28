@@ -29,6 +29,7 @@ def main():
     parser.add_argument("-s", "--stack", help="Stack Name.")
     parser.add_argument("-x", "--execute", help="Execute ( create | update | delete | upsert | sync | change ) of stack.")
     parser.add_argument("-P", "--param", action='append', help='An override for a parameter')
+    parser.add_argument("-J", "--json-param", help='A JSON string for overriding a collection of parameters')
     parser.add_argument("-p", "--profile", help="Profile.",default=None)
     parser.add_argument("-t", "--change-set-name", help="Change Set Name.")
     parser.add_argument("-d", "--change-set-description", help="Change Set Description.")
@@ -103,6 +104,20 @@ def main():
                 print(colors['warning'] + "Invalid format for parameter '{}'".format(param) + colors['reset'])
                 options_broken = True
 
+    try:
+        json_param_dict = {}
+        if args.json_param:
+            json_param_dict = json.loads(args.json_param)
+            if args.param:
+                #Merge the dicts
+                merged_params = {**json_param_dict, **params}
+                params = merged_params
+            else:
+                params = json_param_dict
+    except:
+        print(colors['warning'] + "Invalid format for json-param, must be valid json." + colors['reset'])
+        options_broken = True
+
     # Print help output
     if options_broken:
         parser.print_help()
@@ -147,7 +162,7 @@ def main():
                 if args.config:
                     cargs['file_name'] = args.config
                     
-                if args.param:
+                if args.param or args.json_param:
                     cargs['override_params'] = params
                 
                 config_object = Config(**cargs)
