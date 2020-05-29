@@ -228,8 +228,8 @@ class DeployerTestCase(unittest.TestCase):
 
 class IntegrationLambdaTestCase(unittest.TestCase):
 
-    def __init__(self, *args, **kwargs, **cargs):
-        super(IntegrationLambdaTestCase, self).__init__(*args, **kwargs, **cargs)
+    def __init__(self, *args, **cargs):
+        super(IntegrationLambdaTestCase, self).__init__(*args, **cargs)
         self.client = boto3.client('cloudformation')
         self.stack_name = 'deployer-lambda-test'
 
@@ -289,8 +289,8 @@ class IntegrationLambdaTestCase(unittest.TestCase):
 
 class IntegrationStackTestCase(unittest.TestCase):
 
-    def __init__(self, *args, **kwargs, **cargs):
-        super(IntegrationStackTestCase, self).__init__(*args, **kwargs, **cargs)
+    def __init__(self, *args, **cargs):
+        super(IntegrationStackTestCase, self).__init__(*args, **cargs)
         self.client = boto3.client('cloudformation')
         self.stack_name = 'deployer-test'
 
@@ -377,8 +377,8 @@ class IntegrationStackTestCase(unittest.TestCase):
 
 class IntegrationStackSetTestCase(unittest.TestCase):
 
-    def __init__(self, *args, **kwargs, **cargs):
-        super(IntegrationStackSetTestCase, self).__init__(*args, **kwargs, **cargs)
+    def __init__(self, *args, **cargs):
+        super(IntegrationStackSetTestCase, self).__init__(*args, **cargs)
         self.client = boto3.client('cloudformation')
         self.stackset_name = 'deployer-stackset-test'
 
