@@ -104,7 +104,7 @@ class DeployerTestCase(unittest.TestCase):
                 raise exit
 
         self.assertEqual(get_stack_status(testStackName), 'CREATE_COMPLETE')
-        
+
     # Checks if state table CloudFormation-Deployer was created in DynamoDB
     def test_state_table(self):
         reset_config()
@@ -115,7 +115,7 @@ class DeployerTestCase(unittest.TestCase):
         
         time.sleep(apiHitRate)
 
-        #
+        #Run deployer -x upsert without -c
         try:
             output = subprocess.check_output(['python', deployerExecutor, '-x', 'upsert', '-s','test','-D'])
         except SystemExit as exit:
@@ -229,7 +229,7 @@ class DeployerTestCase(unittest.TestCase):
 class IntegrationLambdaTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
-        super(IntegrationLambdaTestCase, self).__init__(*args, **kwargs)
+        super(IntegrationLambdaTestCase, self).__init__(*args, **kwargs, **cargs)
         self.client = boto3.client('cloudformation')
         self.stack_name = 'deployer-lambda-test'
 
