@@ -104,6 +104,31 @@ class DeployerTestCase(unittest.TestCase):
                 raise exit
 
         self.assertEqual(get_stack_status(testStackName), 'CREATE_COMPLETE')
+        
+    # Checks if state table CloudFormation-Deployer was created in DynamoDB
+    def test_state_table(self):
+        reset_config()
+
+        #Create test stack
+        if(get_stack_status(testStackName) == "NULL"):
+            create_test_stack()
+        
+        time.sleep(apiHitRate)
+
+        #
+        try:
+            output = subprocess.check_output(['python', deployerExecutor, '-x', 'upsert', '-s','test','-D'])
+        except SystemExit as exit:
+            if exit.code != 0:
+                raise exit
+
+        time.sleep(apiHitRate)
+
+        #Wait for result
+        while("IN_PROGRESS" in get_stack_status(testStackName)):
+            time.sleep(apiHitRate)
+
+        self.assertEqual(get_stack_status(testStackName), "NULL")
 
     #Checks if a basic stack can be deleted
     def test_delete(self):
