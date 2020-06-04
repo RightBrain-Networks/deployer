@@ -27,7 +27,7 @@ def main():
     parser.add_argument("-c", "--config", help="Path to config file.")
     parser.add_argument("-s", "--stack", help="Stack Name.")
     parser.add_argument("-x", "--execute", help="Execute ( create | update | delete | upsert | sync | change ) of stack.")
-    parser.add_argument("-P", "--param", action='append', help='An override for a parameter')
+    parser.add_argument("-P", "--param", action='append', dest="param", help='An override for a parameter')
     parser.add_argument("-p", "--profile", help="Profile.",default=None)
     parser.add_argument("-t", "--change-set-name", help="Change Set Name.")
     parser.add_argument("-d", "--change-set-description", help="Change Set Description.")
