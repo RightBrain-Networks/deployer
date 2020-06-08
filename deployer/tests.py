@@ -422,6 +422,7 @@ class IntegrationStackSetTestCase(unittest.TestCase):
             self.assertIn('StackSetNotFoundException', str(e))
 
     def stackset_update(self):
+        print("STACKSET UPDATE")
         result = subprocess.call(['deployer', '-x', 'update', '-c', 'tests/config/stackset.yaml', '-s' 'update', '-P', 'Cli=update', '-D', '--debug'])
         self.assertEqual(result, 0)
 
