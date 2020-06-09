@@ -88,6 +88,7 @@ class DeployerTestCase(unittest.TestCase):
 
     #Checks if a basic stack can be created
     def test_create(self):
+        testStackName="test"
         reset_config()
         
         #Make sure no stack exists
@@ -109,9 +110,11 @@ class DeployerTestCase(unittest.TestCase):
     def test_state_table(self):
         reset_config()
 
+        testStackName = "test"
+    
         #Create test stack
         if(get_stack_status(testStackName) == "NULL"):
-            create_test_stack()
+            create_test_stack(testStackName)
         
         time.sleep(apiHitRate)
 
@@ -128,15 +131,17 @@ class DeployerTestCase(unittest.TestCase):
         while("IN_PROGRESS" in get_stack_status(testStackName)):
             time.sleep(apiHitRate)
 
-        self.assertEqual(get_stack_status(testStackName), "NULL")
+        self.assertEqual(get_stack_status(testStackName), "UPDATE_COMPLETE")
 
     #Checks if a basic stack can be deleted
     def test_delete(self):
         reset_config()
+        
+        testStackName = "test"
 
         #Create test stack
         if(get_stack_status(testStackName) == "NULL"):
-            create_test_stack()
+            create_test_stack(testStackName)
 
 
         time.sleep(apiHitRate)
@@ -171,7 +176,8 @@ class DeployerTestCase(unittest.TestCase):
 
     def test_update(self):
         reset_config()
-        create_test_stack()
+        testStackName = "test"
+        create_test_stack(testStackName)
         while("IN_PROGRESS" in get_stack_status(testStackName)):
             time.sleep(apiHitRate)
         subprocess.check_output(['python', configUpdateExecutor, '-c', testStackConfig, '-u', json.dumps({"global":{'tags':{ 'Environment' : 'stack-updated' }}})])
@@ -214,6 +220,7 @@ class DeployerTestCase(unittest.TestCase):
     # Checks if a basic stack can be created
     def test_timeout(self):
         reset_config()
+        testStackName = "timeout"
 
         # Make sure no stack exists
         if get_stack_status(testStackName) != "NULL":
@@ -520,7 +527,7 @@ def get_stack_tag(stack, tag):
     return None
 
 #Create test stack
-def create_test_stack():
+def create_test_stack(testStackName):
     try:
         result = cloudformation.describe_stacks(StackName=testStackName)
         if 'Stacks' in result:

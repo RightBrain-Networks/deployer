@@ -129,14 +129,15 @@ class Config(object):
     def _handle_use_previous_value(self, olddata, paramdict):
         dict_copy = deepcopy(paramdict)
         # First look for indicators to use previous value, remove it from the dict if it is true
-        for paramkey in dict_copy['parameters'].keys():
-            if isinstance(dict_copy['parameters'][paramkey],dict):
-                if "UsePreviousValue" in dict_copy['parameters'][paramkey]:
-                    if dict_copy['parameters'][paramkey]["UsePreviousValue"]:
-                        if 'parameters' in olddata and paramkey in olddata['parameters']: 
-                            dict_copy['parameters'][paramkey] = olddata['parameters'][paramkey]
-                        else:
-                            dict_copy['parameters'].pop(paramkey)
+        if 'parameters' in dict_copy:
+            for paramkey in dict_copy['parameters'].keys():
+                if isinstance(dict_copy['parameters'][paramkey],dict):
+                    if "UsePreviousValue" in dict_copy['parameters'][paramkey]:
+                        if dict_copy['parameters'][paramkey]["UsePreviousValue"]:
+                            if 'parameters' in olddata and paramkey in olddata['parameters']: 
+                                dict_copy['parameters'][paramkey] = olddata['parameters'][paramkey]
+                            else:
+                                dict_copy['parameters'].pop(paramkey)
         return dict_copy
         
     def _table_exists(self):
