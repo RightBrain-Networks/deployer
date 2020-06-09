@@ -3,6 +3,7 @@ import __init__ as deployer
 import boto3, json
 import sys, subprocess, os, shutil, time
 from botocore.exceptions import ClientError
+from deployer.configuration import Config
 import yaml
 from datetime import tzinfo, timedelta, datetime
 
@@ -105,31 +106,6 @@ class DeployerTestCase(unittest.TestCase):
 
         self.assertEqual(get_stack_status(testStackName), 'CREATE_COMPLETE')
 
-    # Checks if state table CloudFormation-Deployer was created in DynamoDB
-    def test_state_table(self):
-        reset_config()
-
-        #Create test stack
-        if(get_stack_status(testStackName) == "NULL"):
-            create_test_stack()
-        
-        time.sleep(apiHitRate)
-
-        #Run deployer -x upsert without -c
-        try:
-            output = subprocess.check_output(['python', deployerExecutor, '-x', 'upsert', '-s','test','-D'])
-        except SystemExit as exit:
-            if exit.code != 0:
-                raise exit
-
-        time.sleep(apiHitRate)
-
-        #Wait for result
-        while("IN_PROGRESS" in get_stack_status(testStackName)):
-            time.sleep(apiHitRate)
-
-        self.assertEqual(get_stack_status(testStackName), "NULL")
-
     #Checks if a basic stack can be deleted
     def test_delete(self):
         reset_config()
@@ -228,13 +204,13 @@ class DeployerTestCase(unittest.TestCase):
 
 class IntegrationLambdaTestCase(unittest.TestCase):
 
-    def __init__(self, *args, **cargs):
-        super(IntegrationLambdaTestCase, self).__init__(*args, **cargs)
+    def __init__(self, *args, **kwargs):
+        super(IntegrationLambdaTestCase, self).__init__(*args, **kwargs)
         self.client = boto3.client('cloudformation')
         self.stack_name = 'deployer-lambda-test'
 
     def stack_create(self):
-        result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/lambda.yaml', '-s' 'create', '-P', 'Cli=create', '-yzD'])
+        result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/lambda.yaml', '-s' 'create', '-yzD'])
         self.assertEqual(result, 0)
 
         stack = self.client.describe_stacks(StackName=self.stack_name)
@@ -289,8 +265,8 @@ class IntegrationLambdaTestCase(unittest.TestCase):
 
 class IntegrationStackTestCase(unittest.TestCase):
 
-    def __init__(self, *args, **cargs):
-        super(IntegrationStackTestCase, self).__init__(*args, **cargs)
+    def __init__(self, *args, **kwargs):
+        super(IntegrationStackTestCase, self).__init__(*args, **kwargs)
         self.client = boto3.client('cloudformation')
         self.stack_name = 'deployer-test'
 
@@ -377,8 +353,8 @@ class IntegrationStackTestCase(unittest.TestCase):
 
 class IntegrationStackSetTestCase(unittest.TestCase):
 
-    def __init__(self, *args, **cargs):
-        super(IntegrationStackSetTestCase, self).__init__(*args, **cargs)
+    def __init__(self, *args, **kwargs):
+        super(IntegrationStackSetTestCase, self).__init__(*args, **kwargs)
         self.client = boto3.client('cloudformation')
         self.stackset_name = 'deployer-stackset-test'
 
