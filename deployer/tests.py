@@ -234,7 +234,7 @@ class IntegrationLambdaTestCase(unittest.TestCase):
         self.stack_name = 'deployer-lambda-test'
 
     def stack_create(self):
-        result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/lambda.yaml', '-s' 'create', '-P', 'Cli=create', '-yzD'])
+        result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/lambda.yaml', '-s' 'create', '-yzD'])
         self.assertEqual(result, 0)
 
         stack = self.client.describe_stacks(StackName=self.stack_name)
@@ -553,8 +553,7 @@ def reset_config():
 def main():
     reset_config()
     unittest.main()
-    cloudformation.delete_stack(StackName=testStackName)
-    
+    cloudformation.delete_stack(StackName=testStackName)   
 
 if __name__ == "__main__":
     main()
