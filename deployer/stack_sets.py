@@ -165,7 +165,7 @@ class StackSet(AbstractCloudFormation):
             # Print result
             results = self.client.list_stack_set_operation_results(**args)
             headers = ['Account', 'Region', 'Status', 'Reason']
-            table = [[x['Account'], x['Region'], x['Status'], x.get('StatusReason', '')] for x in results['Summaries']]
+            table = [[x['Account'], x['Region'], x['Status'], x.get("AccountGateResult",{}).get('StatusReason', '')] for x in results['Summaries']]
         
             print(tabulate.tabulate(table, headers, tablefmt='simple'))
 
