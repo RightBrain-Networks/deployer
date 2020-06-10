@@ -229,12 +229,8 @@ class DeployerTestCase(unittest.TestCase):
             time.sleep(apiHitRate)
 
         # Run deployer -x create with timeout
-        try:
-            result = subprocess.call(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s', 'timeout', '-T', '1'])
-            self.assertEqual(result, 2)
-        except SystemExit as exit:
-            if exit.code != 2:
-                raise exit
+        result = subprocess.call(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s' 'timeout', '-T', '1'])
+        self.assertEqual(result, 2)
 
 
 class IntegrationLambdaTestCase(unittest.TestCase):
@@ -394,12 +390,8 @@ class IntegrationStackSetTestCase(unittest.TestCase):
         self.stackset_name = 'deployer-stackset-test'
 
     def stackset_create(self):
-        try:
-            result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/stackset.yaml', '-s' 'StackSetCreate', '-P', 'Cli=create', '-D'])
-            self.assertEquals(result, 0)
-        except SystemExit as exit:
-            if exit.code != 0:
-                raise exit
+        result = subprocess.call(['deployer', '-x', 'create', '-c', 'tests/config/stackset.yaml', '-s' 'StackSetCreate', '-P', 'Cli=create', '-D'])
+        self.assertEquals(result, 0)
 
         instances = self.client.list_stack_instances(StackSetName=self.stackset_name)
         accounts = set([x['Account'] for x in instances.get('Summaries', [])])
