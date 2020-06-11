@@ -372,7 +372,7 @@ class IntegrationStackTestCase(unittest.TestCase):
         self.assertIn('deployer:git:origin', [x['Key'] for x in tags])
         self.assertIn('deployer:stack', [x['Key'] for x in tags])
 
-    def stack_version_rollback(self):
+    def stack_list_version(self):
         try:
             encoding = 'ascii'
             list_version = subprocess.Popen(['deployer', '-i', 'list', '-s' 'create', '-D'], stdout=subprocess.PIPE)
@@ -380,15 +380,8 @@ class IntegrationStackTestCase(unittest.TestCase):
             output = list_version.communicate()[0].decode(encoding)
             results = re.findall(regex, output)
             results = [int(i) for i in results]
-            last_version_int = max(results)
-            last_version_str = str(last_version_int)
-
-            get_version = subprocess.call(['deployer', '-s' 'create',  '-i', 'get', '-n', last_version_str])
-            set_version = subprocess.call(['deployer', '-s' 'create', '-i', 'set', '-n', last_version_str])
-            rollback = subprocess.call(['deployer', '-x', 'update', '-s' 'create', '-D'])
-            self.assertEqual(get_version, 0)
-            self.assertEqual(set_version, 0)
-            self.assertEqual(rollback, 0)
+            last_version = max(results)
+            self.rollback_version = str(last_version)
 
             stack = self.client.describe_stacks(StackName=self.stack_name)
             self.assertIn('Stacks', stack.keys())
@@ -396,6 +389,45 @@ class IntegrationStackTestCase(unittest.TestCase):
 
         except SystemExit as exit:
             if exit.code != 0:
+                raise exit
+    
+    def stack_get_version(self):
+        try:
+            get_version = subprocess.call(['deployer', '-s' 'create',  '-i', 'get', '-n', self.rollback_version])
+            self.assertEqual(get_version, 0)
+
+            stack = self.client.describe_stacks(StackName=self.stack_name)
+            self.assertIn('Stacks', stack.keys())
+            self.assertEqual(len(stack['Stacks']), 1)
+
+        except SystemExit as exit:
+            if exit.code != 0:
+                raise exit
+
+    def stack_set_version(self):
+        try:
+            set_version = subprocess.call(['deployer', '-s' 'create', '-i', 'set', '-n', self.rollback_version])
+            self.assertEqual(set_version, 0)
+
+            stack = self.client.describe_stacks(StackName=self.stack_name)
+            self.assertIn('Stacks', stack.keys())
+            self.assertEqual(len(stack['Stacks']), 1)
+
+        except SystemExit as exit:
+            if exit.code != -0:
+                raise exit
+    
+    def stack_rollback_version(self):
+        try:
+            rollback = subprocess.call(['deployer', '-x', 'update', '-s' 'create', '-D'])
+            self.assertEqual(rollback, 0)
+
+            stack = self.client.describe_stacks(StackName=self.stack_name)
+            self.assertIn('Stacks', stack.keys())
+            self.assertEqual(len(stack['Stacks']), 1)
+        
+        except SystemExit as exit:
+            if exit.code != -0:
                 raise exit
 
     def stack_wait(self):
@@ -406,7 +438,10 @@ class IntegrationStackTestCase(unittest.TestCase):
         self.stack_reset()
         self.stack_create()
         self.stack_update()
-        self.stack_version_rollback()
+        self.stack_list_version()
+        self.stack_get_version()
+        self.stack_set_version()
+        self.stack_rollback_version()
         self.stack_delete()
 
 
