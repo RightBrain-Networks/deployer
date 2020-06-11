@@ -1,7 +1,8 @@
 import unittest
 import __init__ as deployer
 import boto3, json
-import sys, subprocess, os, shutil, time
+import sys, subprocess, os, re, shutil, time
+from subprocess import Popen, PIPE
 from botocore.exceptions import ClientError
 import yaml
 from datetime import tzinfo, timedelta, datetime
@@ -371,6 +372,32 @@ class IntegrationStackTestCase(unittest.TestCase):
         self.assertIn('deployer:git:origin', [x['Key'] for x in tags])
         self.assertIn('deployer:stack', [x['Key'] for x in tags])
 
+    def stack_version_rollback(self):
+        try:
+            encoding = 'ascii'
+            list_version = subprocess.Popen(['deployer', '-i', 'list', '-s' 'create', '-D'], stdout=subprocess.PIPE)
+            regex = r"Version: (.*)"
+            output = list_version.communicate()[0].decode(encoding)
+            results = re.findall(regex, output)
+            results = [int(i) for i in results]
+            last_version_int = max(results)
+            last_version_str = str(last_version_int)
+
+            get_version = subprocess.call(['deployer', '-s' 'create',  '-i', 'get', '-n', last_version_str])
+            set_version = subprocess.call(['deployer', '-s' 'create', '-i', 'set', '-n', last_version_str])
+            rollback = subprocess.call(['deployer', '-x', 'update', '-s' 'create', '-D'])
+            self.assertEqual(get_version, 0)
+            self.assertEqual(set_version, 0)
+            self.assertEqual(rollback, 0)
+
+            stack = self.client.describe_stacks(StackName=self.stack_name)
+            self.assertIn('Stacks', stack.keys())
+            self.assertEqual(len(stack['Stacks']), 1)
+
+        except SystemExit as exit:
+            if exit.code != 0:
+                raise exit
+
     def stack_wait(self):
         waiter = self.client.get_waiter('stack_delete_complete')
         waiter.wait(StackName=self.stack_name)
@@ -379,6 +406,7 @@ class IntegrationStackTestCase(unittest.TestCase):
         self.stack_reset()
         self.stack_create()
         self.stack_update()
+        self.stack_version_rollback()
         self.stack_delete()
 
 
