@@ -5,6 +5,7 @@ import sys, subprocess, os, re, shutil, time
 from subprocess import Popen, PIPE
 from botocore.exceptions import ClientError
 import yaml
+import pytz
 from datetime import tzinfo, timedelta, datetime
 
 deployerExecutor = "./__init__.py"
@@ -215,8 +216,12 @@ class DeployerTestCase(unittest.TestCase):
             if e.code != 0:
                 raise e
 
-        s3obj = simplestorageservice.get_object(Bucket=testBucket, Key="deployer-test/tests/cloudformation.yaml")
-        self.assertTrue(s3obj['LastModified'] > datetime.now(UTC()) - timedelta(seconds=10))
+        #If the file exists, it was a successful sync
+        try:
+            s3obj = simplestorageservice.get_object(Bucket=testBucket, Key="deployer-test/tests/cloudformation.yaml")
+        except Exception as e:
+            # Boto will raise an exception if the key does not exist, indicating that the sync failed.
+            raise e
 
     # Checks if a basic stack can be created
     def test_timeout(self):
@@ -626,7 +631,7 @@ def cleanup():
 
 def main():
     reset_config()
-    unittest.main()
+    unittest.main(exit=False)
     cleanup()
 
 if __name__ == "__main__":
