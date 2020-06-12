@@ -409,3 +409,29 @@ Our top template contains numerous references to child templates. Using a combin
 ```
 
 You can add your own templates under the `cloudformation` directory to deploy your own stacks. Each stack will also need an entry in your deployer config file to specify which directories should be uploaded, the name of the stack, and any required parameters.
+
+# Upgrade path to 1.0.0
+
+A breaking change is made in the 1.0.0 release. The stack_name attribute in the stack configuration is now deprecated. The resulting CloudFormation stack that is created is now the name of the stack definition. For example, consider the following stack definition:
+
+```
+deployer:
+  stack_name: shared-deployer
+  template: cloudformation/deployer/top.yaml
+  parameters: 
+    Environment: Something
+```
+
+In previous versions, the CloudFormation stack that gets deployed from this is called `shared-deployer`. In 1.0.0+, the CloudFormation stack that gets deployed is called `deployer`. 
+
+This means that for existing configurations, the top level stack definition name must be changed to match the stack_name attribute, like this:
+
+```
+shared-deployer:
+  stack_name: shared-deployer
+  template: cloudformation/deployer/top.yaml
+  parameters: 
+    Environment: Something
+``` 
+
+This will ensure that deployer recognizes the existing CloudFormation stack, rather than forcing you to create a new one.
