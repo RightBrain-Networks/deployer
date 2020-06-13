@@ -627,12 +627,15 @@ def reset_config():
 
 def cleanup():
     cloudformation.delete_stack(StackName="test")   
-    cloudformation.delete_stack(StackName="timeout")   
+    cloudformation.delete_stack(StackName="timeout")
+    print("Deleted test stacks") 
 
 def main():
     reset_config()
-    unittest.main(exit=False)
+    tests = unittest.main(exit=False)
     cleanup()
+    if not tests.result.wasSuccessful():
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
