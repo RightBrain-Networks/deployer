@@ -83,7 +83,7 @@ def main():
             options_broken = True
     if not args.all:
         if args.config_version:
-            if args.config_version != "list" and args.config_version != "set" and args.config_version != "get":
+            if not args.config_version in ["list", "set", "get"]:
                 print(colors['warning'] + "config-version command '" + args.config_version + "' not recognized. Must be one of: list, set, get "+ colors['reset'])
                 options_broken = True
             if (args.config_version == 'set' or args.config_version == 'get') and not args.config_version_number:

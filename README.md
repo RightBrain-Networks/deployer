@@ -67,7 +67,6 @@ When deployer is run, it creates a DynamoDB Table called CloudFormation-Deployer
 
 ## Required
 The following are required for each stack, they can be specified specifically to the stack or in the global config.
-* All stacks need a stack_name.
 * All stacks need to construct the stacks template, you can either specify full_template_url or template_bucket, release, and template combined.
 * All stacks need a release. 
 * All stacks need a region. 
@@ -181,11 +180,10 @@ Example:
 
 ```yaml
 test:
-    stack_name: test
     depends_on: [ other_stack ]
 
 other_stack:
-    stack_name: test-two
+    stack_name: test-two # No longer required
 ```
 
 ## Tags
@@ -239,7 +237,7 @@ Updates to CloudFormation will change the living Infrastructure based on your cu
 
 ## Deletes
 When using this script to delete it simply looks up the stack variable you've provied to the command in the configuration file and issues a delete to that CloudFormation Stack name.
-  * Environments require stack_name, full_template_url or release, stack_name, template, and optionally parameters
+  * Environments require full_template_url or release, template, and optionally parameters
   * release corresponds to a tag or branch which is a prefix to the S3 object keys stored in s3.
   * To sync with S3 add sync_base, sync_dirs, sync_dest_bucket, and optionally sync_exclude and use the -y flag when running deployer.
   * Stack_name can be any name so long as it's unique to this region and account, this will be used for the name of the nested stack in cloudformation
@@ -279,10 +277,6 @@ Currenly there is only the Stack class, Network and Environment classes are now 
 
 ### s3_sync.py
 This is the class that builds zip archives for lambdas and copies directories to s3 given the configuration in the config file.
-
-**Note** 
-Network Class has been removed, it's irrelevant now. It was in place because of a work around in cloudformation limitations. The abstract class may not be relivant, all of the methods are simmular enough but starting this way provides flexablility if the need arise to model the class in a different way. 
-
 
 # Config Updater
 
@@ -367,7 +361,6 @@ Which files get uploaded is specified in the config file with the `sync_dirs` di
 
 ```
 vpc:
-  stack_name: shared-vpc
   template: cloudformation/vpc/top.yaml
   sync_dirs:
     - cloudformation/vpc
@@ -416,7 +409,7 @@ A breaking change is made in the 1.0.0 release. The stack_name attribute in the 
 
 ```
 deployer:
-  stack_name: shared-deployer
+  stack_name: shared-deployer # No longer required
   template: cloudformation/deployer/top.yaml
   parameters: 
     Environment: Something
@@ -428,7 +421,7 @@ This means that for existing configurations, the top level stack definition name
 
 ```
 shared-deployer:
-  stack_name: shared-deployer
+  stack_name: shared-deployer # No longer required
   template: cloudformation/deployer/top.yaml
   parameters: 
     Environment: Something
