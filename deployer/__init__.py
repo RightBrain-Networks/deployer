@@ -127,6 +127,7 @@ def main():
             traceback.print_tb(tb)
         if args.debug:
             del tb
+        exit(1)
 
 
 if __name__ == '__main__':
