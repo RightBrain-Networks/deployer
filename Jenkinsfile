@@ -5,9 +5,11 @@ pipeline {
   agent any
   environment {
     SERVICE = 'deployer'
+    PACKAGE = 'rbn-deployer'
     GITHUB_KEY = 'Deployer'
     GITHUB_URL = 'git@github.com:RightBrain-Networks/deployer.git'
     DOCKER_REGISTRY = '356438515751.dkr.ecr.us-east-1.amazonaws.com'
+    PYPI_CREDENTIALS = 'rbn_pypi_token'
   }
   stages {
     stage('Version') {
@@ -84,10 +86,10 @@ pipeline {
         }
         
         //Copy tar.gz file to s3 bucket
-        sh "aws s3 cp dist/${env.SERVICE}-*.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${env.SEMVER_RESOLVED_VERSION}.tar.gz"
+        sh "aws s3 cp dist/${PACKAGE}-*.tar.gz s3://rbn-ops-pkg-us-east-1/${env.SERVICE}/${env.SERVICE}-${env.SEMVER_RESOLVED_VERSION}.tar.gz"
       }
     }
-    stage('GitHub Release')
+    stage('Release')
     {
       when {
           expression {
@@ -97,10 +99,18 @@ pipeline {
       steps
       {
         echo "New version deteced!"
+        createGitHubRelease('rbn-opsGitHubToken', 'RightBrain-Networks/deployer', "${env.SEMVER_RESOLVED_VERSION}",
+          "${env.SEMVER_RESOLVED_VERSION}", ["deployer.tar.gz" : "dist/${PACKAGE}-${env.SEMVER_NEW_VERSION}.tar.gz"])
+
+        // Upload package to PyPi
         script
         {
-          createGitHubRelease('rbn-opsGitHubToken', 'RightBrain-Networks/deployer', "${env.SEMVER_RESOLVED_VERSION}",
-          "${env.SEMVER_RESOLVED_VERSION}", ["deployer.tar.gz" : "dist/deployer-${env.SEMVER_NEW_VERSION}.tar.gz"])
+          docker.image("${env.DOCKER_REGISTRY}/${env.SERVICE}:${env.SEMVER_RESOLVED_VERSION}").inside()
+          {
+            withCredentials([string(credentialsId: env.PYPI_CREDENTIALS, variable: 'PYPI_PASSWORD')]) {
+              sh("twine upload dist/* --verbose -u __token__ -p ${PYPI_PASSWORD}")
+            }
+          }
         }
       }
     }
