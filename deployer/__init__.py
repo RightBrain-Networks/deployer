@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import json
+import yaml
 import os
 from botocore.exceptions import ClientError
 from deployer.stack import Stack
@@ -24,10 +25,11 @@ __version__ = '0.0.0'
 def main():
     # Build arguement parser
     parser = argparse.ArgumentParser(description='Deploy CloudFormation Templates')
-    parser.add_argument("-c", "--config", help="Path to config file.")
+    parser.add_argument("-c", "--config", help="Path to config file.",default=None)
     parser.add_argument("-s", "--stack", help="Stack Name.")
     parser.add_argument("-x", "--execute", help="Execute ( create | update | delete | upsert | sync | change ) of stack.")
     parser.add_argument("-P", "--param", action='append', help='An override for a parameter')
+    parser.add_argument("-J", "--json-param", help='A JSON string for overriding a collection of parameters')
     parser.add_argument("-p", "--profile", help="Profile.",default=None)
     parser.add_argument("-t", "--change-set-name", help="Change Set Name.")
     parser.add_argument("-d", "--change-set-description", help="Change Set Description.")
@@ -40,6 +42,10 @@ def main():
     parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG & enables traceback", action="store_true", dest="debug", default=False)
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
     parser.add_argument("-T", "--timeout", type=int, help='Stack create timeout')
+    parser.add_argument("-O", "--export-yaml", help="Export stack config to specified YAML file.",default=None)
+    parser.add_argument("-o", "--export-json", help="Export stack config to specified JSON file.",default=None)
+    parser.add_argument("-i", "--config-version", help="Execute ( list | get | set ) of stack config.")
+    parser.add_argument("-n", "--config-version-number", help="Specified config version, used with --config-version option.")
     parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
     parser.add_argument("--disable-color", help='Disables color output', action='store_true', dest='no_color')
 
@@ -71,10 +77,19 @@ def main():
     # Validate arguements and parameters
     options_broken = False
     params = {}
-    if not args.config:
-        args.config = 'config.yml'
+    if args.all:
+        if not args.config:
+            print(colors['warning'] + "Must Specify config flag!" + colors['reset'])
+            options_broken = True
     if not args.all:
-        if not args.execute:
+        if args.config_version:
+            if args.config_version != "list" and args.config_version != "set" and args.config_version != "get":
+                print(colors['warning'] + "config-version command '" + args.config_version + "' not recognized. Must be one of: list, set, get "+ colors['reset'])
+                options_broken = True
+            if (args.config_version == 'set' or args.config_version == 'get') and not args.config_version_number:
+                print(colors['warning'] + "config-version " + args.config_version + " requires config-version-number flag!" + colors['reset'])
+                options_broken = True
+        elif not args.execute:
             print(colors['warning'] + "Must Specify execute flag!" + colors['reset'])
             options_broken = True
         if not args.stack:
@@ -89,6 +104,20 @@ def main():
                 print(colors['warning'] + "Invalid format for parameter '{}'".format(param) + colors['reset'])
                 options_broken = True
 
+    try:
+        json_param_dict = {}
+        if args.json_param:
+            json_param_dict = json.loads(args.json_param)
+            if args.param:
+                #Merge the dicts
+                merged_params = {**json_param_dict, **params}
+                params = merged_params
+            else:
+                params = json_param_dict
+    except:
+        print(colors['warning'] + "Invalid format for json-param, must be valid json." + colors['reset'])
+        options_broken = True
+
     # Print help output
     if options_broken:
         parser.print_help()
@@ -100,33 +129,90 @@ def main():
         console_logger.setLevel(logging.ERROR)
 
     try:
-        # Read Environment Config
-        with open(args.config) as f:
-            config = ruamel.yaml.safe_load(f)
 
         # Load stacks into queue
         stackQueue = []
         if not args.all:
             stackQueue = [args.stack]
         else:
-            for stack in config.items():
+            #Load config, get stacks
+            try:
+                with open(args.config) as f:
+                    file_data = ruamel.yaml.safe_load(f)
+            except Exception as e:
+                msg = str(e)
+                logger.error("Failed to retrieve data from config file {}: {}".format(file_name,msg))
+                exit(3)
+            
+            for stack in file_data.keys():
                 if stack[0] != "global":
-                    stackQueue = find_deploy_path(config, stack[0], stackQueue)
+                    stackQueue = find_deploy_path(config_object.get_config(), stack[0], stackQueue)
 
         # Create or update all Environments
         for stack in stackQueue:
             if stack != 'global' and (args.all or stack == args.stack):
 
                 logger.info("Running " + colors['underline'] + str(args.execute) + colors['reset'] + " on stack: " + colors['stack'] + stack + colors['reset'])
-
+                
+                # Create deployer config object
+                cargs = {
+                  'profile': args.profile,
+                  'stack_name': stack
+                }
+                if args.config:
+                    cargs['file_name'] = args.config
+                    
+                if args.param or args.json_param:
+                    cargs['override_params'] = params
+                
+                config_object = Config(**cargs)
+                
+                #Config Version Handling
+                if args.config_version:
+                    if args.config_version == "list":
+                        versions = config_object.list_versions()
+                        for version in versions:
+                            if 'version' in version:
+                                print("Timestamp: {}  Version: {}".format(version['timestamp'], version['version']))
+                    elif args.config_version == "get":
+                        retrieved_config = config_object.get_version(args.config_version_number)
+                        print(yaml.dump(retrieved_config,default_flow_style=False, allow_unicode=True))
+                    elif args.config_version == "set":
+                        config_object.set_version(args.config_version_number)
+                    
+                    continue
+                
+                #Export if specified
+                if args.export_json:
+                    config_dict = config_object.get_config()
+                    
+                    try:
+                        with open(args.export_json, 'w') as f:
+                            j = json.dumps(config_dict, indent=4)
+                            f.write(j)
+                    except Exception as e:
+                        msg = str(e)
+                        logger.error("Failed to export data to JSON file {}: {}".format(args.export_json,msg))
+                        exit(3)
+                        
+                if args.export_yaml:
+                    config_dict = config_object.get_config()
+                    
+                    try:
+                        with open(args.export_yaml, 'w') as f:
+                             yaml.dump(config_dict, f, default_flow_style=False, allow_unicode=True)
+                    except Exception as e:
+                        msg = str(e)
+                        logger.error("Failed to export data to YAML file {}: {}".format(args.export_yaml,msg))
+                        exit(3)
+                
                 # Build lambdas on `-z`
                 if args.zip_lambdas:
                     logger.info("Building lambdas for stack: " + stack)
-                    LambdaPrep(args.config, args.stack).zip_lambdas()
-
-                # Create deployer config object
-                config_object = Config(args.config, stack)
-
+                    lambda_dirs = config_object.get_config_att('lambda_dirs', [])
+                    sync_base = config_object.get_config_att('sync_base', '.')
+                    LambdaPrep(sync_base, lambda_dirs).zip_lambdas()
+                
                 # AWS Session object
                 session = Session(profile_name=args.profile, region_name=config_object.get_config_att('region'))
 
@@ -141,7 +227,7 @@ def main():
                 
                 # S3 bucket to sync to
                 bucket = CloudtoolsBucket(session, config_object.get_config_att('sync_dest_bucket', None))
-
+                
                 # Check whether stack is a stack set or not and assign corresponding object
                 if(len(config_object.get_config_att('regions', [])) > 0 or len(config_object.get_config_att('accounts', [])) > 0):
                     env_stack = StackSet(session, stack, config_object, bucket, arguements)
@@ -149,7 +235,6 @@ def main():
                     if args.timeout and args.execute not in ['create', 'upsert']:
                         logger.warning("Timeout specified but action is not 'create'. Timeout will be ignored.")
                     env_stack = Stack(session, stack, config_object, bucket, arguements)
-
                 try:
 
                     # Sync files to S3

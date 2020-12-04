@@ -13,20 +13,25 @@ pip install path/to/deployer-<version>.tar.gz
 Deployer is free for use by RightBrain Networks Clients however comes as is with out any guarantees.
 
 ##### Flags
-* -c --config <config file> (REQUIRED) : Yaml configuration file to run against.
+* -c --config <config file> : Yaml configuration file to run against.
 * -s --stack <stack name>  (REQUIRED) : Stack Name corresponding to a block in the config file.
 * -x --execute <execute command> (REQUIRED) : create|update|delete|sync|change Action you wish to take on the stack.
 * -p --profile <profile>     : AWS CLI Profile to use for AWS commands [CLI Getting Started](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html).
 * -P --param <PARAM>, --param PARAM An override for a parameter
+* -J --json-param <JSON_PARAM_STRING> :A JSON string for overriding a collection of parameters
 * -y --copy <copy>        : Copy directory structures specified in the configuration file under the sync_dirs configuration.
 * -A --all         : Create or Update all stacks in the configuration file, Note you do not have to specify a stack when using this option.
-* -r --disable-roleback : Disable rollback on failure, useful when trying to debug a failing stack.
+* -r --disable-rollback : Disable rollback on failure, useful when trying to debug a failing stack.
 * -t --timeout : Sets Stack create timeout
 * -e --events : Display events of the CloudFormation stack at regular intervals.
-* -z --zip         : Pip install requirements, and zip up lambda's for builds.
+* -z --zip-lambas         : Pip install requirements, and zip up lambda's for builds.
 * -t --change-set-name <change set name> (REQUIRED Change Sets Only) : Used when creating a change set to name the change set.
 * -d --change-set-description <change set description> (REQUIRED Change Sets Only) : Used when creating a change set to describe the change set.
-* -j, --assume-valid    Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)
+* -j --assume-valid   : Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)
+* -O --export-yaml <EXPORT_YAML_FILE> : Export stack config to specified YAML file.
+* -o --export-json <EXPORT_JSON_FILE> : Export stack config to specified JSON file.
+* -i --config-version <CONFIG_VERSION_ACTION> : Execute ( list | get | set ) of stack config.
+* -n --config-version-number <CONFIG_VERSION_NUMBER> : Specified config version, used with --config-version option.
 * -D, --debug           Sets logging level to DEBUG & enables traceback
 * -v, --version         Print version number
 * --init [INIT]         Initialize a skeleton directory
@@ -58,6 +63,7 @@ Zip up lambdas, copy to s3, and update.
 *Note* See [example_configs/dev-us-east-1.yml](./example_configs/dev-us-east-1.yml) for an example configuration file.
 
 The config is a large dictionary. First keys within the dictionary are Stack Names. The global Environment Parameters is a common ground to deduplicate parameter entries that are used in each Stack. Stack parameters overwrite global parameters. 
+When deployer is run, it creates a DynamoDB Table called CloudFormation-Deployer if it does not already exist. The stack configuration in the config file is saved into DynamoDB, and any future changes result in a new entry with an updated timestamp. 
 
 ## Required
 The following are required for each stack, they can be specified specifically to the stack or in the global config.
@@ -122,6 +128,32 @@ These parameters provide identity to the Services like what AMI to use or what b
       UploadInstanceType: t2.medium
 ```
 
+Parameters can be overridden from the command line in several different ways. 
+
+The first (which takes precedence) is the -P option. Parameters can be specified in the following form:
+```
+deployer -P 'Param1=Value1'
+``` 
+deployer will set the value of parameter 'Param1' to 'Value1', even if it is also specified in the config file. -P can be specified multiple times for multiple parameters
+
+The second is the -J option. Parameters can be specified in the following form:
+```
+deployer -J '{"Param1":"Value1"}'
+```
+This option allows the user to specify multiple parameter values as a single JSON object. This will override parameters of the same name as those specified in the config file as well.
+
+It is important to note that since a stack's configuration is saved in the DynamoDB state table, specifying these overrides without sending a config file will use the existing configuration for the stack retrieved from the table, but with the overridden parameter values swapped in.
+If it is desirable to send a config file to update some of the parameter values but keep some of the existing values from the previous configuration, it can be done like this:
+```
+    parameters:
+      Monitoring: 'True'
+      NginxAMI:
+        UsePreviousValue: True
+      NginxInstanceType: t2.medium
+```
+Notice that for the NginxAMI parameter, the value is now a dictionary instead of a string, and the UsePreviousValue key is set to True. This indicates to deployer to use the existing value in the configuration for the NginxAMI parameter.
+
+
 ## Lookup Parameters
 
 These are parameters that can be pulled from another stack's output. `deployer` tolerates but logs parameters that exist within the configuration but do not exist within the template.
@@ -170,6 +202,30 @@ Tags are key value pairs of tags to be applied to the Top level stack. This will
 Denote that at tranform is used in a stack and deployer will automatically create change set and execute change set. 
 ```
   transforms: true
+```
+
+## Versions
+There are several command line options that allow the user to view and set the configuration based on version number.
+
+When a new configuration is saved automatically to the DynamoDB table, a version number is generated and assigned to it. These versions can be viewed like this:
+```
+./deployer -s <Stack Name> --config-version list
+```
+This will output a list of config version numbers and creation timestamps. Viewing a specific configuration based on the number can be done like this:
+```
+./deployer -s MyStack --config-version get --config-version-number 1
+```
+In the above example, the output will return the configuration for stack MyStack with the version number 1, the original configuration for the stack. We can then effectively roll back to that configuration with this command:
+```
+./deployer -s MyStack --config-version set --config-version-number 1
+```
+This will set the configuration for MyStack back to version 1, reverting the values for parameters, tags, etc.  
+
+## Exports
+The configuration for a stack can be exported to a file as well. Two formats are supported, JSON and YAML. An example for each is shown here:
+```
+./deployer -s MyStack --export-yaml ../mystack-config.yaml
+./deployer -s MyStack --export-json configs/mystack-config.json
 ```
 
 ## Updates
@@ -225,7 +281,7 @@ Currenly there is only the Stack class, Network and Environment classes are now 
 This is the class that builds zip archives for lambdas and copies directories to s3 given the configuration in the config file.
 
 **Note** 
-Network Class has been removed, it's irrelivant now. It was in place because of a work around in cloudformation limitations. The abstract class may not be relivant, all of the methods are simmular enough but starting this way provides flexablility if the need arise to model the class in a different way. 
+Network Class has been removed, it's irrelevant now. It was in place because of a work around in cloudformation limitations. The abstract class may not be relivant, all of the methods are simmular enough but starting this way provides flexablility if the need arise to model the class in a different way. 
 
 
 # Config Updater
@@ -353,3 +409,29 @@ Our top template contains numerous references to child templates. Using a combin
 ```
 
 You can add your own templates under the `cloudformation` directory to deploy your own stacks. Each stack will also need an entry in your deployer config file to specify which directories should be uploaded, the name of the stack, and any required parameters.
+
+# Upgrade path to 1.0.0
+
+A breaking change is made in the 1.0.0 release. The stack_name attribute in the stack configuration is now deprecated. The resulting CloudFormation stack that is created is now the name of the stack definition. For example, consider the following stack definition:
+
+```
+deployer:
+  stack_name: shared-deployer
+  template: cloudformation/deployer/top.yaml
+  parameters: 
+    Environment: Something
+```
+
+In previous versions, the CloudFormation stack that gets deployed from this is called `shared-deployer`. In 1.0.0+, the CloudFormation stack that gets deployed is called `deployer`. 
+
+This means that for existing configurations, the top level stack definition name must be changed to match the stack_name attribute, like this:
+
+```
+shared-deployer:
+  stack_name: shared-deployer
+  template: cloudformation/deployer/top.yaml
+  parameters: 
+    Environment: Something
+``` 
+
+This will ensure that deployer recognizes the existing CloudFormation stack, rather than forcing you to create a new one.

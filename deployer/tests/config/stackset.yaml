@@ -22,6 +22,7 @@ create:
     - '356438515751'
   regions:
     - us-east-1
+    - us-west-2
   sync_dirs:
     - tests/cloudformation/stack
   parameters:
