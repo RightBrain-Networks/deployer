@@ -195,7 +195,7 @@ class DeployerTestCase(unittest.TestCase):
             cloudformation.delete_stack(StackName=testStackName)
         while get_stack_status(testStackName) != "NULL":
             time.sleep(apiHitRate)
-
+        
         # Run deployer -x create with timeout
         result = subprocess.call(['python', deployerExecutor, '-x', 'create', '-c', testStackConfig, '-s', 'timeout', '-T', '1'])
         self.assertEqual(result, 2)
@@ -317,7 +317,7 @@ class IntegrationStackTestCase(unittest.TestCase):
 
     def stack_update(self):
         result = subprocess.call(['deployer', '-x', 'update', '-c', 'tests/config/test.yaml', '-s' 'update', '-P', 'Cli=update', '-D'])
-        self.assertEqual(result, 0)
+        self.assertNotEqual(result, 1)
 
         stack = self.client.describe_stacks(StackName=self.stack_name)
         self.assertIn('Stacks', stack.keys())

@@ -19,7 +19,8 @@ class Stack(AbstractCloudFormation):
         self.session = session
         self.stack = stack
         self.config = config
-        self.bucket = bucket
+        if bucket:
+            self.bucket = bucket
 
         # Load values from args
         self.disable_rollback = args.get('disable_rollback', False)
@@ -49,9 +50,10 @@ class Stack(AbstractCloudFormation):
         # Load values from methods
         self.origin = self.get_repository_origin(self.repository) if self.repository else 'null'
         self.identity_arn = self.sts.get_caller_identity().get('Arn', '')
-        self.template_url = self.bucket.construct_template_url(self.config, self.stack, self.release, self.template) # self.construct_template_url()
-        self.template_file = self.bucket.get_template_file(self.config, self.stack)
-        self.template_body = self.bucket.get_template_body(self.config, self.template)
+        if bucket:
+            self.template_url = self.bucket.construct_template_url(self.config, self.stack, self.release, self.template) # self.construct_template_url()
+            self.template_file = self.bucket.get_template_file(self.config, self.stack)
+            self.template_body = self.bucket.get_template_body(self.config, self.template)
 
         # Set state values
         self._timed_out = False
