@@ -34,7 +34,7 @@ class Config(object):
                         expanded_params.append({ "ParameterKey": param_key, "ParameterValue": param_xform })
             if 'lookup_parameters' in self.config.get(env, {}):
                 for param_key, lookup_struct in self.config[env]['lookup_parameters'].items():
-                    stack = Stack(session, lookup_struct['Stack'], self)
+                    stack = Stack(session, lookup_struct['Stack'], self, None)
                     stack.get_outputs()
                     for output in stack.outputs:
                         if output['OutputKey'] == lookup_struct['OutputKey']:
