@@ -185,6 +185,7 @@ def main():
         if args.debug:
             tb = sys.exc_info()[2]
             traceback.print_tb(tb)
+        exit(1)
 
 def find_deploy_path(stackConfig, checkStack, resolved = []):
     #Generate depedency graph

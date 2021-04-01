@@ -1,4 +1,4 @@
-library('pipeline-library')
+library('pipeline-library@bugfix/durable-task-workaround')
 
 pipeline {
   options { timestamps() }
@@ -49,6 +49,7 @@ pipeline {
       agent {
           docker {
               image "${env.DOCKER_REGISTRY}/${env.SERVICE}:${env.SEMVER_RESOLVED_VERSION}"
+              args "--privileged"
           }
       }
       steps
