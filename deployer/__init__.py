@@ -39,7 +39,7 @@ def main():
     parser.add_argument("-j", "--assume-valid", help="Assumes templates are valid and does not do upstream validation (good for preventing rate limiting)", action="store_true", dest="assume_valid", default=False)
     parser.add_argument("-D", "--debug", help="Sets logging level to DEBUG & enables traceback", action="store_true", dest="debug", default=False)
     parser.add_argument("-v", "--version", help='Print version number', action='store_true', dest='version')
-    parser.add_argument("-T", "--timeout", type=int, help='Stack create timeout')
+    parser.add_argument("-T", "--timeout", type=int, help='Stack create timeout in minutes')
     parser.add_argument('--init', default=None, const='.', nargs='?', help='Initialize a skeleton directory')
     parser.add_argument("--disable-color", help='Disables color output', action='store_true', dest='no_color')
 

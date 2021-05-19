@@ -40,7 +40,7 @@ class Stack(AbstractCloudFormation):
         # Load values from config
         self.release = self.config.get_config_att('release', self.commit).replace('/','.')
         self.template = self.config.get_config_att('template', required=True)
-        self.timeout = self.config.get_config_att('timeout') if not self.timed_out else None
+        self.timeout = self.timed_out if self.timed_out is not None else self.config.get_config_att('timeout', None)
         self.transforms = self.config.get_config_att('transforms')
 
         # Intialize objects
@@ -118,7 +118,14 @@ class Stack(AbstractCloudFormation):
         sleep(5)
         logger.info(self.reload_stack_status())
         if self.print_events:
-            self.output_events(start_time, 'update')
+            try:
+                self.output_events(start_time, 'update')
+            except RuntimeError as e:
+                if self.timed_out:
+                    logger.error('Stack creation exceeded timeout of {} minutes and was aborted.'.format(self.timeout))
+                    exit(2)
+                else:
+                    raise e
         else:
             try:
                 waiter.wait(StackName=self.stack_name)
@@ -136,10 +143,16 @@ class Stack(AbstractCloudFormation):
         elif action == 'update':
             END_STATUS = 'UPDATE_COMPLETE'
         count = 0
+        sleep_interval = 15
         while self.stack_status != END_STATUS:
             status = self.reload_stack_status()
             table = []
-            sleep(15)
+            sleep(sleep_interval)
+            #Check interval and exit if this is an update
+            if action == 'update' and self.timeout is not None:
+                if (sleep_interval * count) > (self.timeout * 60):
+                    self.timed_out = True
+                    raise RuntimeError("Update stack Failed")
             events = self.client.describe_stack_events(StackName=self.stack_name)
             events = events['StackEvents']
             events.reverse()
