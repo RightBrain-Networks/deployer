@@ -2,6 +2,30 @@
 
 Deployer is used to create | update | delete CloudFormation Stacks
 
+# Install using docker
+Running deployer via docker avoids some homebrew python headaches on MacOS.
+
+When you want to install a new version of deployer:
+
+``` shell
+ver=x.x.x
+git fetch --all --tags
+git checkout tags/$ver -b $ver
+git checkout master  -- Dockerfile
+cat Dockerfile  | docker build -t deployer:$ver --build-arg VER=$ver -f- $PWD
+git checkout -
+git branch -D $ver
+```
+
+
+## deployer bash function
+This function allows you to run `deployer -c config/us-east...`
+``` 
+deployer () {
+  docker run --rm --init -it -v $PWD:/workspace -v $HOME/.aws:/deployerUser/.aws deployer:0.4.4 deployer "$@"
+}
+```
+
 # Install
 Deployer is now a pip installable package and comes with two command line entry scripts, `deployer` and `config_updater`
 To install, simply:

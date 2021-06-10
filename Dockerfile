@@ -1,10 +1,4 @@
-# Build as follows:
-# ver=x.x.x
-# git fetch --all --tags
-# git checkout tags/$ver -b $ver
-# cat Dockerfile  | docker build -t deployer:$ver --build-arg VER=$ver -f- $PWD
-# git checkout -
-# git branch -D $ver
+# See docker build instructions in README.md.
 
 # Update version tag to match the python version supported in setup.py in the deployer release
 FROM python:3.8-buster
@@ -29,8 +23,8 @@ RUN mkdir /workspace
 WORKDIR /workspace
 VOLUME /workspace
 
-# Permissions
-RUN useradd -d /deployerUser deployerUser
+# User
+RUN mkdir /deployerUser && useradd -d /deployerUser deployerUser
 RUN chown -R deployerUser:deployerUser /workspace
 
 CMD /usr/local/bin/deployer
