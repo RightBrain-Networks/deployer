@@ -42,6 +42,8 @@ class Stack(AbstractCloudFormation):
         self.template = self.config.get_config_att('template', required=True)
         self.timeout = self.timed_out if self.timed_out is not None else self.config.get_config_att('timeout', None)
         self.transforms = self.config.get_config_att('transforms')
+        if self.timeout is not None:
+            print(f'Timeout is {self.timeout} minutes')
 
         # Intialize objects
         self.client = self.session.client('cloudformation')
@@ -56,7 +58,7 @@ class Stack(AbstractCloudFormation):
             self.template_body = self.bucket.get_template_body(self.config, self.template)
 
         # Set state values
-        self._timed_out = False
+        self.timed_out = False
 
         self.validate_account(self.session, self.config)
         self.reload_stack_status()
@@ -152,7 +154,9 @@ class Stack(AbstractCloudFormation):
             if action == 'update' and self.timeout is not None:
                 if (sleep_interval * count) > (self.timeout * 60):
                     self.timed_out = True
-                    raise RuntimeError("Update stack Failed")
+                    print("Timeout has been reached")
+                    self.cancel_update(signal.SIGINT, {})
+                    #raise RuntimeError("Update stack Failed")
             events = self.client.describe_stack_events(StackName=self.stack_name)
             events = events['StackEvents']
             events.reverse()
@@ -180,6 +184,7 @@ class Stack(AbstractCloudFormation):
             elif action == 'update':
                 if status in [ 'UPDATE_FAILED', 'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED' ]:
                     raise RuntimeError("Update stack Failed")
+            #print(f"{update_time.strftime('%Y/%m/%d %H:%M:%S')}  Time so far is {sleep_interval * count} seconds")
             count += 1
 
     def delete_stack(self):
