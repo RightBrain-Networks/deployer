@@ -9,8 +9,9 @@ RUN yum update -y
 # Setup Deployer
 ADD / /deployer
 WORKDIR /deployer
-RUN python setup.py sdist
-RUN pip install dist/deployer-*.tar.gz
+RUN pip install wheel twine
+RUN python setup.py sdist bdist_wheel
+RUN pip install dist/rbn-deployer-*.tar.gz
 
 # Install node
 RUN curl -sL https://rpm.nodesource.com/setup_10.x | bash -

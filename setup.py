@@ -36,7 +36,7 @@ def find_version(*file_paths):
     raise RuntimeError("Unable to find version string.")
 
 setup(
-    name='deployer',
+    name='rbn-deployer',
 
     version=find_version('deployer', '__init__.py'),
 
