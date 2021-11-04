@@ -6,6 +6,8 @@ env:
 
   SERVICE: 'deployer'
   SELF_SEMVER_TAG: "master"
+
+  AWS_DEFAULT_REGION: "us-east-1"
 jobs:
     build:
         runs-on: ubuntu-latest
