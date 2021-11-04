@@ -41,7 +41,7 @@ jobs:
           id: semver
           uses: RightBrain-Networks/semver-action@1.0.0
           with:
-          mode: set
+            mode: set
         - name: Install dependencies
           run: |
             python -m pip install --upgrade pip
