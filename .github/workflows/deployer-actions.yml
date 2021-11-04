@@ -11,6 +11,9 @@ jobs:
         runs-on: ubuntu-latest
         steps: 
         - uses: actions/checkout@v2
+          with:
+            fetch-depth: 0
+            ref: ${{ env.GITHUB_REF }}
         - name: Set up Python 3.7
           uses: actions/setup-python@v1
           with:
@@ -28,9 +31,9 @@ jobs:
           run: |
             python setup.py sdist
         - name: test
-            run: |
-              python tests.py
-            working-directory: deployer
+          run: |
+            python tests.py
+          working-directory: deployer
     CheckVersion:
         runs-on: ubuntu-latest
         needs: build
