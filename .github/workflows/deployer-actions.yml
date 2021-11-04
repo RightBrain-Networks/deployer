@@ -57,10 +57,11 @@ jobs:
         runs-on: ubuntu-latest
         needs: [CheckVersion, build]
         steps:
-        - name: push
+        - name: set token
           uses: actions/checkout@v2
           with:
             token: ${{ secrets.GITHUB_TOKEN }}
+        - name: push
           run: |
             git commit -am "action commit"
             git push
