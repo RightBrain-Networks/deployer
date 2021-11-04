@@ -1,10 +1,10 @@
 name: deployer-actions
 on: [push]
 env:
-  GITHUB_URL: 'git@github.com:RightBrain-Networks/auto-semver.git'
+  GITHUB_URL: 'git@github.com:RightBrain-Networks/deployer.git'
   GITHUB_KEY: 'rbn-ops github'
 
-  SERVICE: 'auto-semver'
+  SERVICE: 'deployer'
   SELF_SEMVER_TAG: "master"
 jobs:
     build:
