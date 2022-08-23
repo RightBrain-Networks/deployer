@@ -33,7 +33,6 @@ Deployer is free for use by RightBrain Networks Clients however comes as is with
 * --disable-color       Disables color output
 
 
-
 ##### Examples
 Create a stack and copy specified directories to S3.
 `./deployer -c config.yml -s MyStack -x create -p profileName -y`
