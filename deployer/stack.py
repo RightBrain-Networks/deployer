@@ -30,7 +30,7 @@ class Stack(AbstractCloudFormation):
         self.params = args.get('params', {})
 
         # Load values from config
-        self.stack_name = self.config.get_config_att('stack_name', required=True)
+        self.stack_name = self.config.get_config_att('stack_name', required=True, stack=self.stack)
         self.base = self.config.get_config_att('sync_base', '.')
 
         # Load values from methods for config lookup
