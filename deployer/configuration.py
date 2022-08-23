@@ -72,9 +72,13 @@ class Config(object):
             data = ruamel.yaml.safe_load(f)
         return data
 
-    def get_config_att(self, key, default=None, required=False):
+    def get_config_att(self, key, default=None, required=False, stack=None):
+        ## Default to the current stack if not otherwise specified
+        if not stack:
+            stack = self.stack
+
         base = self.config.get('global', {}).get(key, None)
-        base = self.config.get(self.stack).get(key, base)
+        base = self.config.get(stack).get(key, base)
         if required and base is None:
             logger.error("Required attribute '{}' not found in config '{}'.".format(key, self.file_name))
             exit(3)
