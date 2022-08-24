@@ -39,7 +39,6 @@ jobs:
           id: python37
           with:
             python-version: 3.7
-        - run: export LD_LIBRARY_PATH=${{ steps.python37.outputs.python-path }}
         - name: Run Auto-Semver
           id: semver
           uses: RightBrain-Networks/semver-action@1.0.0
@@ -47,6 +46,7 @@ jobs:
             mode: set
         - name: Install dependencies
           run: |
+            which libpython
             python -m pip install --upgrade pip
             pip install -r requirements.txt
         - name: build
