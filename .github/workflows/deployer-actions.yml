@@ -43,17 +43,10 @@ jobs:
           working-directory: deployer
     CheckVersion:
         runs-on: ubuntu-latest
-        container:
-          image: ubuntu:latest
-          options: --user root
         needs: build
         steps:
         - name: Checkout
           uses: actions/checkout@v2
-        - name: Set up Python 3.7
-          uses: actions/setup-python@v1
-          with:
-            python-version: 3.7
         - name: Run Auto-Semver          
           id: semver
           uses: RightBrain-Networks/semver-action@1.0.0
