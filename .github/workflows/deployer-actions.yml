@@ -13,6 +13,9 @@ env:
 jobs:
     build:
         runs-on: ubuntu-latest
+        container:
+          image: ubuntu:latest
+          options: --user root
         steps: 
         - uses: actions/checkout@v2
           with:
@@ -40,6 +43,9 @@ jobs:
           working-directory: deployer
     CheckVersion:
         runs-on: ubuntu-latest
+        container:
+          image: ubuntu:latest
+          options: --user root
         needs: build
         steps:
         - name: Checkout
@@ -62,6 +68,9 @@ jobs:
             prerelease: false
     release:
         runs-on: ubuntu-latest
+        container:
+          image: ubuntu:latest
+          options: --user root
         needs: [CheckVersion, build]
         steps:
           - name: Checkout
