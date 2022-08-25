@@ -46,8 +46,6 @@ jobs:
             mode: set
         - name: Install dependencies
           run: |
-            apt update
-            apt-get install libpython3.7m -y
             export LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib
             python -m pip install --upgrade pip
             pip install -r requirements.txt
