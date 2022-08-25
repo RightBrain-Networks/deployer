@@ -46,7 +46,8 @@ jobs:
             mode: set
         - name: Install dependencies
           run: |
-            apt-get install libpython3.7-dev
+            apt update
+            apt-get install libglu1
             python -m pip install --upgrade pip
             pip install -r requirements.txt
         - name: build
