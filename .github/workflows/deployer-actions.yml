@@ -17,7 +17,7 @@ jobs:
           image: python:3.7-bullseye
           options: --user root
         steps:
-        - name: Installing dependencies..
+        - name: Installing container dependencies..
           run: |
             # Sync repos
             apt update
@@ -53,7 +53,23 @@ jobs:
     CheckVersion:
         runs-on: ubuntu-latest
         needs: build
+        container:
+          image: python:3.7-bullseye
+          options: --user root
         steps:
+          - name: Installing container dependencies..
+            run: |
+              # Sync repos
+              apt update
+              # Install git
+              apt install -y git
+              if ! apt list --installed 2>/dev/null | grep -q "git.*"; then
+                apt install -y git
+              elif apt list --installed 2>/dev/null | grep -q "git.*"; then
+                true
+              else
+                exit 255
+              fi
         - name: Checkout
           uses: actions/checkout@v2
         - name: Run Auto-Semver          
@@ -79,15 +95,37 @@ jobs:
           options: --user root
         needs: [CheckVersion, build]
         steps:
+          - name: Installing container dependencies..
+            run: |
+              # Sync repos
+              apt update
+              # Install git
+              apt install -y git
+              if ! apt list --installed 2>/dev/null | grep -q "git.*"; then
+                apt install -y git
+              elif apt list --installed 2>/dev/null | grep -q "git.*"; then
+                true
+              else
+                exit 255
+              fi
           - name: Checkout
+          - name: Installing container dependencies..
+            run: |
+              # Sync repos
+              apt update
+              # Install git
+              apt install -y git
+              if ! apt list --installed 2>/dev/null | grep -q "git.*"; then
+                apt install -y git
+              elif apt list --installed 2>/dev/null | grep -q "git.*"; then
+                true
+              else
+                exit 255
+              fi
             uses: actions/checkout@v2
             with:
               fetch-depth: 0
               ref: ${{ env.GITHUB_REF }}
-          - name: Set up Python 3.7
-            uses: actions/setup-python@v1
-            with:
-              python-version: 3.7
           - name: Run Auto-Semver
             id: semver
             uses: RightBrain-Networks/semver-action@1.0.0
