@@ -14,7 +14,7 @@ jobs:
     build:
         runs-on: ubuntu-latest
         container:
-          image: ubuntu:20.04
+          image: python:3.7-bullseye
           options: --user root
         steps:
         - name: Installing dependencies..
@@ -46,8 +46,6 @@ jobs:
             mode: set
         - name: Install dependencies
           run: |
-            apt update
-            apt-get install libglu1 -y
             python -m pip install --upgrade pip
             pip install -r requirements.txt
         - name: build
