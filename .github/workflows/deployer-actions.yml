@@ -21,11 +21,6 @@ jobs:
           with:
             fetch-depth: 0
             ref: ${{ env.GITHUB_REF }}
-        - name: Set up Python 3.7
-          uses: actions/setup-python@v1
-          id: python37
-          with:
-            python-version: 3.7
         - name: Run Auto-Semver
           id: semver
           uses: RightBrain-Networks/semver-action@1.0.0
