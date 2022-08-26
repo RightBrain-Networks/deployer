@@ -17,20 +17,8 @@ jobs:
           image: python:3.7-bullseye
           options: --user root
         steps:
-          - name: Installing container dependencies..
-            run: |
-              # Sync repos
-              apt update
-              # Install git
-              apt install -y git
-              if ! apt list --installed 2>/dev/null | grep -q "git.*"; then
-                apt install -y git
-              elif apt list --installed 2>/dev/null | grep -q "git.*"; then
-                true
-              else
-                exit 255
-              fi
-          - uses: actions/checkout@v2
+          - name: Checkout
+            uses: actions/checkout@v2
             with:
               fetch-depth: 0
               ref: ${{ env.GITHUB_REF }}
@@ -57,19 +45,6 @@ jobs:
           image: python:3.7-bullseye
           options: --user root
         steps:
-          - name: Installing container dependencies..
-            run: |
-              # Sync repos
-              apt update
-              # Install git
-              apt install -y git
-              if ! apt list --installed 2>/dev/null | grep -q "git.*"; then
-                apt install -y git
-              elif apt list --installed 2>/dev/null | grep -q "git.*"; then
-                true
-              else
-                exit 255
-              fi
           - name: Checkout
             uses: actions/checkout@v2
           - name: Run Auto-Semver
@@ -95,19 +70,6 @@ jobs:
           options: --user root
         needs: [CheckVersion, build]
         steps:
-          - name: Installing container dependencies..
-            run: |
-              # Sync repos
-              apt update
-              # Install git
-              apt install -y git
-              if ! apt list --installed 2>/dev/null | grep -q "git.*"; then
-                apt install -y git
-              elif apt list --installed 2>/dev/null | grep -q "git.*"; then
-                true
-              else
-                exit 255
-              fi
           - name: Checkout
             uses: actions/checkout@v2
             with:
