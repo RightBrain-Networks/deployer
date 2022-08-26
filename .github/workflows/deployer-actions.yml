@@ -24,7 +24,7 @@ jobs:
               ref: ${{ env.GITHUB_REF }}
           - name: Take Ownership
             run: |
-              chown $(id -u):$(id -g) .
+              chown -R $(id -u):$(id -g) .
           - name: Run Auto-Semver
             id: semver
             uses: RightBrain-Networks/semver-action@1.0.0
