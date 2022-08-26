@@ -17,10 +17,6 @@ jobs:
           image: python:3.7-bullseye
           options: --user root
         steps:
-          - name: Debug
-            run: |
-              echo "$USER"
-              ls -al
           - name: Checkout
             uses: actions/checkout@v2
             with:
