@@ -26,6 +26,7 @@ RUN mkdir ~/.npm
 RUN useradd -d /deployerUser deployerUser
 RUN chown -R deployerUser:deployerUser ~/.npm
 RUN chown -R deployerUser:deployerUser /workspace
+RUN chown -R deployerUser:deployerUser /deployer
 RUN chmod -R 757 ~/.npm
 RUN chmod -R 757 /deployer
 
