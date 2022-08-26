@@ -27,7 +27,7 @@ RUN useradd -d /deployerUser deployerUser
 RUN chown -R deployerUser:deployerUser ~/.npm
 RUN chown -R deployerUser:deployerUser /workspace
 RUN chmod -R 757 ~/.npm
-RUN chmod -R 757 ~/workspace
+RUN chmod -R 757 /workspace
 
 CMD /opt/app-root/bin/deployer
 
