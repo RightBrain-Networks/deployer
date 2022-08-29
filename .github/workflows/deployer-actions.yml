@@ -22,7 +22,7 @@ jobs:
           uses: actions/setup-python@v1
           with:
             python-version: 3.7
-        - name: setup git config
+        - name: Set Up Git Config
           run: |
             git config user.name "GitHub Actions Bot"
             git config user.email "<>"
@@ -48,6 +48,10 @@ jobs:
         steps:
         - name: Checkout
           uses: actions/checkout@v2
+        - name: Set Up Git Config
+          run: |
+            git config user.name "GitHub Actions Bot"
+            git config user.email "<>"
         - name: Run Auto-Semver
           id: semver
           uses: RightBrain-Networks/semver-action@1.0-beta.1
@@ -73,9 +77,13 @@ jobs:
             with:
               fetch-depth: 0
               ref: ${{ env.GITHUB_REF }}
+          - name: Set Up Git Config
+            run: |
+              git config user.name "GitHub Actions Bot"
+              git config user.email "<>"
           - name: Run Auto-Semver
             id: semver
-            uses: RightBrain-Networks/semver-action@1.0.0
+            uses: RightBrain-Networks/semver-action@1.0-beta.1
             with:
               mode: set
           - name: Create Release
