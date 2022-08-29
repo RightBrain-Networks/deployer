@@ -28,7 +28,7 @@ jobs:
             git config user.email "<>"
         - name: Run Auto-Semver
           id: semver
-          uses: RightBrain-Networks/semver-action@1.0-beta.1
+          uses: RightBrain-Networks/semver-action@1.0-beta.0
           with:
             mode: set
         - name: Install dependencies
@@ -54,7 +54,7 @@ jobs:
             git config user.email "<>"
         - name: Run Auto-Semver
           id: semver
-          uses: RightBrain-Networks/semver-action@1.0-beta.1
+          uses: RightBrain-Networks/semver-action@1.0-beta.0
           with:
             mode: set
         - name: Create Release
