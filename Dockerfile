@@ -5,7 +5,6 @@ RUN pip install --upgrade pip
 RUN yum update -y
 
 # Setup Deployer
-WORKDIR /github/workspace
 RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
