@@ -45,6 +45,8 @@ jobs:
     CheckVersion:
         runs-on: ubuntu-latest
         needs: build
+        outputs:
+          RETURN_STATUS: steps['semver']['outputs']['RETURN_STATUS']
         steps:
         - name: Checkout
           uses: actions/checkout@v2
@@ -54,23 +56,13 @@ jobs:
             git config user.email "<>"
         - name: Run Auto-Semver
           id: semver
-          uses: RightBrain-Networks/semver-action@1.0-beta.0
+          uses: RightBrain-Networks/semver-action@1.0-beta
           with:
             mode: set
-        - name: Create Release
-          uses: actions/create-release@v1
-          if: steps['semver']['outputs']['RETURN_STATUS'] == '0'
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          with:
-            tag_name: ${{ steps.semver.outputs.SEMVER_NEW_VERSION }}
-            release_name: ${{ steps.semver.outputs.SEMVER_NEW_VERSION }}
-            body: Version ${{ steps.semver.outputs.SEMVER_NEW_VERSION }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
-            draft: false
-            prerelease: false
     release:
         runs-on: ubuntu-latest
         needs: [CheckVersion, build]
+        if: needs.CheckVersion.outputs.RETURN_STATUS == 0
         steps:
           - name: Checkout
             uses: actions/checkout@v2
@@ -83,7 +75,7 @@ jobs:
               git config user.email "<>"
           - name: Run Auto-Semver
             id: semver
-            uses: RightBrain-Networks/semver-action@1.0-beta.1
+            uses: RightBrain-Networks/semver-action@1.0-beta
             with:
               mode: set
           - name: Create Release
