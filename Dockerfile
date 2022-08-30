@@ -5,6 +5,7 @@ RUN pip install --upgrade pip
 RUN yum update -y
 
 # Setup Deployer
+WORKDIR /github/workspace
 RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
@@ -17,5 +18,5 @@ RUN mkdir ~/.npm
 
 # Permissions
 RUN chmod -R 757 ~/.npm
-#
+
 CMD /opt/app-root/bin/deployer
