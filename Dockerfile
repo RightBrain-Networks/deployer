@@ -5,8 +5,6 @@ RUN pip install --upgrade pip
 RUN yum update -y
 
 # Setup Deployer
-ADD / /deployer
-WORKDIR /deployer
 RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
