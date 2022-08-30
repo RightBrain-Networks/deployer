@@ -20,5 +20,4 @@ RUN mkdir ~/.npm
 # Permissions
 RUN chmod -R 757 ~/.npm
 
-#
 CMD /opt/app-root/bin/deployer
