@@ -39,6 +39,8 @@ jobs:
         outputs:
           RETURN_STATUS: ${{ steps.semver.RETURN_STATUS }}
         steps:
+        - name: Checkout
+          uses: actions/checkout@v2
         - name: Set Up Git Config
           run: |
             git config user.name "GitHub Actions Bot"
@@ -51,10 +53,25 @@ jobs:
     release:
         runs-on: ubuntu-latest
         needs: [CheckVersion, build]
+        if: needs['CheckVersion']['outputs']['RETURN_STATUS'] == '0'
         steps:
+          - name: Checkout
+            uses: actions/checkout@v2
+            with:
+              fetch-depth: 0
+              ref: ${{ env.GITHUB_REF }}
+          - name: Set Up Git Config
+            run: |
+              git config user.name "GitHub Actions Bot"
+              git config user.email "<>"
+          - name: Run Auto-Semver
+            id: semver
+            uses: RightBrain-Networks/semver-action@1.0.0
+            with:
+              mode: set
           - name: Create Release
             uses: actions/create-release@v1
-            if: ${{ needs.CheckVersion.outputs.RETURN_STATUS }} == '0'
+            if: steps['semver']['outputs']['RETURN_STATUS'] == '0'
             env:
               GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             with:
