@@ -11,18 +11,6 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 jobs:
-    CheckVersion:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v2
-          with:
-            fetch-depth: 0
-            ref: ${{ env.GITHUB_REF }}
-        - name: Run Auto-Semver
-          id: semver
-          uses: RightBrain-Networks/semver-action@1.0-beta
-          with:
-            mode: get
     build:
         runs-on: ubuntu-latest
         outputs:
@@ -53,6 +41,20 @@ jobs:
           uses: RightBrain-Networks/semver-action@1.0-beta
           with:
             mode: set
+    CheckVersion:
+      runs-on: ubuntu-latest
+      needs: [ build ]
+      steps:
+        - uses: actions/checkout@v2
+          with:
+            fetch-depth: 0
+            ref: ${{ env.GITHUB_REF }}
+        - name: Run Auto-Semver
+          id: semver
+          uses: RightBrain-Networks/semver-action@1.0-beta
+          with:
+            mode: check
+            version: needs.build.outputs.VERSION_NUMBER
     release:
         runs-on: ubuntu-latest
         needs: [CheckVersion, build]
