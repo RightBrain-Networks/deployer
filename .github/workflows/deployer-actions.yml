@@ -17,9 +17,9 @@ jobs:
           RETURN_STATUS: steps['semver']['outputs']['RETURN_STATUS']
           VERSION_NUMBER: steps['semver']['outputs']['SEMVER_NEW_VERSION']
         steps:
-          - name: Dump GitHub context
-            id: github_context_step
-            run: echo '${{ toJSON(github) }}'
+        - name: Dump GitHub context
+          id: github_context_step
+          run: echo '${{ toJSON(github) }}'
         - uses: actions/checkout@v2
           with:
             fetch-depth: 0
