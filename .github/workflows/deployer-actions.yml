@@ -13,7 +13,6 @@ env:
 jobs:
     CheckVersion:
       runs-on: ubuntu-latest
-      needs: build
       steps:
         - name: Run Auto-Semver
           id: semver
