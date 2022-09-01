@@ -14,6 +14,10 @@ jobs:
     CheckVersion:
       runs-on: ubuntu-latest
       steps:
+        - uses: actions/checkout@v2
+          with:
+            fetch-depth: 0
+            ref: ${{ env.GITHUB_REF }}
         - name: Run Auto-Semver
           id: semver
           uses: RightBrain-Networks/semver-action@1.0-beta
