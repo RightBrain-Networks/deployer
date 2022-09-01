@@ -51,9 +51,9 @@ jobs:
         - name: Checkout
           uses: actions/checkout@v2
         - name: Set up Python 3.7
-            uses: actions/setup-python@v1
-            with:
-              python-version: 3.7
+          uses: actions/setup-python@v1
+          with:
+            python-version: 3.7
         - name: Set Up Git Config
           run: |
             git config user.name "GitHub Actions Bot"
@@ -74,9 +74,9 @@ jobs:
               fetch-depth: 0
               ref: ${{ env.GITHUB_REF }}
           - name: Set up Python 3.7
-              uses: actions/setup-python@v1
-              with:
-                python-version: 3.7
+            uses: actions/setup-python@v1
+            with:
+              python-version: 3.7
           - name: Set Up Git Config
             run: |
               git config user.name "GitHub Actions Bot"
