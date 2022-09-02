@@ -44,6 +44,8 @@ jobs:
         RETURN_STATUS: steps['semver']['outputs']['RETURN_STATUS']
         VERSION: steps['semver']['outputs']['VERSION']
       steps:
+        - env:
+            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         - uses: actions/checkout@v2
           with:
             fetch-depth: 0
