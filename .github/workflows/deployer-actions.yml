@@ -66,7 +66,7 @@ jobs:
             GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           with:
             tag_name: ${{ steps.semver.outputs.VERSION }}
-            release_name: ${{ steps.CheckVersion.outputs.VERSION }}
+            release_name: ${{ steps.semver.outputs.VERSION }}
             body: Version ${{ steps.semver.outputs.VERSION }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
             draft: false
             prerelease: false
