@@ -57,6 +57,17 @@ jobs:
           uses: RightBrain-Networks/semver-action@1.0-beta
           with:
             mode: set
+        - name: Create Release
+          uses: actions/create-release@v1
+          if: steps.semver.outputs.RETURN_STATUS == ''
+          env:
+            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          with:
+            tag_name: ${{ steps.semver.outputs.VERSION }}
+            release_name: ${{ steps.CheckVersion.outputs.VERSION }}
+            body: Version ${{ steps.semver.outputs.VERSION }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
+            draft: false
+            prerelease: false
     release:
         runs-on: ubuntu-latest
         needs: [ CheckVersion, test ]
@@ -80,14 +91,3 @@ jobs:
             uses: RightBrain-Networks/semver-action@1.0-beta
             with:
               mode: get
-          - name: Create Release
-            uses: actions/create-release@v1
-            if: steps.semver.outputs.RETURN_STATUS == ''
-            env:
-              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            with:
-              tag_name: ${{ steps.semver.outputs.VERSION }}
-              release_name: ${{ steps.CheckVersion.outputs.VERSION }}
-              body: Version ${{ steps.semver.outputs.VERSION }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
-              draft: false
-              prerelease: false
