@@ -79,8 +79,9 @@ jobs:
             run: |
               git config user.name "GitHub Actions Bot"
               git config user.email "<>"
+              echo ${{needs.build.outputs.RETURN_STATUS}}
           - name: Create Release
-            if: needs.build.outputs.RETURN_STATUS == ''
+            if: needs['build']['outputs']['RETURN_STATUS'] == ''
             uses: actions/create-release@v1
             env:
               GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
