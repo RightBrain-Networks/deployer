@@ -20,7 +20,7 @@ testStackCloudFormation = "./tests/cloudformation.yaml"
 
 testBucket = "deployer-testing-us-east-1"
 
-testStackConfig_data = """
+testStackConfig_data = f"""
 global:
   sync_base: ./
   sync_dest_bucket: deployer-testing-us-east-1
@@ -38,14 +38,14 @@ global:
   tags:
     Environment: stack-updated
 test:
-  stack_name: deployer-test-case
+  stack_name: {testStackName}
   template: tests/cloudformation.yaml
 lambda:
-  stack_name: deployer-test-case
+  stack_name: {testStackName}
   template: tests/cloudformation.yaml
   lambda_dirs: [ tests/lambda ]
 timeout:
-  stack_name: deployer-test-case
+  stack_name: {testStackName}
   template: tests/timeout.yaml
 """
 
