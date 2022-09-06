@@ -26,9 +26,9 @@ jobs:
     build:
         runs-on: ubuntu-latest
         outputs:
-          RETURN_STATUS: steps['semver']['outputs']['RETURN_STATUS']
-          SEMVER_NEW_VERSION: steps['semver']['outputs']['SEMVER_NEW_VERSION']
-          VERSION: steps['semver']['outputs']['VERSION']
+          RETURN_STATUS: ${{ steps['semver']['outputs']['RETURN_STATUS'] }}
+          SEMVER_NEW_VERSION: ${{ steps['semver']['outputs']['SEMVER_NEW_VERSION'] }}
+          VERSION: ${{ steps['semver']['outputs']['VERSION'] }}
         steps:
         - uses: actions/checkout@v2
           with:
@@ -79,8 +79,8 @@ jobs:
             run: |
               git config user.name "GitHub Actions Bot"
               git config user.email "<>"
-              echo "RETURN_STATUS = ${{needs.build.outputs.RETURN_STATUS}}"
-              echo "VERSION = ${{needs.build.outputs.VERSION}}"
+              echo "RETURN_STATUS = ${{ needs.build.outputs.RETURN_STATUS }}"
+              echo "VERSION = ${{ needs.build.outputs.VERSION }}"
           - name: Create Release
             if: needs['build']['outputs']['RETURN_STATUS'] == ''
             uses: actions/create-release@v1
