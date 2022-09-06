@@ -59,7 +59,7 @@ jobs:
           working-directory: deployer
         - name: Run Auto-Semver
           id: bumpversion
-          if: steps.semver.outputs.RETURN_STATUS = ''
+          if: steps.semver.outputs.RETURN_STATUS == ''
           uses: RightBrain-Networks/semver-action@1.0-beta
           with:
             mode: put
