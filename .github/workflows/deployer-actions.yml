@@ -38,6 +38,10 @@ jobs:
           uses: actions/setup-python@v1
           with:
             python-version: 3.7
+        - name: Set Up Git Config
+          run: |
+            git config user.name "GitHub Actions Bot"
+            git config user.email "<>"
         - name: Run Auto-Semver
           id: semver
           if: github.event_name != 'release'
@@ -71,6 +75,10 @@ jobs:
             with:
               fetch-depth: 0
               ref: ${{ env.GITHUB_REF }}
+          - name: Set Up Git Config
+            run: |
+              git config user.name "GitHub Actions Bot"
+              git config user.email "<>"
           - name: Create Release
             if: needs.build.outputs.RETURN_STATUS == ''
             uses: actions/create-release@v1
