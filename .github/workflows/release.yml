@@ -35,7 +35,7 @@ jobs:
             RUN_ID=`gh run list --repo ${{ github.repository }} --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
             echo $RUN_ID
             gh run download --repo ${{ github.repository }} ${RUN_ID} -n ${ARTIFACT_NAME}
-            tar -xf ARTIFACT_NAME --strip-components=1
+            tar -xf ${ARTIFACT_NAME} --strip-components=1
         - name: Set up Python 3.7
           uses: actions/setup-python@v1
           with:
