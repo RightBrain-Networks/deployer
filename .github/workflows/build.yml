@@ -53,7 +53,7 @@ jobs:
         - name: build
           run: |
             python setup.py sdist
-            tree -d
+            ls dist
         - name: test
           run: |
             python tests.py

@@ -54,10 +54,6 @@ jobs:
         - name: build
           run: |
             python setup.py sdist
-            ls dist
-        - uses: actions/upload-artifact@v3
-          with:
-            path: /deployer-*.tar
         - name: test
           run: |
             python tests.py
