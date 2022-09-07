@@ -18,6 +18,8 @@ jobs:
       runs-on: ubuntu-latest
       steps:
         - name: Download build artifact
+          env:
+            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           run: |
             WF_NAME="build"
             ARTIFACT_NAME="deployer-${{ github.ref_name }}.tgz"
