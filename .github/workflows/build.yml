@@ -59,18 +59,18 @@ jobs:
           python tests.py
         working-directory: deployer
       - name: Upload Artifact
-        if: ${{ steps['semver']['outputs']['RETURN_STATUS'] }} == ''
+        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
         uses: actions/upload-artifact@v3
         with:
           path: dist/deployer-${{ steps['semver']['outputs']['VERSION'].tgz }}
-      - name: Create Release
-        if: ${{ steps['semver']['outputs']['RETURN_STATUS'] }} == ''
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        with:
-          tag_name: ${{ steps['semver']['outputs']['VERSION'] }}
-          release_name: ${{ steps['semver']['outputs']['VERSION'] }}
-          body: Version ${{ steps['semver']['outputs']['VERSION'] }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
-          draft: false
-          prerelease: false
+#      - name: Create Release
+#        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+#        uses: actions/create-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+#        with:
+#          tag_name: ${{ steps['semver']['outputs']['VERSION'] }}
+#          release_name: ${{ steps['semver']['outputs']['VERSION'] }}
+#          body: Version ${{ steps['semver']['outputs']['VERSION'] }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
+#          draft: false
+#          prerelease: false
