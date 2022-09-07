@@ -14,33 +14,18 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 jobs:
+    printJob:
+      name: Print event
+      runs-on: ubuntu-latest
+      steps:
+        - name: Dump GitHub context
+          env:
+            GITHUB_CONTEXT: ${{ toJson(github) }}
+          run: |
+            echo "$GITHUB_CONTEXT"
     release:
       runs-on: ubuntu-latest
       steps:
-        - name: Download build artifact
-          env:
-            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        - name: debug
           run: |
-            WF_NAME="build"
-            ARTIFACT_NAME="deployer-${{ github.ref_name }}.tar.gz"
-            RUN_ID=`gh run list --repo ${{ github.repository }} --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
-            echo $RUN_ID
-            gh run download --repo ${{ github.repository }} ${RUN_ID} -n ${ARTIFACT_NAME}
-        - name: Debug
-          run: |
-            pwd
-            tree -d .
-            ls
-#        - name: Set up Python 3.7
-#          uses: actions/setup-python@v1
-#          with:
-#            python-version: 3.7
-#        - name: Set Up Git Config
-#          run: |
-#            git config user.name "GitHub Actions Bot"
-#            git config user.email "<>"
-#        - name: Run Auto-Semver
-#          id: semver
-#          uses: RightBrain-Networks/semver-action@1.0-beta
-#          with:
-#            mode: get
+            tree -d
