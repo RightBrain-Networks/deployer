@@ -54,15 +54,15 @@ jobs:
         run: |
           python setup.py sdist
           ls dist
-      - name: test
-        run: |
-          python tests.py
-        working-directory: deployer
+#      - name: test
+#        run: |
+#          python tests.py
+#        working-directory: deployer
       - name: Upload Artifact
         if: steps['semver']['outputs']['RETURN_STATUS'] == ''
         uses: actions/upload-artifact@v3
         with:
-          path: dist/deployer-${{ steps['semver']['outputs']['VERSION'].tgz }}
+          path: dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tgz
 #      - name: Create Release
 #        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
 #        uses: actions/create-release@v1
