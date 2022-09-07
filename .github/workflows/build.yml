@@ -49,7 +49,7 @@ jobs:
         with:
           mode: set
       - name: Run Auto-Semver
-        id: semver
+        id: bumpversion
         if: steps['semver']['outputs']['RETURN_STATUS'] == ''
         uses: RightBrain-Networks/semver-action@1.0-beta
         with:
