@@ -58,16 +58,11 @@ jobs:
 #        run: |
 #          python tests.py
 #        working-directory: deployer
-      - name: Check Dirs
-        run: |
-          pwd
-          tree -d
-          ls dist
       - name: Upload Artifact
         if: steps['semver']['outputs']['RETURN_STATUS'] == ''
         uses: actions/upload-artifact@v3
         with:
-          path: ./dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tgz
+          path: ./dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
 #      - name: Create Release
 #        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
 #        uses: actions/create-release@v1
