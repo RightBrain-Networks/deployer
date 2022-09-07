@@ -37,35 +37,27 @@ jobs:
           uses: actions/setup-python@v1
           with:
             python-version: 3.7
-        - name: Set Up Git Config
+        - name: debug
           run: |
-            git config user.name "GitHub Actions Bot"
-            git config user.email "<>"
-        - name: Run Auto-Semver
-          id: semver
-          if: github.event_name != 'release'
-          uses: RightBrain-Networks/semver-action@1.0-beta
-          with:
-            mode: get
-        - name: Install dependencies
-          run: |
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
-        - name: build
-          run: |
-            python setup.py sdist
-        - name: test
-          run: |
-            python tests.py
-          working-directory: deployer
-        - name: Create Release
-          if: needs['build']['outputs']['RETURN_STATUS'] == ''
-          uses: actions/create-release@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          with:
-            tag_name: ${{ steps.semver.outputs.VERSION }}
-            release_name: ${{ steps.semver.outputs.VERSION }}
-            body: Version ${{ steps.semver.outputs.VERSION }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
-            draft: false
-            prerelease: false
+            tree -d
+#        - name: Set Up Git Config
+#          run: |
+#            git config user.name "GitHub Actions Bot"
+#            git config user.email "<>"
+#        - name: Run Auto-Semver
+#          id: semver
+#          if: github.event_name != 'release'
+#          uses: RightBrain-Networks/semver-action@1.0-beta
+#          with:
+#            mode: get
+#        - name: Install dependencies
+#          run: |
+#            python -m pip install --upgrade pip
+#            pip install -r requirements.txt
+#        - name: build
+#          run: |
+#            python setup.py sdist
+#        - name: test
+#          run: |
+#            python tests.py
+#          working-directory: deployer
