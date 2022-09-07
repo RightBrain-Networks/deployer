@@ -60,12 +60,12 @@ jobs:
 #        run: |
 #          python tests.py
 #        working-directory: deployer
-      - name: Run Auto-Semver
+      - name: Upload Artifact
         if: steps['semver']['outputs']['RETURN_STATUS'] == ''
-        id: bumpversion
-        uses: RightBrain-Networks/semver-action@1.0-beta
+        uses: actions/upload-artifact@v3
         with:
-          mode: get
+          name: deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
+          path: ./dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
       - name: Create Release
         if: steps['semver']['outputs']['RETURN_STATUS'] == ''
         uses: actions/create-release@v1
