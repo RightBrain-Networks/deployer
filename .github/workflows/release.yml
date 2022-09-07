@@ -29,7 +29,8 @@ jobs:
         - name: Debug
           run: |
             pwd
-            tree -d
+            tree -d .
+            ls
 #        - name: Set up Python 3.7
 #          uses: actions/setup-python@v1
 #          with:
