@@ -23,7 +23,7 @@ jobs:
             GITHUB_CONTEXT: ${{ toJson(github) }}
           run: |
             echo "$GITHUB_CONTEXT"
-    build:
+    release:
         runs-on: ubuntu-latest
         steps:
           - name: Download build artifact
