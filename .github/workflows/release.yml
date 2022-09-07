@@ -23,9 +23,9 @@ jobs:
           run: |
             WF_NAME="build"
             ARTIFACT_NAME="deployer-${{ github.ref_name }}.tar.gz"
-            RUN_IDs=`gh run list --repo ${{ github.repository }} --workflow ${WF_NAME} --json databaseId --jq ..databaseId`
-            echo $RUN_IDs
-            gh run download ${RUN_ID} --repo ${{ github.repository }} -n ${ARTIFACT_NAME}
+            RUN_ID=`gh run list --repo ${{ github.repository }} --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
+            echo $RUN_ID
+            gh run download --repo ${{ github.repository }} ${RUN_ID} -n ${ARTIFACT_NAME}
         - name: Debug
           run: |
             pwd
