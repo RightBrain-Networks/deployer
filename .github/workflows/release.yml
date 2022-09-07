@@ -22,7 +22,7 @@ jobs:
             GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           run: |
             WF_NAME="build"
-            ARTIFACT_NAME="deployer-${{ github.ref_name }}.tgz"
+            ARTIFACT_NAME="deployer-${{ github.ref_name }}.tar.gz"
             RUN_ID=`gh run list --repo ${{ github.repository }} --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
             gh run download --repo ${{ github.repository }} ${RUN_ID} -n ${ARTIFACT_NAME}
         - name: Debug
