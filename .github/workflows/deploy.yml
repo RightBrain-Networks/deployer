@@ -24,10 +24,10 @@ jobs:
             echo "$GITHUB_CONTEXT"
     build:
         runs-on: ubuntu-latest
-        outputs:
-          RETURN_STATUS: ${{ steps['semver']['outputs']['RETURN_STATUS'] }}
-          SEMVER_NEW_VERSION: ${{ steps['semver']['outputs']['SEMVER_NEW_VERSION'] }}
-          VERSION: ${{ steps['semver']['outputs']['VERSION'] }}
+#        outputs:
+#          RETURN_STATUS: ${{ steps['semver']['outputs']['RETURN_STATUS'] }}
+#          SEMVER_NEW_VERSION: ${{ steps['semver']['outputs']['SEMVER_NEW_VERSION'] }}
+#          VERSION: ${{ steps['semver']['outputs']['VERSION'] }}
         steps:
         - uses: actions/checkout@v2
           with:
