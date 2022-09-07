@@ -1,4 +1,4 @@
-name: deployer-actions
+name: build
 on:
   push:
 env:
@@ -53,13 +53,14 @@ jobs:
         - name: build
           run: |
             python setup.py sdist
+            tree -d
+        - uses: actions/upload-artifact@v3
+          with:
+            path: /deployer-*.tar
         - name: test
           run: |
             python tests.py
           working-directory: deployer
-        - uses: actions/upload-artifact@v3
-          with:
-            path: ${{ github.workspace }}/deployer-*.tar
         - name: Create Release
           if: needs['build']['outputs']['RETURN_STATUS'] == ''
           uses: actions/create-release@v1
