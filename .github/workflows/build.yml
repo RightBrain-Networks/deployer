@@ -48,6 +48,12 @@ jobs:
         uses: RightBrain-Networks/semver-action@1.0-beta
         with:
           mode: set
+      - name: Run Auto-Semver
+        id: bumpversion
+        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+        uses: RightBrain-Networks/semver-action@1.0-beta
+        with:
+          mode: get
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
