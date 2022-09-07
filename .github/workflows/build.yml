@@ -58,6 +58,10 @@ jobs:
           run: |
             python tests.py
           working-directory: deployer
+#        - name: Upload Artifact
+#          uses: actions/upload-artifact@v3
+#          with:
+#            path: dist/deployer-${{ steps['semver']['outputs']['VERSION'].tgz }}
         - name: Create Release
           if: needs['build']['outputs']['RETURN_STATUS'] == ''
           uses: actions/create-release@v1

@@ -1,7 +1,7 @@
 name: deploy
 on:
   release:
-    type: [ published ]
+    type: published
 env:
   GITHUB_URL: 'git@github.com:RightBrain-Networks/deployer.git'
   GITHUB_KEY: 'rbn-ops github'
@@ -24,10 +24,6 @@ jobs:
             echo "$GITHUB_CONTEXT"
     build:
         runs-on: ubuntu-latest
-#        outputs:
-#          RETURN_STATUS: ${{ steps['semver']['outputs']['RETURN_STATUS'] }}
-#          SEMVER_NEW_VERSION: ${{ steps['semver']['outputs']['SEMVER_NEW_VERSION'] }}
-#          VERSION: ${{ steps['semver']['outputs']['VERSION'] }}
         steps:
         - uses: actions/checkout@v2
           with:
@@ -40,6 +36,13 @@ jobs:
         - name: debug
           run: |
             tree -d
+#        - name: "Download artifact"
+#          run: |
+#            OTHER_REPO="owner/name"
+#            WF_NAME="wf_name"
+#            ARTIFACT_NAME="artifact_name"
+#            RUN_ID=`gh run list --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
+#            gh run --repo ${OTHER_REPO} download ${RUN_ID} -n ${ARTIFACT_NAME}
 #        - name: Set Up Git Config
 #          run: |
 #            git config user.name "GitHub Actions Bot"
