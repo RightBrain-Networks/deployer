@@ -40,6 +40,13 @@ jobs:
         - name: debug
           run: |
             tree -d
+        - name: "Download artifact"
+          run: |
+            OTHER_REPO="owner/name"
+            WF_NAME="wf_name"
+            ARTIFACT_NAME="artifact_name"
+            RUN_ID=`gh run list --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
+            gh run --repo ${OTHER_REPO} download ${RUN_ID} -n ${ARTIFACT_NAME}
 #        - name: Set Up Git Config
 #          run: |
 #            git config user.name "GitHub Actions Bot"

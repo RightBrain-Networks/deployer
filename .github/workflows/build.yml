@@ -58,6 +58,8 @@ jobs:
           run: |
             python tests.py
           working-directory: deployer
+        - name: Store artifact
+          uses:
         - name: Create Release
           if: needs['build']['outputs']['RETURN_STATUS'] == ''
           uses: actions/create-release@v1
