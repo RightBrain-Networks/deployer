@@ -2,7 +2,7 @@ name: release
 on:
   release:
     types:
-        - published
+      - published
 env:
   GITHUB_URL: 'git@github.com:RightBrain-Networks/deployer.git'
   GITHUB_KEY: 'rbn-ops github'
@@ -14,15 +14,6 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 jobs:
-    printJob:
-      name: Print event
-      runs-on: ubuntu-latest
-      steps:
-        - name: Dump GitHub context
-          env:
-            GITHUB_CONTEXT: ${{ toJson(github) }}
-          run: |
-            echo "$GITHUB_CONTEXT"
     release:
       runs-on: ubuntu-latest
       steps:
@@ -32,17 +23,17 @@ jobs:
             ARTIFACT_NAME="deployer-${{ github.ref_name }}.tgz"
             RUN_ID=`gh run list --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
             gh run download ${RUN_ID} -n ${ARTIFACT_NAME}
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
-      - name: Set Up Git Config
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "<>"
-      - name: Run Auto-Semver
-        id: semver
-        if: github.event_name != 'release'
-        uses: RightBrain-Networks/semver-action@1.0-beta
-        with:
-          mode: get
+        - name: Set up Python 3.7
+          uses: actions/setup-python@v1
+          with:
+            python-version: 3.7
+        - name: Set Up Git Config
+          run: |
+            git config user.name "GitHub Actions Bot"
+            git config user.email "<>"
+        - name: Run Auto-Semver
+          id: semver
+          if: github.event_name != 'release'
+          uses: RightBrain-Networks/semver-action@1.0-beta
+          with:
+            mode: get
