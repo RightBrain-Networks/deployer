@@ -54,9 +54,6 @@ jobs:
           run: |
             python setup.py sdist
             tree -d
-        - uses: actions/upload-artifact@v3
-          with:
-            path: /deployer-*.tar
         - name: test
           run: |
             python tests.py
