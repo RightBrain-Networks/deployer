@@ -24,25 +24,25 @@ jobs:
           run: |
             echo "$GITHUB_CONTEXT"
     release:
-        runs-on: ubuntu-latest
-        steps:
-          - name: Download build artifact
-            run: |
-              WF_NAME="build"
-              ARTIFACT_NAME="deployer-${{ github.ref_name }}.tgz"
-              RUN_ID=`gh run list --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
-              gh run download ${RUN_ID} -n ${ARTIFACT_NAME}
-        - name: Set up Python 3.7
-          uses: actions/setup-python@v1
-          with:
-            python-version: 3.7
-        - name: Set Up Git Config
+      runs-on: ubuntu-latest
+      steps:
+        - name: Download build artifact
           run: |
-            git config user.name "GitHub Actions Bot"
-            git config user.email "<>"
-        - name: Run Auto-Semver
-          id: semver
-          if: github.event_name != 'release'
-          uses: RightBrain-Networks/semver-action@1.0-beta
-          with:
-            mode: get
+            WF_NAME="build"
+            ARTIFACT_NAME="deployer-${{ github.ref_name }}.tgz"
+            RUN_ID=`gh run list --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
+            gh run download ${RUN_ID} -n ${ARTIFACT_NAME}
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Set Up Git Config
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "<>"
+      - name: Run Auto-Semver
+        id: semver
+        if: github.event_name != 'release'
+        uses: RightBrain-Networks/semver-action@1.0-beta
+        with:
+          mode: get
