@@ -18,7 +18,7 @@ from boto3.session import Session
 import ruamel.yaml
 import sys, traceback
 
-__version__ = '0.0.0'
+__version__ = '0.8.1'
 
 
 def main():
