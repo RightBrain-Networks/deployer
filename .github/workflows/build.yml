@@ -49,6 +49,8 @@ jobs:
         run: |
           pip install https://github.com/RightBrain-Networks/auto-semver/releases/download/0.7.1/auto-semver.tar.gz
 
+          export regex='^\s*current_version\s*=\s*\K[^\s]+'
+
           export RETURN_STATUS=$(semver -n || echo $?)
           export SEMVER_NEW_VERSION=`grep -Po ${regex} .bumpversion.cfg`
           export VERSION=`semver_get_version -d`
@@ -56,6 +58,9 @@ jobs:
           echo "::set-output name=SEMVER_RETURN_STATUS::$RETURN_STATUS"
           echo "::set-output name=SEMVER_NEW_VERSION::$SEMVER_NEW_VERSION"
           echo "::set-output name=VERSION::$VERSION"
+
+          echo "Current version number in __init__.py = $(sed -n 21p deployer/__init__.py)"
+
           python setup.py sdist
 #      - name: test
 #        run: |
