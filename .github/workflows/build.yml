@@ -1,6 +1,9 @@
 name: build
 on:
   push:
+    # Restricted from running on tags
+    branches:
+      - "**"
 env:
   GITHUB_URL: 'git@github.com:RightBrain-Networks/deployer.git'
   GITHUB_KEY: 'rbn-ops github'
@@ -23,10 +26,6 @@ jobs:
             echo "$GITHUB_CONTEXT"
     build:
       runs-on: ubuntu-latest
-      outputs:
-        RETURN_STATUS: ${{ steps['semver']['outputs']['RETURN_STATUS'] }}
-        SEMVER_NEW_VERSION: ${{ steps['semver']['outputs']['SEMVER_NEW_VERSION'] }}
-        VERSION: ${{ steps['semver']['outputs']['VERSION'] }}
       steps:
       - uses: actions/checkout@v2
         with:
@@ -40,11 +39,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install https://github.com/RightBrain-Networks/auto-semver/releases/download/0.7.1/auto-semver.tar.gz
       - name: build
         id: build
         run: |
-          pip install https://github.com/RightBrain-Networks/auto-semver/releases/download/0.7.1/auto-semver.tar.gz
-
           export regex='^\s*current_version\s*=\s*\K[^\s]+'
 
           export RETURN_STATUS=$(semver -n || echo $?)
@@ -58,18 +56,18 @@ jobs:
           echo "Current version number in __init__.py = $(sed -n 21p deployer/__init__.py)"
 
           python setup.py sdist
-#      - name: test
-#        run: |
-#          python tests.py
-#        working-directory: deployer
-#      - name: Upload Artifact
-#        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
-#          path: ./dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
+      - name: test
+        run: |
+          python tests.py
+        working-directory: deployer
+      - name: Upload Artifact
+        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
+          path: ./dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
       - name: Commit versioned files
-        # Will commit the changed files and return the new commit sha
+        # Will commit the changed files and return the new commit sha, or current sha if no changes exist
         if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         id: commit
         run: |
@@ -81,13 +79,13 @@ jobs:
             git commit -a -m "Updated version number to ${{ steps.build.outputs.VERSION }}"
             git push
           fi
-
           echo "::set-output name=NEW_COMMIT_SHA::$(git rev-parse --verify HEAD)"
       - name: Create Release
+        id: create_release
         if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
           tag_name: ${{ steps['build']['outputs']['VERSION'] }}
           release_name: ${{ steps['build']['outputs']['VERSION'] }}
@@ -95,3 +93,14 @@ jobs:
           draft: false
           prerelease: false
           commitish: ${{ steps['commit']['outputs']['NEW_COMMIT_SHA'] }}
+      - name: Upload Release Asset
+        id: upload-release-asset
+        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: ./dist/deployer-${{ github.ref_name }}.tar.gz
+          asset_name: deployer-${{ github.ref_name }}.tar.gz
+          asset_content_type: application/gzip
