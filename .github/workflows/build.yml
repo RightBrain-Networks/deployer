@@ -36,11 +36,6 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.7
-      - name: Run Auto-Semver
-        id: semver
-        uses: RightBrain-Networks/semver-action@1.0-beta
-        with:
-          mode: set
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -48,6 +43,20 @@ jobs:
       - name: build
         id: build
         run: |
+          pip install https://github.com/RightBrain-Networks/auto-semver/releases/download/0.7.1/auto-semver.tar.gz
+
+          export regex='^\s*current_version\s*=\s*\K[^\s]+'
+
+          export RETURN_STATUS=$(semver -n || echo $?)
+          export SEMVER_NEW_VERSION=`grep -Po ${regex} .bumpversion.cfg`
+          export VERSION=`semver_get_version -d`
+
+          echo "::set-output name=SEMVER_RETURN_STATUS::$RETURN_STATUS"
+          echo "::set-output name=SEMVER_NEW_VERSION::$SEMVER_NEW_VERSION"
+          echo "::set-output name=VERSION::$VERSION"
+
+          echo "Current version number in __init__.py = $(sed -n 21p deployer/__init__.py)"
+
           python setup.py sdist
 #      - name: test
 #        run: |
@@ -61,7 +70,7 @@ jobs:
 #          path: ./dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
       - name: Commit versioned files
         # Will commit the changed files and return the new commit sha
-        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         id: commit
         run: |
           git config user.name "GitHub Actions Bot"
@@ -72,12 +81,12 @@ jobs:
 
           echo "::set-output name=NEW_COMMIT_SHA::$(git rev-parse --verify HEAD)"
       - name: Create Release
-        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         uses: actions/create-release@v1
         with:
-          tag_name: ${{ steps['semver']['outputs']['VERSION'] }}
-          release_name: ${{ steps['semver']['outputs']['VERSION'] }}
-          body: Version ${{ steps['semver']['outputs']['VERSION'] }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
+          tag_name: ${{ steps['build']['outputs']['VERSION'] }}
+          release_name: ${{ steps['build']['outputs']['VERSION'] }}
+          body: Version ${{ steps['build']['outputs']['VERSION'] }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
           draft: false
           prerelease: false
           commitish: ${{ steps['commit']['outputs']['NEW_COMMIT_SHA'] }}
