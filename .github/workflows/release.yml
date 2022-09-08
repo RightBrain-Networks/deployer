@@ -1,8 +1,8 @@
 name: release
 on:
-  release:
-    types:
-      - published
+  create:
+    tags:
+      - "[0-9]+.[0-9]+"
 env:
   GITHUB_URL: 'git@github.com:RightBrain-Networks/deployer.git'
   GITHUB_KEY: 'rbn-ops github'
@@ -39,3 +39,14 @@ jobs:
           uses: RightBrain-Networks/semver-action@1.0-beta
           with:
             mode: get
+        - name: Create Release
+          if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+          uses: actions/create-release@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          with:
+            tag_name: ${{ steps['semver']['outputs']['VERSION'] }}
+            release_name: ${{ steps['semver']['outputs']['VERSION'] }}
+            body: Version ${{ steps['semver']['outputs']['VERSION'] }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
+            draft: false
+            prerelease: false
