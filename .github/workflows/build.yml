@@ -53,7 +53,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: build
+        id: build
         run: |
+          pip install https://github.com/RightBrain-Networks/auto-semver/releases/download/0.7.1/auto-semver.tar.gz
+
+          export RETURN_STATUS=$(semver -n || echo $?)
+          export SEMVER_NEW_VERSION=`grep -Po ${regex} .bumpversion.cfg`
+          export VERSION=`semver_get_version -d`
+
+          echo "::set-output name=SEMVER_RETURN_STATUS::$RETURN_STATUS"
+          echo "::set-output name=SEMVER_NEW_VERSION::$SEMVER_NEW_VERSION"
+          echo "::set-output name=VERSION::$VERSION"
           python setup.py sdist
 #      - name: test
 #        run: |
@@ -66,11 +76,13 @@ jobs:
 #          name: deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
 #          path: ./dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
       - name: Create Release
-        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
-        run: |
-          github.git.createRef({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            ref: "refs/tags/${{ steps['semver']['outputs']['VERSION'] }}",
-            sha: context.sha
-          })
+        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          tag_name: ${{ steps['build']['outputs']['VERSION'] }}
+          release_name: ${{ steps['build']['outputs']['VERSION'] }}
+          body: Version ${{ steps['build']['outputs']['VERSION'] }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
+          draft: false
+          prerelease: false
