@@ -48,13 +48,13 @@ jobs:
         - name: Package
           run: |
            tar czvf --exclude=deployer-${{ github.ref_name }}.tar* deployer-${{ github.ref_name }}.tar.gz --transform 's,^,deployer-${{ github.ref_name }}/,' .
-#        - name: Upload Release Asset
-#          id: upload-release-asset
-#          uses: actions/upload-release-asset@v1
-#          env:
-#            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-#          with:
-#            upload_url: ${{ github.event.release.upload_url }} # This pulls from the Release:Published event, which includes an `upload_url`.
-#            asset_path: ./deployer-${{ github.ref_name }}.tar.gz
-#            asset_name: deployer-${{ github.ref_name }}.tar.gz
-#            asset_content_type: application/gzip
+        - name: Upload Release Asset
+          id: upload-release-asset
+          uses: actions/upload-release-asset@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          with:
+            upload_url: ${{ github.event.release.upload_url }} # This pulls from the Release:Published event, which includes an `upload_url`.
+            asset_path: ./deployer-${{ github.ref_name }}.tar.gz
+            asset_name: deployer-${{ github.ref_name }}.tar.gz
+            asset_content_type: application/gzip
