@@ -58,6 +58,9 @@ jobs:
           echo "::set-output name=SEMVER_RETURN_STATUS::$RETURN_STATUS"
           echo "::set-output name=SEMVER_NEW_VERSION::$SEMVER_NEW_VERSION"
           echo "::set-output name=VERSION::$VERSION"
+
+          head -n 25 deployer/__init__.py
+
           python setup.py sdist
 #      - name: test
 #        run: |
