@@ -26,16 +26,10 @@ jobs:
     release:
       runs-on: ubuntu-latest
       steps:
-        - name: Download build artifact
-          env:
-            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          run: |
-            WF_NAME="build"
-            ARTIFACT_NAME="deployer-${{ github.ref_name }}.tar.gz"
-            RUN_ID=`gh run list --repo ${{ github.repository }} --workflow ${WF_NAME} --json databaseId --jq .[0].databaseId`
-            echo $RUN_ID
-            gh run download --repo ${{ github.repository }} ${RUN_ID} -n ${ARTIFACT_NAME}
-            tar -xf ${ARTIFACT_NAME} --strip-components=1
+        - uses: actions/checkout@v2
+          with:
+            fetch-depth: 0
+            ref: ${{ env.GITHUB_REF }}
         - name: Set up Python 3.7
           uses: actions/setup-python@v1
           with:
@@ -45,16 +39,3 @@ jobs:
           uses: RightBrain-Networks/semver-action@1.0-beta
           with:
             mode: get
-        - name: Package
-          run: |
-           tar czvf --exclude=deployer-${{ github.ref_name }}.tar* deployer-${{ github.ref_name }}.tar.gz --transform 's,^,deployer-${{ github.ref_name }}/,' .
-        - name: Upload Release Asset
-          id: upload-release-asset
-          uses: actions/upload-release-asset@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          with:
-            upload_url: ${{ github.event.release.upload_url }} # This pulls from the Release:Published event, which includes an `upload_url`.
-            asset_path: ./deployer-${{ github.ref_name }}.tar.gz
-            asset_name: deployer-${{ github.ref_name }}.tar.gz
-            asset_content_type: application/gzip
