@@ -62,7 +62,7 @@ jobs:
 #          path: ./dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
       - name: Commit versioned files
         # Will commit the changed files and return the new commit sha
-        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
+        if: steps['semver']['outputs']['SEMVER_RETURN_STATUS'] == ''
         id: commit
         run: |
           git config user.name "GitHub Actions Bot"
