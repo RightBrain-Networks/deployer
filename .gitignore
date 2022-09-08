@@ -108,6 +108,3 @@ ENV/
 
 # .idea
 /.idea
-
-# build artifact
-/dist
