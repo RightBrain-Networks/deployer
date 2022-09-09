@@ -1,10 +1,6 @@
 name: build
-# Arbitrary change
 on:
   push:
-    # Restricted from running on tags
-    branches:
-      - "**"
 env:
   GITHUB_URL: 'git@github.com:RightBrain-Networks/deployer.git'
   GITHUB_KEY: 'rbn-ops github'
@@ -16,8 +12,21 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 jobs:
+    printJob:
+      name: Print event
+      runs-on: ubuntu-latest
+      steps:
+        - name: Dump GitHub context
+          env:
+            GITHUB_CONTEXT: ${{ toJson(github) }}
+          run: |
+            echo "$GITHUB_CONTEXT"
     build:
       runs-on: ubuntu-latest
+      outputs:
+        RETURN_STATUS: ${{ steps['semver']['outputs']['RETURN_STATUS'] }}
+        SEMVER_NEW_VERSION: ${{ steps['semver']['outputs']['SEMVER_NEW_VERSION'] }}
+        VERSION: ${{ steps['semver']['outputs']['VERSION'] }}
       steps:
       - uses: actions/checkout@v2
         with:
@@ -27,28 +36,23 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.7
+      - name: Set Up Git Config
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "<>"
+      - name: Run Auto-Semver
+        id: semver
+        if: github.event_name != 'release'
+        uses: RightBrain-Networks/semver-action@1.0-beta
+        with:
+          mode: set
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install https://github.com/RightBrain-Networks/auto-semver/releases/download/0.7.1/auto-semver.tar.gz
       - name: build
-        id: build
         run: |
-          export regex='^\s*current_version\s*=\s*\K[^\s]+'
-
-          export RETURN_STATUS=$(semver -n || echo $?)
-          export SEMVER_NEW_VERSION=`grep -Po ${regex} .bumpversion.cfg`
-          export VERSION=`semver_get_version -d`
-
-          echo "::set-output name=SEMVER_RETURN_STATUS::$RETURN_STATUS"
-          echo "::set-output name=SEMVER_NEW_VERSION::$SEMVER_NEW_VERSION"
-          echo "::set-output name=VERSION::$VERSION"
-
-          echo "Current version number in __init__.py = $(sed -n 21p deployer/__init__.py)"
-
           python setup.py sdist
-          ls dist
 #      - name: test
 #        run: |
 #          python tests.py
@@ -60,15 +64,25 @@ jobs:
           name: deployer-${{ steps['build']['outputs']['VERSION'] }}.tar.gz
           path: ./dist/deployer-${{ steps['build']['outputs']['VERSION'] }}.tar.gz
       - name: Create Release
-        id: create_release
-        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
+        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+        id: release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps['build']['outputs']['VERSION'] }}
-          release_name: ${{ steps['build']['outputs']['VERSION'] }}
-          body: Version ${{ steps['build']['outputs']['VERSION'] }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
+          tag_name: ${{ steps['semver']['outputs']['VERSION'] }}
+          release_name: ${{ steps['semver']['outputs']['VERSION'] }}
+          body: Version ${{ steps['semver']['outputs']['VERSION'] }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
           draft: false
           prerelease: false
-          commitish: ${{ steps['commit']['outputs']['NEW_COMMIT_SHA'] }}
+      - name: Upload Release Asset
+        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: ./dist/deployer-${{ steps.semver.outputs.VERSION }}.tar.gz
+          asset_name: deployer-${{ steps.semver.outputs.VERSION }}.tar.gz
+          asset_content_type: application/gzip
