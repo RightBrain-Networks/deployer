@@ -59,20 +59,6 @@ jobs:
         with:
           name: deployer-${{ steps['build']['outputs']['VERSION'] }}.tar.gz
           path: ./dist/deployer-${{ steps['build']['outputs']['VERSION'] }}.tar.gz
-      - name: Commit versioned files
-        # Will commit the changed files and return the new commit sha, or current sha if no changes exist
-        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
-        id: commit
-        run: |
-          if [[ `git status --porcelain` ]];
-          then
-            git config user.name "GitHub Actions Bot"
-            git config user.email "<>"
-            git pull
-            git commit -a -m "Updated version number to ${{ steps.build.outputs.VERSION }}"
-            git push
-          fi
-          echo "::set-output name=NEW_COMMIT_SHA::$(git rev-parse --verify HEAD)"
       - name: Create Release
         id: create_release
         if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
