@@ -1,4 +1,5 @@
 name: build
+# Arbitrary change
 on:
   push:
     # Restricted from running on tags
