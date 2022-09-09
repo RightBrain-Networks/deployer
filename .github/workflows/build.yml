@@ -69,14 +69,14 @@ jobs:
           body: Version ${{ steps['semver']['outputs']['VERSION'] }} released automatically by [RightBrain-Networks/auto-semver](https://github.com/RightBrain-Networks/auto-semver)
           draft: false
           prerelease: false
-        - name: Upload Release Asset
-          if: steps['semver']['outputs']['RETURN_STATUS'] == ''
-          id: upload-release-asset
-          uses: actions/upload-release-asset@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          with:
-            upload_url: ${{ steps.release.outputs.upload_url }}
-            asset_path: ./dist/deployer-${{ steps.semver.outputs.VERSION }}.tar.gz
-            asset_name: deployer-${{ steps.semver.outputs.VERSION }}.tar.gz
-            asset_content_type: application/gzip
+      - name: Upload Release Asset
+        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: ./dist/deployer-${{ steps.semver.outputs.VERSION }}.tar.gz
+          asset_name: deployer-${{ steps.semver.outputs.VERSION }}.tar.gz
+          asset_content_type: application/gzip
