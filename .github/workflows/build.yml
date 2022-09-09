@@ -53,7 +53,7 @@ jobs:
 #          python tests.py
 #        working-directory: deployer
       - name: Upload Artifact
-        if: steps['build']['outputs']['RETURN_STATUS'] == ''
+        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         uses: actions/upload-artifact@v3
         with:
           name: deployer-${{ steps['build']['outputs']['VERSION'] }}.tar.gz
