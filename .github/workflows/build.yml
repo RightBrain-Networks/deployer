@@ -57,10 +57,10 @@ jobs:
           echo "::set-output name=VERSION::$VERSION"
           echo "Current version number in __init__.py = $(sed -n 21p deployer/__init__.py)"
           python setup.py sdist
-      - name: test
-        run: |
-          python tests.py
-        working-directory: deployer
+#      - name: test
+#        run: |
+#          python tests.py
+#        working-directory: deployer
       - name: Create Release
         if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         id: release
