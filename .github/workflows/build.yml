@@ -63,8 +63,8 @@ jobs:
         if: steps['semver']['outputs']['RETURN_STATUS'] == ''
         uses: actions/upload-artifact@v3
         with:
-          name: deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
-          path: dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
+          name: 'deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz'
+          path: 'dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz'
       - name: Create Release
         if: steps['semver']['outputs']['RETURN_STATUS'] == ''
         id: release
@@ -85,6 +85,6 @@ jobs:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           with:
             upload_url: ${{ steps.release.outputs.upload_url }}
-            asset_path: ./dist/deployer-${{ github.ref_name }}.tar.gz
-            asset_name: deployer-${{ github.ref_name }}.tar.gz
+            asset_path: ./dist/deployer-${{ steps.semver.outputs.VERSION }}.tar.gz
+            asset_name: deployer-${{ steps.semver.outputs.VERSION }}.tar.gz
             asset_content_type: application/gzip
