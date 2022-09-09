@@ -60,7 +60,7 @@ jobs:
 #          python tests.py
 #        working-directory: deployer
       - name: Upload Artifact
-        if: steps['semver']['outputs']['RETURN_STATUS'] == ''
+        if: steps.semver.outputs.RETURN_STATUS == ''
         uses: actions/upload-artifact@v3
         with:
           name: 'deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz'
