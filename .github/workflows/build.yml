@@ -12,15 +12,6 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 jobs:
-    printJob:
-      name: Print event
-      runs-on: ubuntu-latest
-      steps:
-        - name: Dump GitHub context
-          env:
-            GITHUB_CONTEXT: ${{ toJson(github) }}
-          run: |
-            echo "$GITHUB_CONTEXT"
     build:
       runs-on: ubuntu-latest
       outputs:
@@ -49,18 +40,20 @@ jobs:
         id: build
         run: |
           export regex='^\s*current_version\s*=\s*\K[^\s]+'
+
           export RETURN_STATUS=$(semver -n || echo $?)
           export SEMVER_NEW_VERSION=`grep -Po ${regex} .bumpversion.cfg`
           export VERSION=`semver_get_version -d`
+
           echo "::set-output name=SEMVER_RETURN_STATUS::$RETURN_STATUS"
           echo "::set-output name=SEMVER_NEW_VERSION::$SEMVER_NEW_VERSION"
           echo "::set-output name=VERSION::$VERSION"
-          echo "Current version number in __init__.py = $(sed -n 21p deployer/__init__.py)"
+
           python setup.py sdist
-#      - name: test
-#        run: |
-#          python tests.py
-#        working-directory: deployer
+      - name: test
+        run: |
+          python tests.py
+        working-directory: deployer
       - name: Create Release
         if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         id: release
