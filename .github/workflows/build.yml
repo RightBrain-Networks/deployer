@@ -53,17 +53,16 @@ jobs:
       - name: build
         run: |
           python setup.py sdist
-          tree -d
-          ls dist
 #      - name: test
 #        run: |
 #          python tests.py
 #        working-directory: deployer
       - name: Upload Artifact
+        if: steps['semver']['outputs']['SEMVER_RETURN_STATUS'] == ''
         uses: actions/upload-artifact@v3
         with:
-          name: deployer-${{ steps['semver']['outputs']['VERSION'] }}
-          path: 'dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz'
+          name: deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
+          path: ./dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
       - name: Create Release
         if: steps['semver']['outputs']['RETURN_STATUS'] == ''
         id: release
