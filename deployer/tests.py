@@ -225,7 +225,7 @@ class IntegrationLambdaTestCase(unittest.TestCase):
         client = boto3.client('lambda')
         resp = client.invoke(FunctionName=func[0])
 
-        self.assertNotEquals(resp.get("Payload", None), None)
+        self.assertNotEqual(resp.get("Payload", None), None)
         payload = json.loads(resp['Payload'].read())
         self.assertEqual(payload.get("message", ''), "hello world")
 
