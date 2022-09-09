@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: deployer-${{ steps['semver']['outputs']['VERSION'] }}
-          path: dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz
+          path: 'dist/deployer-${{ steps['semver']['outputs']['VERSION'] }}.tar.gz'
       - name: Create Release
         if: steps['semver']['outputs']['RETURN_STATUS'] == ''
         id: release
