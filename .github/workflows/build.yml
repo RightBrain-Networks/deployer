@@ -50,10 +50,10 @@ jobs:
           echo "::set-output name=VERSION::$VERSION"
 
           python setup.py sdist
-#      - name: test
-#        run: |
-#          python tests.py
-#        working-directory: deployer
+      - name: test
+        run: |
+          python tests.py
+        working-directory: deployer
       - name: Create Release
         if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         id: release
