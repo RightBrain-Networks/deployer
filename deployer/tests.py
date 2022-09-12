@@ -20,7 +20,7 @@ testStackCloudFormation = "./tests/cloudformation.yaml"
 
 testBucket = "deployer-testing-us-east-1"
 
-testStackConfig_data = """
+testStackConfig_data = f"""
 global:
   sync_base: ./
   sync_dest_bucket: deployer-testing-us-east-1
@@ -38,14 +38,14 @@ global:
   tags:
     Environment: stack-updated
 test:
-  stack_name: deployer-test-case
+  stack_name: {testStackName}
   template: tests/cloudformation.yaml
 lambda:
-  stack_name: deployer-test-case
+  stack_name: {testStackName}
   template: tests/cloudformation.yaml
   lambda_dirs: [ tests/lambda ]
 timeout:
-  stack_name: deployer-test-case
+  stack_name: {testStackName}
   template: tests/timeout.yaml
 """
 
@@ -225,7 +225,7 @@ class IntegrationLambdaTestCase(unittest.TestCase):
         client = boto3.client('lambda')
         resp = client.invoke(FunctionName=func[0])
 
-        self.assertNotEquals(resp.get("Payload", None), None)
+        self.assertNotEqual(resp.get("Payload", None), None)
         payload = json.loads(resp['Payload'].read())
         self.assertEqual(payload.get("message", ''), "hello world")
 
@@ -275,7 +275,7 @@ class IntegrationStackTestCase(unittest.TestCase):
 
         stack = self.client.describe_stacks(StackName=self.stack_name)
         self.assertIn('Stacks', stack.keys())
-        self.assertEquals(len(stack['Stacks']), 1)
+        self.assertEqual(len(stack['Stacks']), 1)
 
         outputs = stack['Stacks'][0].get('Outputs', [])
         self.assertIn('create', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Cli'])
@@ -300,8 +300,8 @@ class IntegrationStackTestCase(unittest.TestCase):
         try:
             stack = self.client.describe_stacks(StackName=self.stack_name)
             self.assertIn('Stacks', stack.keys())
-            self.assertEquals(len(stack['Stacks']), 1)
-            self.assertEquals(stack['Stacks'][0].get('StackStatus', ''), 'DELETE_IN_PROGRESS')
+            self.assertEqual(len(stack['Stacks']), 1)
+            self.assertEqual(stack['Stacks'][0].get('StackStatus', ''), 'DELETE_IN_PROGRESS')
             self.stack_wait()
         except ClientError as e:
             self.assertIn('does not exist', str(e))
@@ -321,7 +321,7 @@ class IntegrationStackTestCase(unittest.TestCase):
 
         stack = self.client.describe_stacks(StackName=self.stack_name)
         self.assertIn('Stacks', stack.keys())
-        self.assertEquals(len(stack['Stacks']), 1)
+        self.assertEqual(len(stack['Stacks']), 1)
 
         outputs = stack['Stacks'][0].get('Outputs', [])
         self.assertIn('update', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Cli'])
@@ -364,14 +364,14 @@ class IntegrationStackSetTestCase(unittest.TestCase):
         instances = self.client.list_stack_instances(StackSetName=self.stackset_name)
         accounts = set([x['Account'] for x in instances.get('Summaries', [])])
         regions = set([x['Region'] for x in instances.get('Summaries', [])])
-        self.assertEquals(len(accounts), 1)
-        self.assertEquals(len(regions), 1)
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(len(regions), 1)
 
         for instance in [x for x in instances.get('Summaries', [])]:
             client = boto3.client('cloudformation', region_name=instance['Region'])
             stack = client.describe_stacks(StackName=instance['StackId'])
             self.assertIn('Stacks', stack.keys())
-            self.assertEquals(len(stack['Stacks']), 1)
+            self.assertEqual(len(stack['Stacks']), 1)
 
             outputs = stack['Stacks'][0].get('Outputs', [])
             self.assertIn('create', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Cli'])
@@ -415,7 +415,7 @@ class IntegrationStackSetTestCase(unittest.TestCase):
                     time.sleep(5)
                     status = self.client.describe_stack_set_operation(StackSetName=self.stackset_name, OperationId=op)
 
-                self.assertEquals(status['StackSetOperation']['Status'], 'SUCCEEDED')
+                self.assertEqual(status['StackSetOperation']['Status'], 'SUCCEEDED')
 
             self.client.delete_stack_set(StackSetName=self.stackset_name)
         except ClientError as e:
@@ -428,14 +428,14 @@ class IntegrationStackSetTestCase(unittest.TestCase):
         instances = self.client.list_stack_instances(StackSetName=self.stackset_name)
         accounts = set([x['Account'] for x in instances.get('Summaries', [])])
         regions = set([x['Region'] for x in instances.get('Summaries', [])])
-        self.assertEquals(len(accounts), 1)
-        self.assertEquals(len(regions), 2)
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(len(regions), 2)
 
         for instance in [x for x in instances.get('Summaries', [])]:
             client = boto3.client('cloudformation', region_name=instance['Region'])
             stack = client.describe_stacks(StackName=instance['StackId'])
             self.assertIn('Stacks', stack.keys())
-            self.assertEquals(len(stack['Stacks']), 1)
+            self.assertEqual(len(stack['Stacks']), 1)
 
             outputs = stack['Stacks'][0].get('Outputs', [])
             self.assertIn('update', [x['OutputValue'] for x in outputs if x['OutputKey'] == 'Cli'])
