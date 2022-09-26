@@ -22,4 +22,4 @@ RUN chmod -R 757 ~/.npm
 # Clean
 RUN apt-get clean -y
 
-CMD /opt/app-root/bin/deployer
+CMD deployer
