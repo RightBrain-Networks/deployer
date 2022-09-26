@@ -1,21 +1,25 @@
-FROM centos/python-36-centos7
+FROM python
 
 # Perform updates
 RUN pip install --upgrade pip
-RUN yum update -y
+RUN apt-get update
 
 # Setup Deployer
+COPY ./ /
 RUN python setup.py sdist
 RUN pip install dist/deployer-*.tar.gz
 
 # Install node
-RUN curl -sL https://rpm.nodesource.com/setup_10.x | bash -
-RUN yum install nodejs -y
+RUN curl -sL https://apt.nodesource.com/setup_14.x | bash -
+RUN apt-get install nodejs -y
 
 # Prep workspace
 RUN mkdir ~/.npm
 
 # Permissions
 RUN chmod -R 757 ~/.npm
+
+# Clean
+RUN apt-get clean -y
 
 CMD /opt/app-root/bin/deployer
