@@ -65,6 +65,8 @@ jobs:
           # IMAGE_TAG: ${{ steps['build']['outputs']['VERSION'] }}
           IMAGE_TAG: 'test-github-actions'
         run: |
+          echo "$ECR_REGISTRY"
+          echo "$ECR_REPOSITORY"
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
       - name: Log out of Amazon ECR
