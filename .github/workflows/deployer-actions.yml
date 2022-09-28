@@ -91,4 +91,4 @@ jobs:
           docker build -t $IMAGE_TAG .
           docker tag $IMAGE_TAG:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker $ECR_REGISTRY
+          docker logout $ECR_REGISTRY
