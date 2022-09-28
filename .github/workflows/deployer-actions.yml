@@ -92,3 +92,4 @@ jobs:
           docker tag $IMAGE_TAG:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker logout $ECR_REGISTRY
+          # remove this comment
