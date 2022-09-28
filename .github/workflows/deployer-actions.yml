@@ -48,10 +48,10 @@ jobs:
           echo "::set-output name=VERSION::$VERSION"
 
           python setup.py sdist
-      #- name: test
-        #run: |
-          #python tests.py
-        #working-directory: deployer     
+      - name: test
+        run: |
+          python tests.py
+        working-directory: deployer     
       - name: Create Release
         if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         id: release
@@ -92,4 +92,3 @@ jobs:
           docker tag $IMAGE_TAG:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker logout $ECR_REGISTRY
-          # remove this comment
