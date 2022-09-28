@@ -51,24 +51,7 @@ jobs:
       #- name: test
         #run: |
           #python tests.py
-        #working-directory: deployer      
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
-      - name: Build, tag, and push image to Amazon ECR
-        env:         
-          IMAGE_TAG: ${{ steps['build']['outputs']['VERSION'] }}
-        run: |   
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
-          docker build -t $IMAGE_TAG .
-          docker tag $IMAGE_TAG:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-      - name: Log out of Amazon ECR
-        if: always()
-        run: docker logout ${{ steps.login-ecr.outputs.registry }}      
+        #working-directory: deployer     
       - name: Create Release
         if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
         id: release
@@ -92,3 +75,20 @@ jobs:
           asset_path: ./dist/deployer-${{ steps.build.outputs.VERSION }}.tar.gz
           asset_name: deployer-${{ steps.build.outputs.VERSION }}.tar.gz
           asset_content_type: application/gzip
+      - name: Configure AWS Credentials
+        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      - name: Build, tag, and push image to Amazon ECR
+        if: steps['build']['outputs']['SEMVER_RETURN_STATUS'] == ''
+        env:         
+          IMAGE_TAG: ${{ steps['build']['outputs']['VERSION'] }}
+        run: |   
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+          docker build -t $IMAGE_TAG .
+          docker tag $IMAGE_TAG:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker $ECR_REGISTRY
