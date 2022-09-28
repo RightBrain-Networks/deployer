@@ -55,20 +55,20 @@ jobs:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+      #- name: Log in to Amazon ECR
+        #id: login-ecr
+        #uses: aws-actions/amazon-ecr-login@v1
       - name: Build, tag, and push image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          # IMAGE_TAG: ${{ steps['build']['outputs']['VERSION'] }}
-          IMAGE_TAG: 'test-github-actions'
-        run: |
-          echo "$ECR_REGISTRY"
-          echo "$ECR_REPOSITORY"
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        #env:
+          #ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          #ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          #IMAGE_TAG: ${{ steps['build']['outputs']['VERSION'] }}
+          #IMAGE_TAG: 'test-github-actions'
+        run: |   
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/m7p1z0v6
+          docker build -t test .
+          docker tag test:latest public.ecr.aws/m7p1z0v6/deployer:test
+          docker push public.ecr.aws/m7p1z0v6/deployer:test
       - name: Log out of Amazon ECR
         if: always()
         run: docker logout ${{ steps.login-ecr.outputs.registry }}      
