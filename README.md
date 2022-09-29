@@ -234,7 +234,7 @@ The `config_updater` command is meant to help with updating config files in the 
 
 * -c <config file> (REQUIRED) : Yaml configuration file to run against.
 * -u <updates> (REQUIRED) : JSON formated string representing the changes you want to take place
-
+ 
 ## Example
 
 `./config_updater -c example_configs/dummy.yml -u "{ \"Network\": { \"release\": \"$RELEASE\", \"parameters\":{ \"VirtualPrivateGateway\":\"someotherthing\"} } }"`
@@ -351,3 +351,35 @@ Our top template contains numerous references to child templates. Using a combin
 ```
 
 You can add your own templates under the `cloudformation` directory to deploy your own stacks. Each stack will also need an entry in your deployer config file to specify which directories should be uploaded, the name of the stack, and any required parameters.
+
+# Using Deployer With Docker
+With each release of Deployer a Docker image is published to [Amazon Elactic Container Registy](public.ecr.aws/m7p1z0v6/deployer).
+
+## Setup
+Use the follow bash script to run and operate Deployer from a Docker container on your local machine.
+
+```
+deployer ()
+{
+    docker run --rm --init -it -e AWS_PROFILE=$AWS_PROFILE -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN -e AWS_EXPIRATION=$AWS_EXPIRATION -v $PWD:/workspace -v $HOME/.aws:/root/.aws -v $HOME/.cache:/root/.cache public.ecr.aws/m7p1z0v6/deployer:$DEPLOYER_VER "$@"
+}
+```
+
+## Examples
+Create a stack and copy specified directories to S3.
+`docker run -v $(pwd):/workspace my_docker_image -c config.yml -s MyStack -x create -p profileName -y`
+
+Update a stack and display the events. 
+`docker run -v $(pwd):/workspace my_docker_image -c config.yml -s DevDerek -x update -p profileName -e`
+
+Copy to S3, and create a change set and display what will change during an update.
+`docker run -v $(pwd):/workspace my_docker_image -c config.yml -s MyStack -x change -t MyChangeSetName -d 'This is a description of my change' -y -p profileName`
+
+Copy to S3, and create a new stack and disable CloudFormation from rolling back so you can debug.
+`docker run -v $(pwd):/workspace my_docker_image -c config.yml -s MyStack -x create -p profileName -y -r`
+
+Just copy to s3.
+`docker run -v $(pwd):/workspace my_docker_image -c config.yml -s MyStack -x sync -p profileName`
+
+Zip up lambdas, copy to s3, and update.
+`docker run -v $(pwd):/workspace my_docker_image -c config.yml -s MyStack -x update -p profileName -y -z`
