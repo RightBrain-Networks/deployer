@@ -81,11 +81,12 @@ class Stack(AbstractCloudFormation):
                 raise ValueError('Resources tag limit is 50, you have provided more than 47 tags. Please limit your tagging, save room for name and deployer tags.')
         else:
             tags = []
-        tags.append({'Key': 'deployer:stack', 'Value': self.stack})
-        tags.append({'Key': 'deployer:caller', 'Value': self.identity_arn})
-        tags.append({'Key': 'deployer:git:commit', 'Value': self.commit})
-        tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
-        tags.append({'Key': 'deployer:config', 'Value': self.config.file_name.replace('\\', '/')})
+        if self.config.get_config_att('meta_tags') != False:
+            tags.append({'Key': 'deployer:stack', 'Value': self.stack})
+            tags.append({'Key': 'deployer:caller', 'Value': self.identity_arn})
+            tags.append({'Key': 'deployer:git:commit', 'Value': self.commit})
+            tags.append({'Key': 'deployer:git:origin', 'Value': self.origin})
+            tags.append({'Key': 'deployer:config', 'Value': self.config.file_name.replace('\\', '/')})
         return tags
         
 
