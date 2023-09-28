@@ -23,9 +23,17 @@ class Stack(AbstractCloudFormation):
             self.bucket = bucket
 
         # Load values from args
-        self.disable_rollback = args.get('disable_rollback', False)
+        self.disable_rollback=args.get('disable_rollback', self.config.get_config_att(
+            key='disable_rollback',
+            required=False,
+            stack=self.stack
+        ))
         self.print_events = args.get('print_events', False)
-        self.timed_out = args.get('timeout', None)
+        self.timed_out = args.get('timeout', self.config.get_config_att(
+            key='timeout',
+            required=False,
+            stack=self.stack
+        ))
         self.colors = args.get('colors', defaultdict(lambda: ''))
         self.params = args.get('params', {})
 
@@ -318,6 +326,7 @@ class Stack(AbstractCloudFormation):
             args = {
                 "StackName": self.stack_name,
                 "Parameters": self.config.build_params(self.session, self.stack, self.release, self.params, self.template_file),
+                "DisableRollback": self.disable_rollback,
                 "Tags": self.construct_tags(),
                 "Capabilities": [
                     'CAPABILITY_IAM',
